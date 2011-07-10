@@ -1,0 +1,31 @@
+<html>
+
+<head>
+	<title>Test Game</title>
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+	<script src="constants.js"></script>
+	<script src="linalg.js"></script>
+	<script src="loader.js"></script>
+	<script src="debug.js"></script>
+	<script src="session.js"></script>
+	<script src="shadow.js"></script>
+	<script src="player.js"></script>
+	<script src="game.js"></script>
+	<script src="app.js"></script>	
+</head>
+
+<body id="docBody" onload="App.init();" onunload="App.shutdown();">
+
+<div id="progressPane" style="display:none;" align=center></div>
+
+<div id="gamePane" style="display:none;">
+<canvas id="gameCanvas" style="position:absolute; top:0px; left:0px;"></canvas>
+</div>
+
+<div id="errorPane" style="display:none; background-color:red; color:black;">
+<h1> <tt> The application has crashed! <br/>
+Reason: <div id="errorReason"></div> </tt> </h1>
+</div>
+
+</body>
+</html>
