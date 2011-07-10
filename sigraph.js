@@ -7,7 +7,7 @@ function Incidence(vert, cell) {
 }
 
 //A cell data type
-function Cell() {
+function CellRec() {
     this.boundary = [];
     this.coboundary = [];
 }
@@ -27,7 +27,7 @@ function SIGraph(d, vsize) {
     this.index = new Array(d+1);
     this.count = new Array(d+1);
     
-    for(i=0; i<d; ++i) {
+    for(i=0; i<=d; ++i) {
         this.cells[i] = {};
         this.index[i] = 0;
         this.count[i] = 0;
@@ -128,7 +128,7 @@ SIGraph.prototype.add_cell = function(tup) {
         return c;
     
     //Update all bounding cells
-    var b, nc = new Cell(), v
+    var b, nc = new CellRec(), v
     c = this.index[d]++; 
     for(i=0; i<tup.length; ++i) {
     	//Add boundary cell (if needed)
@@ -164,9 +164,10 @@ SIGraph.prototype.remove_cell = function(d, c) {
         for(i=0; i<boundary.length; ++i) {
             b = this.cells[d-1][boundary[i].cell];
             for(j=0; j<b.coboundary.length; ++j) {
-                if(b.coboundary[j] == c) {
-                    b.coboundary[j] = b.coboundary[-1];
+                if(b.coboundary[j].cell == c) {
+                    b.coboundary[j] = b.coboundary[b.coboundary.length-1];
                     b.coboundary.pop();
+                    break;
                 }
             }
         }
@@ -196,6 +197,42 @@ SIGraph.prototype.remove_cell = function(d, c) {
     //Delete cell
     delete this.cells[d][c];
     this.count[d]--;
+}
+
+//Subdivides a cell
+// d is the dimension
+// c is the cell name
+// v is the vertex which is getting added to split the cell
+SIGraph.prototype.split_cell = function(d, c, v) {
+
+	//Make sure cell exists
+	if(!(c in this.cells[d]) || !(v in this.cells[0]))
+		return;
+	
+	//Split the cell
+	var bnd = this.get_tuple(d, c), i, t;
+	for(i=0; i<bnd.length; ++i) {
+		t = bnd[i];
+		bnd[i] = v;
+		this.add_cell(bnd);
+		bnd[i] = t;
+	}
+	
+	//Split coboundary
+	var nc = this.cells[d][c];
+	for(i=0; i<nc.coboundary.length; ++i) {
+		this.split_cell(d+1, nc.coboundary[i].cell, v);
+	}
+	
+	//Remove the cell
+	this.remove_cell(d,c);
+}
+
+//Collapses a cell down to a single vertex
+// d is the dimension
+// c is the cell name
+// v is the vertex it will be collapsed down to
+SIGraph.prototype.collapse_cell = function(d, c, v) {
 }
 
 //Retrieves vertex buffer data
@@ -244,7 +281,9 @@ function test_mesh() {
 	mesh.add_vert([1,1]);
 	mesh.add_vert([0,2]);
 	
-	mesh.add_cell([0,1]);
-	mesh.add_cell([1,2]);
-	mesh.add_cell([2,1]);
+	mesh.add_cell([0, 1, 2]);
+	
+	mesh.add_vert([0.5, 0.5]);
+	
+	mesh.split_cell(2, 0, 3);
 }
