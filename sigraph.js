@@ -81,8 +81,8 @@ SIGraph.prototype.get_tuple = function(d, c) {
     if(d < 1)
         return [ c ];
     
-    var i, boundary = this.cells[d][c].boundary, res = new Array(d);
-    for(i=0; i<res; ++i) {
+    var i, boundary = this.cells[d][c].boundary, res = new Array(d+1);
+    for(i=0; i<=d; ++i) {
         res[i] = boundary[i].vert;
     }
     return res;
