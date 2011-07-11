@@ -233,6 +233,34 @@ SIGraph.prototype.split_cell = function(d, c, v) {
 // c is the cell name
 // v is the vertex it will be collapsed down to
 SIGraph.prototype.collapse_cell = function(d, c, v) {
+	if(!(c in this.cells[d]) || !(v in this.cells[0]))
+		return;
+
+	//Replace all of the counbary cells with reduced dimension cells
+	var bnd = this.get_tuple(d, c), i, j, cob = this.cells[d][c].coboundary, to_visit = [], t;
+	
+	//Add all the collapsed cells to visit list
+	for(i=0; i<cob.length; ++i) {
+		this.add_cell([v, cob[i].vert]);
+		to_visit.push([ [v, cob[i].vert], cob[i].cell ]);
+	}
+	
+	//Collapse all cobordant cells
+	for(i=0; i<to_visit.length; ++i) {
+		cob = this.cells[d + to_visit[i][0].length - 1][to_visit[i][1]].coboundary;
+		
+		for(j=0; j<cob.length; ++j) {
+			t = to_visit[i][0].slice();
+			t.push(cob[j].vert);
+			this.add_cell( t )
+			to_visit.push([ t, cob[j].cell ]);
+		}
+	}
+	
+	//Remove all boundary cells
+	for(i=0; i<bnd.length; ++i) {
+		this.remove_cell(0, bnd[i]);
+	}
 }
 
 //Retrieves vertex buffer data
@@ -278,12 +306,16 @@ function test_mesh() {
 	var mesh = new SIGraph(2, 2);
 	
 	mesh.add_vert([0,0]);
-	mesh.add_vert([1,1]);
+	mesh.add_vert([2,1]);
 	mesh.add_vert([0,2]);
+	mesh.add_vert([2,3]);
 	
-	mesh.add_cell([0, 1, 2]);
+	var e = mesh.add_cell([1,2]);
 	
-	mesh.add_vert([0.5, 0.5]);
-	
-	mesh.split_cell(2, 0, 3);
+	mesh.add_cell([0,1,2]);
+	mesh.add_cell([1,2,3]);
+
+	var vf = mesh.add_vert([1,1]);
+
+	mesh.collapse_cell(1, e, vf);
 }
