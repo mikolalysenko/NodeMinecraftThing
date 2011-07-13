@@ -10,7 +10,9 @@ var Loader =
 		"shaders/shadow.fs",
 		"shaders/shadow.vs",
 		"shaders/shadow_init.fs",
-		"shaders/shadow_init.vs"
+		"shaders/shadow_init.vs",
+		"shaders/simple_color.vs",
+		"shaders/simple_color.fs"
 	],
 	
 	images :

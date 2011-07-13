@@ -14,6 +14,13 @@ var Game =
 	draw_interval   : null,
 	shadow_interval : null,
 	
+	//Create a tetmesh
+	ctcomplex : null,
+	ib : null,
+	vb : null,
+	prim_count : 0,
+	testprog : null,
+	
 	//Preload resources for the game
 	preload : function()
 	{
@@ -90,6 +97,40 @@ var Game =
 		
 		//Initialize player
 		Player.init();
+		
+		
+		var vfmt = new VertexFormat();
+		vfmt.add_attribute("pos", 3);
+		vfmt.add_attribute("color", 3);
+		
+		Game.ctcomplex = new CellTupleComplex(3, vfmt);
+		
+		var v = [
+			Game.ctcomplex.add_vert([0, 0, 0, 0, 0, 0]),
+			Game.ctcomplex.add_vert([1, 0, 0, 1, 0, 0]),
+			Game.ctcomplex.add_vert([0, 1, 0, 0, 1, 0]),
+			Game.ctcomplex.add_vert([1, 1, 0, 1, 0, 0]),
+			Game.ctcomplex.add_vert([0, 0, 1, 0, 0, 1]),
+			Game.ctcomplex.add_vert([1, 0, 1, 1, 0, 1]),
+			Game.ctcomplex.add_vert([0, 1, 1, 0, 1, 1]),
+			Game.ctcomplex.add_vert([1, 1, 1, 1, 0, 1]) ];
+		
+		Game.ctcomplex.add_cell([v[0], v[1], v[2], v[3]]);
+		Game.ctcomplex.add_cell([v[4], v[5], v[6], v[7]]);
+		
+		Game.ib = Game.gl.createBuffer();
+		Game.vb = Game.gl.createBuffer();
+		Game.init_buffers();
+		
+		var tprog = Loader.get_program("shaders/simple_color.fs", "shaders/simple_color.vs");
+		
+		if(tprog[0] != "Ok")
+		{
+			App.crash(tprog[1]);
+			return;		
+		}
+		
+		Game.testprog = tprog[3];
 	},
 
 	//Stop all intervals
@@ -174,6 +215,29 @@ var Game =
 		Player.tick();
 		
 	},
+	
+	init_buffers : function()
+	{
+		var gl = Game.gl;
+		
+		gl.bindBuffer(gl.ARRAY_BUFFER, Game.vb);
+		gl.bufferData(gl.ARRAY_BUFFER, Game.ctcomplex.get_vert_buffer(), gl.DYNAMIC_DRAW);
+		
+		var pattr = gl.getAttribLocation(Game.testprog, "pos"),
+			cattr = gl.getAttribLocation(Game.testprog, "color");
+		
+		gl.enableVertexAttribArray(pattr);
+		gl.vertexAttribPointer(pattr, 3, gl.FLOAT, false, 4*6, 0);
+		
+		gl.enableVertexAttribArray(cattr);
+		gl.vertexAttribPointer(cattr, 3, gl.FLOAT, false, 4*6, 4*3);
+
+		var tmp = Game.ctcomplex.get_index_buffer(2, true);
+
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Game.ib);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, tmp[0], gl.DYNAMIC_DRAW);
+		Game.prim_count = tmp[1];
+	},
 
 	//Draw the game
 	draw : function()
@@ -186,9 +250,15 @@ var Game =
 		gl.clear(gl.COLOR_BUFFER_BIT);
 	
 		gl.enable(gl.DEPTH_TEST);
-		gl.frontFace(gl.CW);
-		gl.cullFace(gl.BACK);
-		gl.enable(gl.CULL_FACE);
+		gl.disable(gl.CULL_FACE);
+		
+		gl.useProgram(Game.testprog);
+		gl.uniformMatrix4fv(
+			gl.getUniformLocation(Game.testprog, "proj"),
+			false,
+			Game.camera_matrix());
+			
+		gl.drawElements(gl.TRIANGLES, Game.prim_count, gl.UNSIGNED_SHORT, 0);
 	},
 	
 	//Update the shadow maps
