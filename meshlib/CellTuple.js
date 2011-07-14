@@ -3,62 +3,8 @@
 //Default vertex buffer capacity for the mesh
 var DEFAULT_CAPACITY = 1024;
 
-//Vertex attribute record
-function AttributeRec(attr_name, attr_size, attr_offset) {
-	this.attr_name = attr_name;
-	this.attr_size = attr_size;
-	this.attr_offset = attr_offset;
-}
-
-//A vertex format specification
-function VertexFormat() {
-	this.attributes = [];
-	this.vsize = 0;
-}
-
-//Adds an attribute to the vertex format.  All attributes are treated as floats
-// attr_name is the name of the attribute
-// attr_size is the number of components for the attribute
-VertexFormat.prototype.add_attribute = function(attr_name, attr_size) {
-	var attr = new AttributeRec(attr_name, attr_size, this.vsize);
-	this.vsize += attr_size;
-	this.attributes.push(attr);
-	this[attr_name] = attr;
-}
-
-//Flattens a human readable list of vertex entries into an ordered list of vertex data
-// This is not very efficient, but can be useful for debugging
-VertexFormat.prototype.flatten = function(dict) {
-	var res = [], i, j, attr;
-	for(i=0; i<this.attributes.length; ++i) {
-		var attr = this.attributes[i];
-		for(j=0; j<attr.attr_size; ++j) {
-			res.push(dict[attr.attr_name][j]);
-		}
-	}
-	
-	return res;
-}
-
-//Expands a flattened vertex array into a human readable form
-VertexFormat.prototype.expand = function(data) {
-	var res = {}, i, j, attr;
-	
-	if(data.length != this.vsize) {
-		Console.log("Vertex data is too short");
-		return {};
-	}
-	
-	if(data instanceof Float32Array) {
-		for(i=0; i<this.attributes.length; ++i) {
-			attr = this.attributes[i];
-		}
-	}
-}
-
-
 //Incidence record
-function Incidence(vert, cell) {
+function IncidenceRec(vert, cell) {
     this.vert = vert;
     this.cell = cell;
 }
@@ -69,7 +15,7 @@ function Cell(d, c) {
 	this.cell_id = c;
 }
 
-//A cell data type
+//A cell data record
 function CellRec() {
     this.boundary = [];
     this.coboundary = [];
@@ -82,21 +28,21 @@ function VertexRec(v) {
     this.coboundary = [];
 }
 
-
 //Initializes the cell-tuple complex
 // d = dimension of graph (must be nonnegative)
-// vfmt = The vertex format.
-function CellTupleComplex(d, vfmt) {
+// vfmt = The vertex format
+// spatial_index = Spatial index for the cell tuple complex
+function CellTupleComplex(d, vfmt, spatial_index) {
 
 	//Initialize topological data
     var i;
     this.cells = new Array(d+1);
-    this.index = new Array(d+1);
+    this.names = new Array(d+1);
     this.count = new Array(d+1);
     
     for(i=0; i<=d; ++i) {
         this.cells[i] = {};
-        this.index[i] = 0;
+        this.names[i] = 0;
         this.count[i] = 0;
     }
 
@@ -109,6 +55,14 @@ function CellTupleComplex(d, vfmt) {
    	this.vsize = vfmt.vsize;
     this.vbuffer = new Float32Array(DEFAULT_CAPACITY * this.vsize);
     this.vlookup = [];
+    
+    //The spatial index (default unintialized, if set)
+    if(spatial_index == undefined) {
+	    this.spatial_index = new TrivialSpatialIndex();
+	}
+	else {
+		this.spatial_index = spatial_index;
+	}
 }
 
 //Looks up the id for a given cell from its vertex tuple
@@ -177,7 +131,7 @@ CellTupleComplex.prototype.get_vert_data = function(vert) {
 // vdata is the vertex data
 // Returns the name of the vertex
 CellTupleComplex.prototype.add_vert = function(vdata) {
-    var c = this.index[0]++;
+    var c = this.names[0]++;
     
     //Check if we need to resize vertex array
     var off = this.count[0] * this.vsize;
@@ -212,7 +166,7 @@ CellTupleComplex.prototype.add_cell = function(tup) {
     	return o;
     
     //Update all bounding cells
-    var b, nc = new CellRec(), v, c = this.index[d]++; 
+    var b, nc = new CellRec(), v, c = this.names[d]++; 
     for(i=0; i<tup.length; ++i) {
     	//Add boundary cell (if needed)
         v = tup[i];
@@ -221,8 +175,8 @@ CellTupleComplex.prototype.add_cell = function(tup) {
         tup[i] = v;
         
         //Add to boundary of this cell, and update coboundary relation
-        nc.boundary.push( new Incidence(v, b) );
-        this.cells[d-1][b].coboundary.push(new Incidence(v, c));
+        nc.boundary.push( new IncidenceRec(v, b) );
+        this.cells[d-1][b].coboundary.push(new IncidenceRec(v, c));
     }
     
     //Add cell
@@ -262,7 +216,7 @@ CellTupleComplex.prototype.remove_cell = function(cel) {
     		off = v * this.vsize,
     		eoff = this.count[0] * this.vsize;
 
-		//Fix index lookup
+		//Fix vertex index lookup
 		i = this.vlookup[this.count[0]-1];
 		this.cells[0][i].v = v;
 		this.vlookup[v] = i;
