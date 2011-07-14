@@ -1,32 +1,10 @@
+"use strict";
+
 //Default vertex buffer capacity for the mesh
 var DEFAULT_CAPACITY = 1024;
 
-//Incidence record
-function Incidence(vert, cell) {
-    this.vert = vert;
-    this.cell = cell;
-}
-
-//A cell label
-function Cell(d, c) {
-	this.dimension = d;
-	this.cell_id = c;
-}
-
-//A cell data type
-function CellRec() {
-    this.boundary = [];
-    this.coboundary = [];
-}
-
-//A vertex data type
-function Vertex(v) {
-    this.v = v;
-    this.coboundary = [];
-}
-
-//Vertex attribute entry
-function Attribute(attr_name, attr_size, attr_offset) {
+//Vertex attribute record
+function AttributeRec(attr_name, attr_size, attr_offset) {
 	this.attr_name = attr_name;
 	this.attr_size = attr_size;
 	this.attr_offset = attr_offset;
@@ -42,7 +20,7 @@ function VertexFormat() {
 // attr_name is the name of the attribute
 // attr_size is the number of components for the attribute
 VertexFormat.prototype.add_attribute = function(attr_name, attr_size) {
-	var attr = new Attribute(attr_name, attr_size, this.vsize);
+	var attr = new AttributeRec(attr_name, attr_size, this.vsize);
 	this.vsize += attr_size;
 	this.attributes.push(attr);
 	this[attr_name] = attr;
@@ -77,6 +55,33 @@ VertexFormat.prototype.expand = function(data) {
 		}
 	}
 }
+
+
+//Incidence record
+function Incidence(vert, cell) {
+    this.vert = vert;
+    this.cell = cell;
+}
+
+//A cell label
+function Cell(d, c) {
+	this.dimension = d;
+	this.cell_id = c;
+}
+
+//A cell data type
+function CellRec() {
+    this.boundary = [];
+    this.coboundary = [];
+}
+
+//Special case of cell record, vertices have no boundary but instead have an index into
+//vertex table storing their attributes
+function VertexRec(v) {
+    this.v = v;
+    this.coboundary = [];
+}
+
 
 //Initializes the cell-tuple complex
 // d = dimension of graph (must be nonnegative)
@@ -180,14 +185,13 @@ CellTupleComplex.prototype.add_vert = function(vdata) {
     	var tmp = this.vbuffer;
     	this.vbuffer = new Float32Array(this.vbuffer.length * 2);
     	this.vbuffer.set(tmp);
-    	delete tmp;
     }
     
     //Set data
     this.vbuffer.subarray(off, off+this.vsize).set(vdata);
     this.vlookup.push(c);
     
-    this.cells[0][c] = new Vertex(this.count[0]++);
+    this.cells[0][c] = new VertexRec(this.count[0]++);
     return c;
 }
 
@@ -348,18 +352,18 @@ CellTupleComplex.prototype.collapse_cell = function(cel, v) {
 
 //Retrieves vertex buffer data
 CellTupleComplex.prototype.get_vert_buffer = function() {
-	return this.vbuffer.subarray(0, this.vcount*this.vsize);
+	return this.vbuffer.subarray(0, this.count[0]*this.vsize);
 }
 
 //Retrieves index buffer data for cells of dimension d
 CellTupleComplex.prototype.get_index_buffer = function(d, surface_only) {
-	var ib = new Int16Array(d * this.count[d]), i=0, j, v, c, n = 0;
+	var ib = new Uint16Array((d+1) * this.count[d]), i=0, j, v, c, n = 0;
 	
 	if(d > 0) {
 		if(surface_only) {
 			for(c in this.cells[d]) {
 				if(this.cells[d][c].coboundary.length <= 1) {
-					for(j=0; j<d; ++j) {
+					for(j=0; j<=d; ++j) {
 						v = this.cells[d][c].boundary[j].vert;
 						ib[i++] = this.cells[0][v].v;
 					}
@@ -369,7 +373,7 @@ CellTupleComplex.prototype.get_index_buffer = function(d, surface_only) {
 		}
 		else {
 			for(c in this.cells[d]) {
-				for(j=0; j<d; ++j) {
+				for(j=0; j<=d; ++j) {
 					v = this.cells[d][c].boundary[j].vert;
 					ib[i++] = this.cells[0][v].v;
 				}
@@ -384,7 +388,7 @@ CellTupleComplex.prototype.get_index_buffer = function(d, surface_only) {
 		}
 	}
 	
-	return [ ib.subarray(0, i), n ];
+	return ib.subarray(0, i);
 }
 
 

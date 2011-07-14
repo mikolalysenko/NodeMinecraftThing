@@ -78,6 +78,7 @@ var Game =
 		Game.draw_interval 	 = setInterval(Game.draw, GAME_DRAW_RATE);
 		Game.shadow_interval = setInterval(Game.update_shadows, GAME_SHADOW_RATE);
 		
+		/*
 
 		//Initialize debug system
 		var res = Debug.init();
@@ -95,28 +96,31 @@ var Game =
 			return;
 		}
 		
+		*/
+		
 		//Initialize player
 		Player.init();
 		
 		
 		var vfmt = new VertexFormat();
 		vfmt.add_attribute("pos", 3);
-		vfmt.add_attribute("color", 3);
+		//vfmt.add_attribute("color", 3);
 		
 		Game.ctcomplex = new CellTupleComplex(3, vfmt);
 		
 		var v = [
-			Game.ctcomplex.add_vert([0, 0, 0, 0, 0, 0]),
-			Game.ctcomplex.add_vert([1, 0, 0, 1, 0, 0]),
-			Game.ctcomplex.add_vert([0, 1, 0, 0, 1, 0]),
-			Game.ctcomplex.add_vert([1, 1, 0, 1, 0, 0]),
-			Game.ctcomplex.add_vert([0, 0, 1, 0, 0, 1]),
-			Game.ctcomplex.add_vert([1, 0, 1, 1, 0, 1]),
-			Game.ctcomplex.add_vert([0, 1, 1, 0, 1, 1]),
-			Game.ctcomplex.add_vert([1, 1, 1, 1, 0, 1]) ];
+			Game.ctcomplex.add_vert([-10,-10,-10]),
+			Game.ctcomplex.add_vert([ 10,-10,-10]),
+			Game.ctcomplex.add_vert([-10, 10,-10]),
+			Game.ctcomplex.add_vert([ 10, 10,-10]),
+			Game.ctcomplex.add_vert([-10,-10, 10]),
+			Game.ctcomplex.add_vert([ 10,-10, 10]),
+			Game.ctcomplex.add_vert([-10, 10, 10]),
+			Game.ctcomplex.add_vert([ 10, 10, 10]), 
+			Game.ctcomplex.add_vert([ 0, 0, 0 ]) ];
 		
-		Game.ctcomplex.add_cell([v[0], v[1], v[2], v[3]]);
-		Game.ctcomplex.add_cell([v[4], v[5], v[6], v[7]]);
+		Game.ctcomplex.add_cell([v[8], v[0], v[1], v[2]]);
+		Game.ctcomplex.add_cell([v[8], v[0], v[1], v[4]]);
 		
 		Game.ib = Game.gl.createBuffer();
 		Game.vb = Game.gl.createBuffer();
@@ -218,25 +222,16 @@ var Game =
 	
 	init_buffers : function()
 	{
-		var gl = Game.gl;
-		
+		var gl = Game.gl,
+			v_data = Game.ctcomplex.get_vert_buffer(),
+			i_data = Game.ctcomplex.get_index_buffer(2, true);
+			
 		gl.bindBuffer(gl.ARRAY_BUFFER, Game.vb);
-		gl.bufferData(gl.ARRAY_BUFFER, Game.ctcomplex.get_vert_buffer(), gl.DYNAMIC_DRAW);
+		gl.bufferData(gl.ARRAY_BUFFER, v_data, gl.STATIC_DRAW);
 		
-		var pattr = gl.getAttribLocation(Game.testprog, "pos"),
-			cattr = gl.getAttribLocation(Game.testprog, "color");
-		
-		gl.enableVertexAttribArray(pattr);
-		gl.vertexAttribPointer(pattr, 3, gl.FLOAT, false, 4*6, 0);
-		
-		gl.enableVertexAttribArray(cattr);
-		gl.vertexAttribPointer(cattr, 3, gl.FLOAT, false, 4*6, 4*3);
-
-		var tmp = Game.ctcomplex.get_index_buffer(2, true);
-
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Game.ib);
-		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, tmp[0], gl.DYNAMIC_DRAW);
-		Game.prim_count = tmp[1];
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, i_data, gl.STATIC_DRAW);
+		Game.prim_count = i_data.length;
 	},
 
 	//Draw the game
@@ -247,7 +242,7 @@ var Game =
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);	
 		gl.viewport(0, 0, Game.width, Game.height);
 		gl.clearColor(0.3, 0.5, 0.9, 1.0);
-		gl.clear(gl.COLOR_BUFFER_BIT);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	
 		gl.enable(gl.DEPTH_TEST);
 		gl.disable(gl.CULL_FACE);
@@ -257,7 +252,13 @@ var Game =
 			gl.getUniformLocation(Game.testprog, "proj"),
 			false,
 			Game.camera_matrix());
-			
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, Game.vb);
+		var pattr = gl.getAttribLocation(Game.testprog, "pos");
+		gl.enableVertexAttribArray(pattr);
+		gl.vertexAttribPointer(pattr, 3, gl.FLOAT, false, 0, 0);
+		
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Game.ib);
 		gl.drawElements(gl.TRIANGLES, Game.prim_count, gl.UNSIGNED_SHORT, 0);
 	},
 	
