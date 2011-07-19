@@ -1,5 +1,20 @@
 "use strict";
 
+//This module implements basic topological operations for cell complexes
+
+//It will support things like:
+//	+ adding cells
+//	+ removing cells
+//	+ subdividing cells
+//	+ collapsing cells
+//	+ support for hooks to other library components
+//
+//It will not support things like:
+//  - set operations
+//  - data format interoperability
+//  - etc. 
+//
+
 //Default vertex buffer capacity for the mesh
 var DEFAULT_CAPACITY = 1024;
 
@@ -31,8 +46,7 @@ function VertexRec(v) {
 //Initializes the cell-tuple complex
 // d = dimension of graph (must be nonnegative)
 // vfmt = The vertex format
-// spatial_index = Spatial index for the cell tuple complex
-function CellTupleComplex(d, vfmt, spatial_index) {
+function CellTupleComplex(d, vfmt) {
 
 	//Initialize topological data
     var i;
@@ -56,13 +70,8 @@ function CellTupleComplex(d, vfmt, spatial_index) {
     this.vbuffer = new Float32Array(DEFAULT_CAPACITY * this.vsize);
     this.vlookup = [];
     
-    //The spatial index (default unintialized, if set)
-    if(spatial_index == undefined) {
-	    this.spatial_index = new TrivialSpatialIndex();
-	}
-	else {
-		this.spatial_index = spatial_index;
-	}
+    //Spatial index (by default null)
+    this.spatial_index = null;
 }
 
 //Looks up the id for a given cell from its vertex tuple
@@ -146,6 +155,12 @@ CellTupleComplex.prototype.add_vert = function(vdata) {
     this.vlookup.push(c);
     
     this.cells[0][c] = new VertexRec(this.count[0]++);
+    
+    //Update spatial index
+    if(this.spatial_index) {
+    	this.spatial_index.add_cell( [c], new Cell(0, c) );
+    }
+    
     return c;
 }
 
@@ -183,7 +198,13 @@ CellTupleComplex.prototype.add_cell = function(tup) {
     this.cells[d][c] = nc;
     this.count[d]++;
     
-    return new Cell(d, c);
+    var cel = new Cell(d, c);
+    
+    if(this.spatial_index) {
+    	this.spatial_index.add_cell(tup, cel);
+    }
+    
+    return cel;
 }
 
 //Removes a cell from the graph
@@ -194,6 +215,11 @@ CellTupleComplex.prototype.remove_cell = function(cel) {
 	var d = cel.dimension, c = cel.cell_id;
     if(!(c in this.cells[d]))
         return;
+
+	//Remove from spatial index
+	if(this.spatial_index) {
+		this.spatial_index.remove_cell(cel);
+	}
 
     //Remove from boundary of all lower cells
     var i, j, t, b;
@@ -346,25 +372,21 @@ CellTupleComplex.prototype.get_index_buffer = function(d, surface_only) {
 }
 
 
-function test_mesh() {
-
-	//Create the vertex format
-	var vfmt = new VertexFormat();
-	vfmt.add_attribute("pos", 2);
-
-	//Create mesh
-	var mesh = new CellTupleComplex(2, vfmt);
+//Attaches a spatial index to the cell tuple complex
+// This is useful for doing boolean operations, range queries etc.
+CellTupleComplex.prototype.attach_spatial_index = function(spatial_index) {
+	if(this.spatial_index) {
+		Console.log("Warning!  Double adding spatial index!");
+	}
 	
-	var v0 = mesh.add_vert([0,0]),
-		v1 = mesh.add_vert([2,1]),
-		v2 = mesh.add_vert([0,2]),
-		v3 = mesh.add_vert([2,3]);
+	this.spatial_index = spatial_index;
 	
-	mesh.add_cell([v0,v1,v2]);
-	mesh.add_cell([v1,v2,v3]);
-
-	var v = mesh.add_vert([1,1]),
-		e = mesh.lookup_cell([v1, v2]);
-
-	mesh.collapse_cell(e, v);
+	var d, c, cel;
+	for(d=0; d<this.cells.length; ++i) {
+		for(c in this.cells[d]) {
+			cel = new Cell(d, c);
+			this.spatial_index.add_cell(this.get_tuple(cel), cel);
+		}
+	}
 }
+
