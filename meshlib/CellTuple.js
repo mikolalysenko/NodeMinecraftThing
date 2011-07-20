@@ -90,6 +90,44 @@ function CellTupleComplex(d, vfmt, position_attribute) {
     this.spatial_index = null;
 }
 
+//Creates a cell-tuple complex from a minimal set of json data
+function ctcomplex_from_json(data) = {
+    //Extract vertex format
+    var vfmt = new VertexFormat(), i;
+    for(i=0; i<data.vfmt.length; ++i) {
+        vfmt.add_attribute(data.vfmt[i]);
+    }
+    
+    var ctcomplex = new CellTupleComplex(data.cells.length)
+}
+
+//Converts a cell-tuple complex to json for interprocess serialization
+// This avoids accidentally serializing any data structure dependencies and fixes
+// the problem with the float32arrays not being serializable.
+CellTupleComplex.prototype.to_json = function() {
+    var data = {};
+    
+    data.vfmt = this.vertex_format.attributes;
+    data.pattr = this.position_attribute;
+    data.vbuf = new Array(this.vbuffer.subarray(0, this.count[0] * this.vsize);
+    data.cells = new Array(this.cells.length);
+    
+    var i, j, k, c, bnd;
+    for(i=0; i<this.cells.length; ++i) {
+        k = -1;
+        data.cells[i] = new Array(this.count[i]);
+        for(c in this.cells[i]) {
+            data.cells[i][++k] = new Array(i+1);
+            bnd = this.cells[i][c];
+            for(j=0; j<b.length; ++j) {
+                data.cells[i][k][j] = bnd[j].vert;
+            }
+        }
+    }
+    
+    return data;
+}
+
 //Looks up the id for a given cell from its vertex tuple
 // tup is the list of vertex names for the cell
 // Returns the name of the cell (if it exists) or else -1
