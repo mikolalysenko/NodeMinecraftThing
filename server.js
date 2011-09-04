@@ -39,10 +39,26 @@ function serveFile(filename, response) {
   });
 }
 
-exports.createStaticHttpServer = function(wwwroot) {
+exports.createStaticHttpServer = function(wwwroot, commonroot, commonpath) {
   return http.createServer(function(request, response) {
-    var uri = url.parse(request.url).pathname;
-    serveFile(path.join(wwwroot, fixPath(uri)), response);
+    var uri = fixPath(url.parse(request.url).pathname),
+        parts = uri.split("/"),
+        filename;
+    
+    //Fix leading /
+    if(parts.length > 0 && parts[0] == '') {
+      parts.shift();
+    }
+    
+    if(parts.length == 0) {
+      serveFile(path.join(wwwroot, "index.html"), response);
+    }
+    else if(parts[0] == commonpath) {
+      serveFile(path.join(commonroot, parts.slice(1).join("/")), response);
+    }
+    else {
+      serveFile(path.join(wwwroot, uri), response);
+    }
   });
 };
 
