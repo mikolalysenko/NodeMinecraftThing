@@ -3,34 +3,27 @@
 //The preloader
 var LoadState = {
 
-	init : function()
-	{
-		if(Game.preload())
-		{
-			if(Loader.finished)
-			{
-				App.set_state(Game);
-			}
-			else
-			{
-				document.getElementById('progressPane').style.display = 'block';
-			}
+	init : function() {
+	  Game.preload();
+		if(Loader.finished) {
+			App.setState(Game);
+		}
+		else {
+			document.getElementById('progressPane').style.display = 'block';
 		}
 	},
 
-	shutdown : function()
-	{
+	shutdown : function() {
 		document.getElementById('progressPane').style.display = 'none';
 	},
 
-	update_progress : function(url)
-	{
+	updateProgress : function(url) {
 		var prog_txt = document.getElementById('progressPane');
 		prog_txt.innerHTML = "Loaded: " + url + "<br\/\>%" + Loader.pct_loaded * 100.0 + " Complete";
 	
 		if(Loader.finished && App.state == LoadState)
 		{
-			App.set_state(Game);
+			App.setState(Game);
 		}
 	}
 };
@@ -38,18 +31,15 @@ var LoadState = {
 //Application crash state
 var ErrorState = {
 
-	init : function()
-	{
+	init : function() {
 		document.getElementById('errorPane').style.display = 'block';
 	},
 
-	shutdown : function()
-	{
+	shutdown : function() {
 		document.getElementById('errorPane').style.display = 'none';
 	},
 
-	post_error : function(msg)
-	{
+	postError : function(msg) {
 		//Scrub message
 		msg = msg.replace(/\&/g, "&amp;")
 				 .replace(/\</g, "&lt;")
@@ -62,9 +52,19 @@ var ErrorState = {
 
 //The default state (doesn't do anything)
 var DefaultState = {
-
 	init : function() { },
 	shutdown : function() { }
+};
+
+
+//Called when the 
+var NoWebGLState {
+  init : function() {
+    alert("Your browser does not support WebGL :(");
+  },
+  
+  shutdown : function() {
+  }
 };
 
 
@@ -72,33 +72,34 @@ var DefaultState = {
 var App = {
 	state : DefaultState,
 	
-	init : function()
-	{
-		Loader.start(LoadState.update_progress, App.crash);
-		App.set_state(LoadState);
+	init : function() {
+		Loader.start(LoadState.updateProgress, App.crash);
+		App.setState(LoadState);
 	},
 
-	shutdown : function()
-	{
-		App.set_state(DefaultState);
+	shutdown : function() {
+		App.setState(DefaultState);
 	},
 
-	set_state : function(next_state)
-	{
+	setState : function(next_state) {
 		App.state.shutdown();
 		App.state = next_state;
 		App.state.init();
 	},
+	
+	crashNoWebGL : function() {
+	  setState(NoWebGLState);
+	  throw "No WebGL";
+	}
 
-	crash : function(msg)
-	{
-		App.set_state(ErrorState);	
-		App.state.post_error(msg);
+	crash : function(msg) {
+		App.setState(ErrorState);	
+		App.state.postError(msg);
+		throw msg;
 	},
 	
-	post_error : function(msg)
-	{
-		App.state.post_error(msg);
+	postError : function(msg) {
+		App.state.postError(msg);
 	}
 };
 

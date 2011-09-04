@@ -9,11 +9,10 @@ var Debug = {
 	debug_tb : null,
 	debug_ib : null,
 
-	init : function()
-	{
+	init : function() {
 		//Create debug shader
 		var gl = Game.gl,
-			res = Loader.get_program("shaders/simple.fs", "shaders/simple.vs");
+			res = Loader.getProgram("shaders/simple.fs", "shaders/simple.vs");
 		
 		if(res[0] != "Ok")
 		{
@@ -73,7 +72,7 @@ var Debug = {
 	{
 	},
 	
-	draw_tex : function(texname)
+	drawTexture : function(texname)
 	{
 		var gl = Game.gl;
 
