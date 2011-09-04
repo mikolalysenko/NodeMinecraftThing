@@ -2,10 +2,9 @@
 
 var Input = {
 
-	//Default keycodes (these can be reconfigured)
-	// -1 corresponds to the mouse key code
-	keys : {
-	  -1 : "use",
+  //0 is for the mouse button
+	keyBindings : {
+	  0  : "use",
 		87 : "forward",
 		83 : "backward",
 		65 : "left",
@@ -15,7 +14,8 @@ var Input = {
 	},
 	
 	//Input state
-	input : {
+	// > 0 means has been pressed for 
+	state : {
 		"use" : 0,
 		"forward" : 0,
 		"backward" : 0,
@@ -26,33 +26,39 @@ var Input = {
 	},
 	
 	//Mouse state (buffered two states back
-	mouse : [$V([0,0]), $V([0,0])],
+	mouse_state : [$V([0,0]), $V([0,0])],
 	
 	//Bind all the input handlers for the document
 	init : function() {
 		var body = document.getElementById("docBody");
 	
+	  //Reset state
+		for(var i in Input.state) {
+		  Input.state[i] = 0;
+		}
+		mouse_state = [$V([0,0]), $V([0,0])]
+	
 		document.onkeyup = function(event) {
-			var ev = Player.keys[event.keyCode];
+			var ev = Input.keyBindings[event.keyCode];
 			if(ev) {
-				Player.input[ev] = 0;
+				Input.state[ev] = 0;
 				return false;
 			}
 			return true;
 		};
 	
 		document.onkeydown = function(event) {
-			var ev = Player.keys[event.keyCode];
+			var ev = Input.keyBindings[event.keyCode];
 			if(ev) {
-				Player.input[ev] = 1;
+				Input.state[ev] = 1;
 				return false;
 			}
 			return true;
 		};
 		
 		document.onblur = function(event) {
-			for(var i in Player.input) {
-				Player.input[i] = 0;
+			for(var i in Input.state) {
+				Input.state[i] = 0;
 			}
 			return true;
 		};
@@ -67,31 +73,32 @@ var Input = {
 		};
 	
 		body.onmousedown = function(event) {
-			var ev = Player.keys[-1];
+			var ev = Input.keyBindings[0];
 			if(ev) {
-				Player.input[ev] = 1;
+				Input.state[ev] = 1;
 				return false;
 			}
 			return true;
 		};
 	
 		body.onmouseup = function(event) {
-			var ev = Player.keys[-1];
+			var ev = Input.keyBindings[0];
 			if(ev) {
-				Player.input[ev] = 0;
+				Input.state[ev] = 0;
 				return false;
 			}
 			return true;
 		};
 		
 		body.onblur = function(event) {
-			for(var i in Player.input) {
-				Player.input[i] = 0;
+			for(var i in Input.state) {
+				Input.state[i] = 0;
 			}
 			return true;
 		};
 	},
 	
+	//Clear input handlers
 	shutdown : function() {
 		var body = document.getElementById("docBody");
 		document.onkeyup = null;
@@ -99,5 +106,16 @@ var Input = {
 		body.onmousemove = null;
 		body.onmousedown = null;
 		body.onmouseup = null;
+	},
+	
+	//Update input state
+	tick : function() {
+	  for( var i in Input.state ) {
+	    if( Input.state[i] > 0 ) {
+	      Input.state[i]++;
+	    } else if( Input.state[i] <= 0 ) {
+	      Input.state[i]--;
+	    }
+	  }
 	}
 };

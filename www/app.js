@@ -50,6 +50,7 @@ var ErrorState = {
 	}
 }
 
+
 //The default state (doesn't do anything)
 var DefaultState = {
 	init : function() { },
@@ -58,7 +59,7 @@ var DefaultState = {
 
 
 //Called when the 
-var NoWebGLState {
+var NoWebGLState = {
   init : function() {
     alert("Your browser does not support WebGL :(");
   },
@@ -88,9 +89,9 @@ var App = {
 	},
 	
 	crashNoWebGL : function() {
-	  setState(NoWebGLState);
+	  App.setState(NoWebGLState);
 	  throw "No WebGL";
-	}
+	},
 
 	crash : function(msg) {
 		App.setState(ErrorState);	

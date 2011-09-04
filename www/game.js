@@ -8,6 +8,7 @@ var Game = {
 	//Our local event loops
 	tick_interval   : null,
 	draw_interval   : null,
+	input_interval  : null,
 	
 	//Preload resources for the game
 	preload : function() {
@@ -50,6 +51,7 @@ var Game = {
 		Game.running 		     = true;
 		Game.tick_interval 	 = setInterval(Game.tick, GAME_TICK_RATE);
 		Game.draw_interval 	 = setInterval(Game.draw, GAME_DRAW_RATE);
+		Game.input_interval  = setInterval(Game.input, GAME_INPUT_RATE);
 		
 		//Initialize input
 		Input.init();
@@ -60,8 +62,15 @@ var Game = {
 		document.getElementById('gamePane').style.display = 'none';
 	
 		Game.running = false;
-		if(Game.tick_interval)		clearInterval(Game.tick_interval);
-		if(Game.draw_interval)		clearInterval(Game.draw_interval);
+		if(Game.tick_interval) {
+		  clearInterval(Game.tick_interval);
+    }
+		if(Game.draw_interval) {
+		  clearInterval(Game.draw_interval);
+		}
+		if(Game.input_interval) {
+		  clearInterval(Game.input_interval);
+		}
 		
 		window.onresize = null;
 		
@@ -79,6 +88,11 @@ var Game = {
 		var appPanel = document.getElementById("gamePane");
 		appPanel.width = Game.canvas.width;
 		appPanel.height = Game.canvas.height;
+	},
+	
+	//Update player state based on player input (this should happen faster than drawing events)
+	input : function() {
+    Input.tick();	
 	},
 	
 	//Tick the game
