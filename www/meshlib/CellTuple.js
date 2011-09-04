@@ -18,12 +18,6 @@
 //Default vertex buffer capacity for the mesh
 var DEFAULT_CAPACITY = 1024;
 
-//Bounding box record
-function BoundingBox(lo, hi) {
-    this.lo = lo;
-    this.hi = hi;
-}
-
 //Incidence record
 function IncidenceRec(vert, cell) {
     this.vert = vert;
@@ -456,7 +450,7 @@ CellTupleComplex.prototype.locate_point = function(coord) {
     for(d=0; d<this.cells.length; ++d) {
         for(c in this.cells[d]) {
             cel = new Cell(d, c);
-            if(this.point_in_cell(coord, cel))
+            if(this.get_simplex(cel).contains_pt(coord))
                 return cel;
         }
     }
@@ -464,7 +458,7 @@ CellTupleComplex.prototype.locate_point = function(coord) {
 }
 
 //Retrieves the coordinates for a cell
-CellTupleComplex.prototype.get_coordinates = function(cel) {
+CellTupleComplex.prototype.get_simplex = function(cel) {
     var tup = this.get_tuple(cel), i, res = [], v;
     if( tup.length == 0 )
         return [];
@@ -472,32 +466,6 @@ CellTupleComplex.prototype.get_coordinates = function(cel) {
         v = this.get_vert_data(tup[i]);
         res.push(v.slice(this.position_offset, this.position_offset + this.position_size));
     }
-    return res;
-}
-
-//Checks if a point is in the given cell
-CellTupleComplex.prototype.point_in_cell = function(coord, cel) {
-    var coords = this.get_coordinates(cel);
-    if(coords.length == 0)
-        return false;
-
-    //TODO: Implement simplex PMC here
-
-    return false;
-}
-
-//Returns the bounding box for a cell
-CellTupleComplex.prototype.cell_bounds = function(cel) {
-    var coords = this.get_coordinates(cel);
-    if(coords.length == 0)
-        return [];   
-    var lo = coords[0].slice(0,-1), hi = coords[0].slice(0,-1), i, j;
-    for(i=1; i<coords.length; ++i) {
-        for(j=this.position_size-1; j>=0; --j) {
-            lo[j] = Math.min(lo[j], coords[i][j]);
-            hi[j] = Math.max(hi[j], coords[i][j]);
-        }
-    }
-    return new BoundingBox(lo, hi);
+    return new Simplex(res);
 }
 
