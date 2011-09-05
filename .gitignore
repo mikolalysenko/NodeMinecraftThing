@@ -1,3 +1,4 @@
 *.log
 *~
-
+data/db/*
+mongo/*

@@ -1,0 +1,8 @@
+#Configuration for MongoDB
+dbpath = data/db
+bind_ip = 127.0.0.1
+port = 27017
+logappend = true
+logpath = data/mongodb.log
+auth = true
+
