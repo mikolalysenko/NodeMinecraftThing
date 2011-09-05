@@ -1,4 +1,6 @@
 *.log
 *~
+data/keyfile
 data/db/*
 mongo/*
+

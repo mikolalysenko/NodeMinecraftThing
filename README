@@ -1,0 +1,39 @@
+
+*UNIX ONLY*  Sorry windows guys :(
+
+Some general notes:
+  
+  * All scripts should be run from the root directory
+  * Must have node.js and npm installed first (FIXME: Maybe make this install automatically?)
+  * Start database server *before* starting the game server.
+
+
+Example first time start up:
+
+  % ./scripts/setup.sh
+  % ./scripts/start_db.sh
+  % ./scripts/start_server.sh
+
+
+After set up, example start up:
+
+  % ./scripts/start_db.sh
+  % ./scripts/start_server.sh
+
+Administration Scripts:
+
+  setup.sh - Downloads and installs mongodb locally; sets up configuration and schema automatically.
+  start_db.sh - Starts a local instance of the mongodb server (currently unsharded, but good enough).
+  start_server.sh - Starts the actual server.  
+
+Testing Scripts:
+  
+  chrome.sh - Tests the game in chrome
+  firefox.sh - Tests the game in firefox
+  
+TODO:
+
+  Add opera test script
+  Add unit tests
+  Get a real hosting platform :)
+

@@ -10,4 +10,9 @@ mv mongodb-linux-i686-static-1.8.3/bin/* .
 rm -rf mongodb-linux-i686-static-1.8.3 mongo.tgz
 cd ..
 
+#Create database directory
+mkdir data/db
+
+#Create key file
+dd if=/dev/urandom bs=96 count=1 | base64 > data/keyfile
 
