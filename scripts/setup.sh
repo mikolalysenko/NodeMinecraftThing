@@ -53,23 +53,5 @@ if [ $ret -ne 0 ] || ! [ -x "$mongo" ]; then
   cd ..
 fi
 
-#Create database directory
-echo "Creating database directory"
-mkdir -p data/db
-
-#Create key file
-echo "Creating keyfile"
-rm data/keyfile
-passwd=dd if=/dev/urandom bs=96 count=1 | base64
-echo $passwd > data/keyfile
-chmod 600 data/keyfile
-
-#Run mongodb set up script
-echo "Configuring mongodb"
-./mongo/mongod --config=data/config.txt &
-sleep 2
-
-echo 'use admin;
-db.addUser("admin", $passwd);
-db.shutdownServer();' > ./mongo/mongo 127.0.0.1
-
+#Configure the database
+scripts/setup_db.sh
