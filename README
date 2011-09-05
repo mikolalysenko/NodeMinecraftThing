@@ -7,28 +7,36 @@ Some general notes:
   * Must have node.js and npm installed first (FIXME: Maybe make this install automatically?)
   * Start database server *before* starting the game server.
 
-
 Example first time start up:
 
   % ./scripts/setup.sh
-  % ./scripts/start_db.sh
-  % ./scripts/start_server.sh
+  % ./scripts/start.sh
 
 
-After set up, example start up:
+Notes on the directory structure:
 
-  % ./scripts/start_db.sh
-  % ./scripts/start_server.sh
+  common - Javascript files that are shared by the server and the client
+  www - The wwwroot directory for the client
+  www/img - Images for the client
+  www/shaders - Client shaders
+  scripts - Administration scripts for the server
+  mongo - Directory for local install of mongodb
+  data - The database directory
+  data/db - MongoDB database goes here
+  data/keyfile - Randomly generated database administrator password
+  data/config.txt - Database configuration
 
 Administration Scripts:
 
   setup.sh - Downloads and installs mongodb locally; sets up configuration and schema automatically.
   start_db.sh - Starts a local instance of the mongodb server (currently unsharded, but good enough).
-  start_server.sh - Starts the actual server.  
+  start_server.sh - Starts a local instance of the game server
+  start.sh - Starts both the game server and the database
+  stop.sh - Kills the server and database
 
 Testing Scripts:
   
-  chrome.sh - Tests the game in chrome
+  chrome.sh - Starts server and tests the game in chrome
   firefox.sh - Tests the game in firefox
   
 TODO:

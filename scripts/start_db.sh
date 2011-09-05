@@ -1,2 +1,2 @@
 #!/bin/sh
-./mongo/mongod --config=data/config.txt
+./mongo/mongod --config=data/config.txt &
