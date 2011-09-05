@@ -1,4 +1,4 @@
 #!/bin/sh
 scripts/start_db.sh
-sleep 1
+sleep 2
 scripts/start_server.sh
