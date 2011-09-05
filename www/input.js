@@ -4,9 +4,9 @@ var Input = {
 
   //0 is for the mouse button
 	keyBindings : {
-	  0  : "use",
-		87 : "forward",
-		83 : "backward",
+	  0  : "action",
+		87 : "up",
+		83 : "down",
 		65 : "left",
 		68 : "right",
 		32 : "jump",
@@ -16,9 +16,9 @@ var Input = {
 	//Input state
 	// > 0 means has been pressed for 
 	state : {
-		"use" : 0,
-		"forward" : 0,
-		"backward" : 0,
+		"action" : 0,
+		"up" : 0,
+		"down" : 0,
 		"left" : 0,
 		"right" : 0,
 		"jump" : 0,
@@ -36,7 +36,7 @@ var Input = {
 		for(var i in Input.state) {
 		  Input.state[i] = 0;
 		}
-		mouse_state = [$V([0,0]), $V([0,0])]
+		Input.mouse_state = [$V([0,0]), $V([0,0])]
 	
 		document.onkeyup = function(event) {
 			var ev = Input.keyBindings[event.keyCode];
@@ -66,8 +66,8 @@ var Input = {
 		body.onmousemove = function(event) {
 			var cx = Game.canvas.width  / 2,
 				  cy = Game.canvas.height / 2;
-		  mouse_state[1] = mouse_state[0];
-		  mouse_state[0] = $V([(event.x - cx) / Game.canvas.width,
+		  Input.mouse_state[1] = Input.mouse_state[0];
+		  Input.mouse_state[0] = $V([(event.x - cx) / Game.canvas.width,
 			                     (event.y - cy) / Game.canvas.height ]);
 			return false;
 		};
