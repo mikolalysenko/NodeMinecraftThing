@@ -35,8 +35,8 @@ fi
 
 #Download npm packages
 echo "Installing NPM packages"
-npm install socket.io
-npm install mongodb
+sudo npm install -g socket.io
+sudo npm install -g mongodb
 
 #Download and unzip mongodb locally
 mongo=`which mongo/mongo 2>&1`
