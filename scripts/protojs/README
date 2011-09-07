@@ -1,0 +1,74 @@
+Protojs is a BSD-licensed protocol buffer library written in JavaScript.
+http://github.com/sirikata/protojs
+
+==== Features:
+
+* Fast compiler using ANTLR
+* Packed field + 2.3.0 autodetection
+* Full Unicode support (decoding surrogate pairs above 0xffff)
+* Getters+setters for error checking (and fallback if not supported)
+* Enums and nested messages
+* 32-bit and 64-bit floating points
+* Serializing/deserializing to base64 or array of int
+* PBJ datatypes (uuid, vector, quaternion, normal) defined in pbj.js
+
+==== Bugs or missing features:
+* Does not enforce "required", acts the same as "optional"
+* Default values are not used
+* Setting a field in a sub-message will not cause the sub-message to be
+  serialized, as the python parser worked before 2.3.0
+* It is not possible to serialize to binary string in a cross-browser way,
+  because Javascript uses unicode strings. However, the Stream class can
+  be extended for specific applications
+* No support for extensions or services
+* Not compatible with older versions of protobufs
+
+==== Building protojs:
+
+The build process is tested on Linux, and should work also on mac or cygwin:
+First, run "./bootstrap.sh"
+This script downloads antlr-3.2 from antlr.org.
+
+Now, run "make"
+Builds the "pbj" compiler and a test file from protocol/ into output/
+
+If you want to use the makefile you can put your own .proto files into
+protocol/. You can also run the pbj file with "pbj input.proto output.proto"
+
+If you want to build a directory full of protocol files, run it with "make INPUTDIR=/path/to/protocol". You can optionally specify OUTPUTDIR if you don't want them to go to output.
+
+==== Using the javascript library:
+
+The javascript library is intended to be as similar as possible to python
+protocol buffers.
+
+If you have declared the package Example.Test, and made a message called
+HelloWorld, you can create a message with:
+
+var mymsg = new Example.Test.HelloWorld;
+mymsg.field1 = "value1";
+mymsg.inner_msg.field2 = 5;
+var newmsg = mymsg.repeated_msg.push();
+newmsg.field2 = 6;
+newmsg.field3.push(1)
+newmsg.field3.push(2)
+newmsg.field3.push(3)
+
+To serialize the message, you must create an instance of a class that
+extends PROTO.Stream.
+
+var serialized = new PROTO.Base64Stream;
+mymsg.SerializeToStream(serialized);
+document.write(serialized.getString());
+
+Note that the function names are ParseFromStream and SerializeToStream, not
+ParseFromString or ParseFromArray as in python or C++. This is because
+javascript strings are encoded in UTF-16 and cannot handle binary data.
+
+==== Reporting bugs:
+
+Send mail to Patrick Horn <patrick.horn@gmail.com>, or find me at
+irc.freenode.net #sirikata
+
+If you have a cool feature to add, feel free to fork the project.
+

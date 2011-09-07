@@ -1,6 +1,8 @@
 *.log
 *~
-data/keyfile
+data/dbpasswd
 data/db/*
 mongo/*
+*.o
+*antlr*
 

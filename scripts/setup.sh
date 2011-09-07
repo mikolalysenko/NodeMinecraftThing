@@ -16,7 +16,7 @@ if [ $ret -ne 0 ] || ! [ -x "$node" ]; then
   ./configure
   make
   sudo make install
-  cd ..
+  cd ../..
   rm -rf node
 fi
 
@@ -35,8 +35,8 @@ fi
 
 #Download npm packages
 echo "Installing NPM packages"
-npm install socket.io
-npm install mongodb
+sudo npm install -g socket.io
+sudo npm install -g mongodb
 
 #Download and unzip mongodb locally
 mongo=`which mongo/mongo 2>&1`
@@ -46,12 +46,28 @@ if [ $ret -ne 0 ] || ! [ -x "$mongo" ]; then
   rm -rf mongo
   mkdir -p mongo
   cd mongo
-  curl http://downloads.mongodb.org/linux/mongodb-linux-i686-static-1.8.3.tgz > mongo.tgz
+  
+  mongourl="http://downloads.mongodb.org/linux/mongodb-linux-i686-static-1.8.3.tgz"
+  if [ `uname -m` -eq "x86_64" ]; then
+    mongourl="http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-static-legacy-1.8.3.tgz"
+  fi
+  curl $mongourl  > mongo.tgz
   tar xzf mongo.tgz
   mv mongodb-linux-i686-static-1.8.3/bin/* .
   rm -rf mongodb-linux-i686-static-1.8.3 mongo.tgz
   cd ..
 fi
 
+#Compile protojs
+echo "Compiling protojs"
+cd scripts/protojs
+./bootstrap.sh
+make
+cd ../..
+
+#Build protocol buffers
+./scripts/build_proto.sh
+
 #Configure the database
-scripts/setup_db.sh
+./scripts/setup_db.sh
+
