@@ -23,91 +23,7 @@ Player.prototype.tick = function() {
 Player.prototype.deinit = function() {
 }
 
-//----------------------------------------------------------------
-// Entities are composite objects built from many communicating components
-//----------------------------------------------------------------
-function Entity(state, instance) {
-  this.state      = state;
-  this.last_state = { };
-  this.instance   = instance;
-  this.active     = true;
-  this.deleted    = false;
-  this.dirty      = false;
-  this.components = [];
-}
 
-//Adds a component
-Entity.prototype.addComponent = function(component) {
-  this.components.push(component);
-  component.register(this);
-}
-
-//Sends a message to the entity
-Entity.prototype.sendMessage = function(msg) {
-  for(var i=0; i<components.length; ++i) {
-    components[i].sendMessage(msg);
-  }
-}
-
-//Initialize the entity
-Entity.prototype.init = function() {
-  for(var i=0; i<components.length; ++i) {
-    components[i].init();
-  }
-}
-
-//Ticks the entity
-Entity.prototype.tick = function() {
-  for(var i=0; i<components.length; ++i) {
-    components[i].tick();
-  }
-}
-
-//Stop the entity
-Entity.prototype.deinit = function() {
-  for(var i=0; i<components.length; ++i) {
-    components[i].deinit();
-  }
-}
-
-//Destroys an entity
-Entity.prototype.destroy = function() {
-  this.instance.destroyEntity(this);
-}
-
-//Clones an object
-function clone(object) {
-  var result = (object instanceof Array) ? [] : {};
-  for(var i in this) {
-    if (object[i] && typeof object[i] == "object") {
-      result[i] = clone(object[i]);
-  } else result[i] = object[i]
-  return result;
-}
-
-//Checks if two dictionaries are equal, incrementally copying destination into target
-function cloneIfNotEqual(target, destination) {
-
-  var equal = true;
-
-  for(var i in target) {
-    if(!(i in destination)) {
-      equal = false;
-      delete target[i];
-    }
-  }
-  
-  
-  return equal;
-}
-
-//Checks if an entity has been modified
-Entity.prototype.checkModified = function() {
-
-  if(cloneIfNotEqual(this.last_state, this.state)) {
-    instance.
-  }
-}
 
 //----------------------------------------------------------------
 // An Instance is a process that simulates a region in the game.
@@ -208,11 +124,6 @@ Instance.prototype.lookupEntity = function(entity_id) {
   return null;
 }
 
-//Creates an entity
-Instance.prototype.createEntity = function(state) {
-  //TODO Implement this
-}
-
 //Adds an already existing entity to the instance
 Instance.prototype.addEntity = function(entity) {
   entity.state.region = this.region.region_id;
@@ -269,7 +180,7 @@ Instance.prototype.sync = function() {
 //Adds a player to the instance
 Instance.prototype.addPlayer = function(player_id, socket) {
 
-  //Send initial state to player for the region  
+  //Send initial state to player for the region  ls
   
 }
 
@@ -297,6 +208,5 @@ function createInstance(region_id, db, cb) {
       instance.start(cb);
     });
 }
-
 
 

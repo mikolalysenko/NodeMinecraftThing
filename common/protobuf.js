@@ -30,8 +30,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-console.log("here2");
-
 var PROTO = (typeof(exports)=="undefined" ? {} : exports);
 
 PROTO.DefineProperty = (function () {
@@ -615,7 +613,9 @@ PROTO.Stream.prototype = {
 /**
  * @constructor
  * @param {Array=} arr  Existing byte array to read from, or append to.
+ * FIXME: Switch this to use node.js buffer implementation on server side
  */
+ 
 PROTO.ByteArrayStream = function(arr) {
     this.array_ = arr || new Array();
     this.read_pos_ = 0;
@@ -650,6 +650,7 @@ PROTO.ByteArrayStream.prototype.valid = function() {
 PROTO.ByteArrayStream.prototype.getArray = function() {
     return this.array_;
 };
+
 /**
  * @constructor
  * @param {string=} b64string  String to read from, or append to.

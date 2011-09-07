@@ -30,15 +30,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-console.log("here1");
-
 if(typeof(PROTO) == "undefined") {
     var PROTO = require("./protobuf.js");
 }
-
 var PBJ = (typeof(exports)=="undefined" ? {} : exports);
-
-console.log("here4");
 
 /** Generates a protojs compatible vector class.
 @param {boolean=} magsquared  True if this vector's elements sum to 1.

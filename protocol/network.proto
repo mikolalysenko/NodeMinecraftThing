@@ -1,0 +1,11 @@
+package Network;
+
+//An entity packet
+message EntityPacket {
+  
+  //Object id
+  optional string id = 1;
+  
+  //Entity position
+  optional vector3f position = 2;
+};
