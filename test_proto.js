@@ -87,4 +87,6 @@ try {
   var decoded64msg = new ProtoJSTest.PB.TestMessage;
   decoded64msg.ParseFromStream(new PROTO.Base64Stream(b64stream.getString()));
   output.value += "\n DECODED64: \n"+decoded64msg;
-}
+
+console.log(output);
+console.log("done");

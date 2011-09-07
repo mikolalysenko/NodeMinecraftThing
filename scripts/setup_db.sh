@@ -23,6 +23,7 @@ sleep 2
 #Connect to server and execute script
 echo 'use admin;
 db.addUser("administrator","'$keydata'");
+db.auth("administrator","'$keydata'");
 db.createCollection("players");
 db.players.ensureIndex({playerName: 1}, {unique : true});
 db.createCollection("entities");

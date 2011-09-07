@@ -66,7 +66,8 @@ make
 cd ../..
 
 #Build protocol buffers
-./scripts/build_proto.js
+./scripts/build_proto.sh
 
 #Configure the database
 ./scripts/setup_db.sh
+
