@@ -3,15 +3,16 @@
 
 Some general notes:
   
-  * All scripts should be run from the root directory
-  * Must have node.js and npm installed first (FIXME: Maybe make this install automatically?)
-  * Start database server *before* starting the game server.
+  *** All scripts should be run from the root source directory ***
 
 Example first time start up:
 
   % ./scripts/setup.sh
   % ./scripts/start.sh
 
+How to stop the server:
+
+  % ./scripts/stop.sh
 
 Notes on the directory structure:
 
@@ -29,6 +30,7 @@ Notes on the directory structure:
 Administration Scripts:
 
   setup.sh - Downloads and installs mongodb locally; sets up configuration and schema automatically.
+  build_proto.sh - Recompiles all the protocol buffer files
   start_db.sh - Starts a local instance of the mongodb server (currently unsharded, but good enough).
   start_server.sh - Starts a local instance of the game server
   start.sh - Starts both the game server and the database
@@ -43,5 +45,5 @@ TODO:
 
   Add opera test script
   Add unit tests
-  Get a real hosting platform :)
+  Get a hosting service :)
 
