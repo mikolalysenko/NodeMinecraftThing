@@ -1,6 +1,7 @@
 #!/bin/sh
+
 for file in protocol/*; do
-    echo $file
-    scripts/pbj $file common/`basename $file`.js
+    echo "Compiling protocol: "$file
+    scripts/protojs/pbj $file common/`basename $file`.js
 done
 

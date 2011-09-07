@@ -3,5 +3,6 @@
 data/keyfile
 data/db/*
 mongo/*
-common/*.proto.js
+*.o
+*antlr*
 

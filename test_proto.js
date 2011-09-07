@@ -1,8 +1,7 @@
 var
     PROTO = require("./common/proto.js"),
     PBJ = require("./common/pbj.js"),
-    ProtoJSTest = require("./common/test.proto.js");
-    
+    ProtoJSTest = require("./common/Test.proto.js");
 
 
   var my64 = new PROTO.I64(2147483647,4294967295,-1);
