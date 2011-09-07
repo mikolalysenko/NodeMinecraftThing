@@ -14,6 +14,10 @@ How to stop the server:
 
   % ./scripts/stop.sh
 
+How to do unit tests:
+
+  % ./scripts/run_tests.sh
+
 Notes on the directory structure:
 
   common - Javascript files that are shared by the server and the client
@@ -35,6 +39,7 @@ Administration Scripts:
   start_server.sh - Starts a local instance of the game server
   start.sh - Starts both the game server and the database
   stop.sh - Kills the server and database
+  run_tests.sh - Runs unit tests
 
 Testing Scripts:
   

@@ -5,33 +5,12 @@ function sink(err, result) {
 }
 
 //----------------------------------------------------------------
-// A player connection
-//----------------------------------------------------------------
-function Player(player_id, socket, entity) {
-  this.player_id = player_id;
-  this.entity = entity;
-  this.socket = socket;
-  this.client_state = entity.state;
-}
-
-Player.prototype.init = function() {
-}
-
-Player.prototype.tick = function() {
-}
-
-Player.prototype.deinit = function() {
-}
-
-
-
-//----------------------------------------------------------------
 // An Instance is a process that simulates a region in the game.
 // It keeps a local copy of all entities within the region.
 //----------------------------------------------------------------
 function Instance(region, db) {
   this.region = region;
-  this.db = db;
+  this.db     = db;
 }
 
 //Start the instance server
@@ -106,12 +85,18 @@ Instance.prototype.tick = function() {
     ent.tick();
   }
   
-  //Search for dirty entities
+  //Check for any entities that got modified (need to do this after all ticks are complete)
   for(id in entities) {
     ent = entities[id];
-    if(!ent.active || ent.deleted)
+    
+    //If the entity does not need to be checked, don't do it.
+    if(ent.deleted || ((!ent.persistent || ent.dirty) && ent.network_relevance <= 0))
       continue;
-    ent.checkModified();
+      
+    //Check if entity got modified, do copy on write
+    if(ent.checkModified()) {
+      updateEntity(ent);
+    }
   }
 }
 
@@ -133,29 +118,30 @@ Instance.prototype.addEntity = function(entity) {
 
 //Destroy an entity
 Instance.prototype.destroyEntity = function(entity) {
-  if(entity.deleted) {
+  if(!entity || entity.deleted) {
     return;
   }
-  if(entity.destroy) {
-    entity.destroy();
-  }
-  this.deactivateEntity(entity);
+  
+  entity.deinit();
   entity.deleted = true;
   this.deleted_entities.push(entity.state._id);
 }
 
 //Update an entity's state
 Instance.prototype.updateEntity = function(entity) {
-  if(entity.deleted) {
+  if(!entity || entity.deleted) {
     return;
   }
+  
   if(!entity.dirty) {
     this.dirty_entities.push(entity);
   }
   
   //Mark entity in each player
-  for(var player_id in this.players) {
-    this.players[player_id].mark_entity(entity);
+  if(entity.net_replicated) {
+    for(var player_id in this.players) {
+      this.players[player_id].notifyEntity(entity);
+    }
   }
 }
 
@@ -172,7 +158,7 @@ Instance.prototype.sync = function() {
   dirty_entities.length = 0;
 
   for(var i=0; i<deleted_entities.length; ++i) {
-    db.entities.remove({id: delted_entities[i]}, sink);
+    db.entities.remove({id: deleted_entities[i]}, sink);
   }
   deleted_entities.length = 0;
 }
@@ -180,7 +166,7 @@ Instance.prototype.sync = function() {
 //Adds a player to the instance
 Instance.prototype.addPlayer = function(player_id, socket) {
 
-  //Send initial state to player for the region  ls
+  //Send initial state to player for the region
   
 }
 
@@ -189,7 +175,7 @@ Instance.prototype.kickPlayer = function(player) {
 }
 
 //Creates an instance
-function createInstance(region_id, db, cb) {
+exports.createInstance = function(region_id, db, cb) {
   
   //Get a lock on the region
   db.regions.findAndModify(
