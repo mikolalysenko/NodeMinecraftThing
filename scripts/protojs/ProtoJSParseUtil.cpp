@@ -147,8 +147,8 @@ pANTLR3_STRING jsPackageDefine(pANTLR3_STRING id, pANTLR3_STRING id_package){
     char *whereEnd=(char*)id_package->chars;
     std::string retval;
     
-    retval+="if (typeof(PROTO)==\"undefined\") { PROTO=require(\"./common/protobuf.js\"); }\n";
-    retval+="if (typeof(PBJ)==\"undefined\") { PBJ=require(\"./common/pbj.js\"); }\n";
+    retval+="if (typeof(PROTO)==\"undefined\") { var PROTO=require(\"./protobuf.js\"); }\n";
+    retval+="if (typeof(PBJ)==\"undefined\") { var PBJ=require(\"./pbj.js\"); }\n";
     
     
     bool first_loop = true;
@@ -159,7 +159,7 @@ pANTLR3_STRING jsPackageDefine(pANTLR3_STRING id, pANTLR3_STRING id_package){
         
         //Node.js compatibility
         if(first_loop) {
-            retval+="if (typeof(exports)!=\"undefined\") {";
+            retval+="if (typeof(exports)!=\"undefined\") { var ";
             retval+=package;
             retval+="=exports;};\n";
             first_loop = false;

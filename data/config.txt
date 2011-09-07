@@ -2,7 +2,6 @@
 # Documentation: http://www.mongodb.org/display/DOCS/File+Based+Configuration
 dbpath    = ./data/db
 logpath   = ./data/mongodb.log
-keyFile   = ./data/keyfile
 bind_ip   = 127.0.0.1
 port      = 27017
 logappend = true

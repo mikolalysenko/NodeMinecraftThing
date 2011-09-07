@@ -10,8 +10,7 @@ mkdir -p data/db
 #Create key file
 echo "Creating keyfile"
 keydata=`dd if=/dev/urandom bs=96 count=1 | base64`
-echo $keydata > data/keyfile
-chmod 600 data/keyfile
+echo $keydata > data/dbpasswd
 
 #Run mongodb set up script
 echo "Configuring mongodb"

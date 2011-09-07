@@ -30,6 +30,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+console.log("here2");
+
 var PROTO = (typeof(exports)=="undefined" ? {} : exports);
 
 PROTO.DefineProperty = (function () {
@@ -1600,6 +1602,6 @@ PROTO.Extend = function(parent, newproperties) {
 //////// DEBUG
 if (typeof(console)=="undefined") console = {};
 if (typeof(console.log)=="undefined") console.log = function(message){
-    if (document && document.body)
+    if (typeof(document) != "undefined" && document.body)
         document.body.appendChild(document.createTextNode(message+"..."));
 };

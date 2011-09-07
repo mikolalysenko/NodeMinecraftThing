@@ -1,5 +1,7 @@
+console.log("here");
+
 var
-    PROTO = require("./common/proto.js"),
+    PROTO = require("./common/protobuf.js"),
     PBJ = require("./common/pbj.js"),
     ProtoJSTest = require("./common/Test.proto.js");
 
@@ -11,7 +13,7 @@ var
   var NtwoTen = new PROTO.I64(2,10,-1);//8589934602
   var unsigned64 = my64.convertToUnsigned();
   var zigzag64 = my64.convertToZigzag();
-  var output = document.getElementById('output');
+  var output = { value: "" };
   output.value += "" + my64.msw+","+my64.lsw+"\n";
   output.value += "Parts " + my64.msw+","+my64.lsw+"\n";
   output.value += "UParts " + unsigned64.msw+","+unsigned64.lsw+"\n";
@@ -88,5 +90,5 @@ try {
   decoded64msg.ParseFromStream(new PROTO.Base64Stream(b64stream.getString()));
   output.value += "\n DECODED64: \n"+decoded64msg;
 
-console.log(output);
+console.log(output.value);
 console.log("done");

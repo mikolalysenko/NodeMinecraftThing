@@ -1,6 +1,6 @@
-if (typeof(PROTO)=="undefined") { PROTO=require("./common/protobuf.js"); }
-if (typeof(PBJ)=="undefined") { PBJ=require("./common/pbj.js"); }
-if (typeof(exports)!="undefined") {ProtoJSTest=exports;};
+if (typeof(PROTO)=="undefined") { var PROTO=require("./protobuf.js"); }
+if (typeof(PBJ)=="undefined") { var PBJ=require("./pbj.js"); }
+if (typeof(exports)!="undefined") { var ProtoJSTest=exports;};
 if (typeof(ProtoJSTest)=="undefined") {ProtoJSTest = {};}
 if (typeof(ProtoJSTest.PB)=="undefined") {ProtoJSTest.PB = {};}
 ProtoJSTest.PB._PBJ_Internal="pbj-0.0.3";
