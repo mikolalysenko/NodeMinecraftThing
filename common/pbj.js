@@ -31,7 +31,6 @@
  */
 
 var PBJ = (typeof(exports)=="undefined" ? {} : exports);
-
 if(typeof(PROTO) == "undefined") {
     PROTO = require("./common/protobuf.js");
 }

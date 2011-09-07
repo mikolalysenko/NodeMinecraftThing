@@ -1,5 +1,6 @@
 #!/bin/sh
 for file in protocol/*; do
-    scripts/pbj $file $common/$file
+    echo $file
+    scripts/pbj $file common/`basename $file`.js
 done
 
