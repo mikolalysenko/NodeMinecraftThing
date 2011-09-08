@@ -56,30 +56,14 @@ Entity.prototype.deinit = function() {
   }
 }
 
-//Checks if an entity has been modified (used by instance server only, do not call this)
-Entity.prototype.checkModified = function() {
-  var patch = computeAndApplyPatch(this.last_state, this.state);  
-  if(patch[0].length != 0 || 
-     patch[1].length != 0 ||
-     patch[2].length == 0 ) {
-     return true;
-  }
-  return false;
-}
-
 //--------------------------------------------------------
-// Scripting functions
+// Scripting functions  (these can be called while the game is running)
 //--------------------------------------------------------
 
 //Sends a message to the entity
-Entity.prototype.sendMessage = function(msg) {
+Entity.prototype.send = function(msg) {
   for(var i=0; i<components.length; ++i) {
-    components[i].sendMessage(msg);
+    components[i].recv(msg);
   }
-}
-
-//Destroys an entity
-Entity.prototype.destroy = function() {
-  this.instance.destroyEntity(this);
 }
 

@@ -59,16 +59,8 @@ if [ $ret -ne 0 ] || ! [ -x "$mongo" ]; then
   cd ..
 fi
 
-#Compile protojs
-echo "Compiling protojs"
-cd scripts/protojs
-./bootstrap.sh
-make
-cd ../..
-
-#Build protocol buffers
-./scripts/build_proto.sh
-
-#Configure the database
-./scripts/setup_db.sh
+#Set up local database
+echo "Reinitializing local database"
+rm -rf data/db data/*.log
+mkdir -p data/db
 

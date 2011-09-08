@@ -1,21 +1,38 @@
-//Trivial JSON object patcher
+//-------------------------------------------------------------
+// Javascript/Node.js JSON diffing/patching utility
+//
+// Author: Mikola Lysenko
+//
+// "patcher.js"
+//
+// License: BSD
+//-------------------------------------------------------------
 
-var patcher = (typeof(exports) == "undefined" ? {} : exports);
+//node.js interoperability
+if(typeof(exports) == "undefined") {
+  var patcher = {};
+}
 
 (function(){
 
+//-------------------------------------------------------------
+// Helper function, clones an object doing a deep copy
+//-------------------------------------------------------------
 function clone(obj) {
-  if(typeof(obj) != "object") {
+  if(obj === null) {
+    return null;
+    
+  } else if(typeof(obj) != "object") {
     return obj;
-  }
-  if(obj instanceof Array) {
+    
+  } else if(obj instanceof Array) {
     var result = new Array(obj.length);
     for(var i=0; i<result.length; ++i) {
       result[i] = clone(obj[i]);
     }
     return result;
-  }
-  else {  
+    
+  } else {  
     var result = {}
     for(var i in obj) {
       result[i] = clone(obj[i]);
@@ -24,91 +41,125 @@ function clone(obj) {
   }
 }
 
-//Assumes that prev and next are both objects
-function computeAndApplyPatch(prev, next) {
-  var updates = [ ], removals = [ ], children = [ ], i;
+//-------------------------------------------------------------
+// Computes a patch between a pair of json objects
+// Note that this assumes both prev and next are simple, acyclic
+// dictionaries.  This does not support serializing functions.
+// Also removals are stored in a special field called "_r", so 
+// don't name any variables that.
+//
+//  prev - Object we are patching from
+//  next - Object we are patching to
+//  update_in_place - A flag, which if set updates prev to next
+//
+//  Returns:
+//    1. A patch object if there are any differences, or
+//    2. null if the objects are equal.
+//-------------------------------------------------------------
+function computePatch(prev, next, update_in_place) {
+  var updates = { }, removals = [ ];
   
+  //Checks if an element common to prev and next 
+  var processElement = function(id) {
+    //First, check if the element exists and types match
+    if(id in prev && typeof(prev[id]) == typeof(next[id])) {
+    
+      if(typeof(next[id]) == "object" && (prev[id] instanceof Array) == (next[id] instanceof Array) ) {
+      
+        //Object case
+        var res = computePatch(prev[id], next[id], update_in_place);
+        if(res) {
+          updates[id] = res;
+        }
+        return;
+      }
+      else if(prev[id] === next[id]) {
+      
+        //P.O.D. case
+        return;
+      }
+    }
+    
+    //Add to update list
+    updates[id] = clone(next[id]);
+    if(update_in_place) {
+      prev[id] = updates[id];
+    }
+  };
+  
+  //Two cases to deal with for plain old javascript objects:
   if(next instanceof Array) {
-    //Array case
-    var plength = prev.length;
+    //Case 1: Arrays
     if(prev.length != next.length) {
       for(var i=prev.length-1; i>next.length; --i) {
         removals.push(i);
       }
-      prev.length = next.length;
+      if(update_in_place) {
+        prev.length = next.length;
+      }
+    }
+    for(var i=next.length-1; i>=0; --i) {
+      processElement(i);
     }
     
-    for(i=next.length-1; i>=0; --i) {
-      if(i < plength) {
-        var ptype = typeof(prev[i]), ntype = typeof(next[i]);
-        if(ptype == ntype) {
-          if(ntype == "object" && (prev[i] instanceof Array) == (next[i] instanceof Array) ) {
-            //Object case
-            var res = computeAndApplyPatch(prev[i], next[i]);
-            if( res[0].length != 0 || res[1].length != 0 || res[2].length == 0 )
-              children.push( [i, res ] );
-            continue;
-          } else if(prev[i] == next[i]) {
-            //Pod case
-            continue;
-          }
-        }
-      }
-      prev[i] = clone(next[i]);
-      updates.push([i, prev[i]]);
-    }
   } else {
-    //Object case
-    for(i in prev) {
+    //Case 2: Objects
+    for(var i in prev) {
       if(!(i in next)) {
         removals.push(i);
       }
     }
-    for(i=removals.length-1; i>=0; --i) {
-      delete prev[removals[i]];
-    }
-    for(i in next) {
-      if(i in prev) {
-        var ptype = typeof(prev[i]), ntype = typeof(next[i]);
-        if(ptype == ntype) {
-          if(ntype == "object" && (prev[i] instanceof Array) == (next[i] instanceof Array) ) {
-            //Object case
-            var res = computeAndApplyPatch(prev[i], next[i]);
-            if( res[0].length != 0 || res[1].length != 0 || res[2].length == 0 )
-              children.push( [i, res ] );
-            continue;
-          } else if(prev[i] == next[i]) {
-            //Pod case
-            continue;
-          }
-        }
+    if(update_in_place) {
+      for(var i=removals.length-1; i>=0; --i) {
+        delete prev[removals[i]];
       }
-      prev[i] = clone(next[i]);
-      updates.push([i, prev[i]]);
+    }
+    for(var i in next) {
+      processElement(i);
     }
   }
-  return [updates, removals, children];
+  
+  //If nothing changed, don't post an update
+  if(removals.length > 0) {
+    updates["_r"] = removals;  
+  }
+  return updates;
 };
 
 
+//-------------------------------------------------------------
+// Applies a patch to an object
+//-------------------------------------------------------------
 function applyPatch(obj, patch) {
-  var updates = patch[0], removals = patch[1], children = patch[2], i;
-  for(i=0; i<removals.length; ++i) {
-    delete obj[removals[i]];
+  var removals = patch["_r"], i;
+  if(removals) {
+    for(i=0; i<removals.length; ++i) {
+      delete obj[removals[i]];
+    }
+    delete patch["_r"];
   }
-  for(i=0; i<updates.length; ++i) {
-    obj[updates[i][0]] = updates[i][1];
-  }
-  for(i=0; i<children.length; ++i) {
-    applyPatch(obj[children[i][0]], children[i][1]);
+  
+  for(i in patch) {
+    if(typeof(obj[i]) == typeof(patch[i]) &&
+      typeof(patch[i]) == "object" &&
+      patch[i] != null &&
+      (obj[i] instanceof Array) == (patch[i] instanceof Array)) {
+      applyPatch(obj[i], patch[i]);
+      continue;
+    }
+    obj[i] = patch[i]
   }
 };
 
-patcher.applyPatch = applyPatch;
-patcher.computeAndApplyPatch = computeAndApplyPatch;
+
+//Add methods to patcher
+if(typeof(exports) == "unedefined") {
+  patcher.computePatch = computePatch;
+  patcher.applyPatch   = applyPatch;
+} else {
+  exports.computePatch = computePatch;
+  exports.applyPatch   = applyPatch;
+}
 
 })();
-
-
-
 
