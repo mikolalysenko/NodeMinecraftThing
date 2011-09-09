@@ -47,22 +47,28 @@ Notes on the directory structure:
     www/shaders   - Shaders
 
 
+Cluster Organization:
+
+
+    Browsers*  ~~~~>  Gateway  ~~~~>  Instance Servers*
+    
+                         \            /
+                          \          /
+                           v        v
+                            Database
+
+
 Administration Scripts:
 
   Main scripts:
   
-    setup.sh      - Downloads node, npm, mongodb and other relevant packages.  Creates initial configuraiton and deploys locally.  Run this before executing the server.
+    setup.sh      - Downloads node, npm, mongodb; installs packages; configures db.
     start.sh      - Starts running the server
     stop.sh       - Stops a currently running server
     run_tests.sh  - Runs the unit tests
     chrome.sh     - Tests the game in chrome
     firefox.sh    - Tests the game in firefox
-
-  Internal scripts:
     
-    build_proto.sh  - Recompiles all the protocol buffer files
-    start_db.sh     - Starts a local instance of the mongodb server.
-    start_server.sh - Starts a local instance of the game server
 
 Style Conventions:
   

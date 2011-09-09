@@ -1,12 +1,12 @@
 var DNode           = require("dnode"),
-    initializeDb    = require("./db_start.js").initializeDB,
+    initializeDB    = require("./db_start.js").initializeDB,
     createInstance  = require("./instance.js").createInstance;
 
 //Parse out arguments
 var listen_port  = (process.argv[2] ? process.argv[2] : 6060),
     db_name      = (process.argv[3] ? process.argv[3] : "test"),
     db_server    = (process.argv[4] ? process.argv[4] : "localhost"),
-    db_port      = (process.argv[5] ? process.argv[5] : 27017),;
+    db_port      = (process.argv[5] ? process.argv[5] : 27017);
 
 //A player record
 function Player(player_id, region_id, client) {
@@ -29,12 +29,20 @@ function startServer(db) {
       console.log("WARNING!  A second gateway attempted to connect!");
       return;
     }
+    console.log("A gateway server connected!");
+    
+    //Set a trap for when/if server dies
+    conn.on('close', function(){
+      console.log("Lost connection to gateway");
+      gateway = null;
+      this.shutdownEverything();
+    });
     
     //Add reference to the gateway
     gateway = gateway_;
     
     //Returns server stats, like load, etc. (not much here for now)
-    this.status = function(callback) {
+    this.ping = function(callback) {
     
       var regions = [], clients = [];
       for(var i in instances) {
@@ -64,7 +72,9 @@ function startServer(db) {
 
     //Starts an instance
     this.startInstance = function(region_id) {
+      console.log("Starting instance for region: " + region_id);
       createInstance(region_id, db, function(err, instance) {
+      
       
         if(err) {
           console.log(err);
@@ -78,14 +88,20 @@ function startServer(db) {
     
     //Stops an instances
     this.stopInstance = function(region_id) {
+      console.log("Stopping instance: " + region_id);
       if(region_id in instances) {
         instances[region_id].stop();
+        
+        //TODO: Kick all players
+        
         delete instances[region_id];
       }
     };
 
     //Called when a player connects
     this.playerConnect = function(player_id) {
+      
+      console.log("Player connected: " + player_id);
       
       db.players.findOne({_id: player_id}, function(err, player_rec) {
         if(err) {
@@ -108,9 +124,12 @@ function startServer(db) {
     
     //Called when a player leaves
     this.playerDisconnect = function(player_id) {
+    
+      console.log("Player " + player_id + " disconnected");
+    
       var player = players[player_id];
-      
       if(!player) {
+        console.log("Player " + player_id + " does not exists!?!");
         return;
       }
       
@@ -135,4 +154,4 @@ function startServer(db) {
 
 
 //Start the listen server and database connection
-initializeDb(db_name, db_server, db_port, startServer);
+initializeDB(db_name, db_server, db_port, startServer);
