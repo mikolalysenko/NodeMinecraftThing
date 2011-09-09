@@ -1,17 +1,54 @@
+var Entity = require("./common/entity.js").Entity;
+
+
+// A function that just eats events
 function sink(err, result) {
   if(err) {
     console.log(err);
   }
 }
 
+
+//----------------------------------------------------------------
+// A player connection
+//----------------------------------------------------------------
+function Player(player_rec, entity) {
+
+  //Player record  
+  this.player_id = player_id;
+  this.entity    = entity;
+  
+  //Input from client
+  this.client_state = {};
+  
+  //Known entities
+  this.known_entities = {};
+  this.pending_entity_updates = [];
+  this.pending_entity_deletes = [];
+}
+
+
 //----------------------------------------------------------------
 // An Instance is a process that simulates a region in the game.
 // It keeps a local copy of all entities within the region.
 //----------------------------------------------------------------
-function Instance(region, db) {
+function Instance(region, db, emitter) {
+  this.entities   = {};
+  this.players    = {};
   this.region     = region;
   this.db         = db;
   this.running    = false;
+  this.emitter    = emitter;
+}
+
+//Sends a message to a single player
+Instance.prototype.sendMessage = function(player_id, mesg) {
+  emitter.emit('send', player_id, mesg);
+}
+
+//Sends a message to all players
+Instance.prototype.broadcastMessage = function(mesg) {
+  emitter.emit('broadcast', region.region_id, mesg);
 }
 
 //Start the instance server
@@ -113,7 +150,7 @@ Instance.prototype.createEntity = function(state) {
 
   //Generate entity id if needed
   if(!("_id" in state)) {
-    state["_id" = GENERATE_OBJECT_ID;
+    state["_id"] = GENERATE_OBJECT_ID;  //FIXME: Do this properly
   }
   
   //Create the entity and register it
@@ -198,19 +235,24 @@ Instance.prototype.sync = function() {
 
 
 //Called when a player connects
-Instance.prototype.playerConnect = function(player_id, remote) {
+Instance.prototype.playerConnect = function(player_rec) {
+  console.log("Player connected: " + player_id);
 }
 
-//Called when a player leaves
+//Called when a player diconnects
 Instance.prototype.playerDisconnect = function(player_id) {
+  console.log("Player disconnected: " + player_id);
 }
 
 //Called when player sends input
 Instance.prototype.playerInput = function(player_id, mesg) {
+  console.log("Got input from player: " + player_id + ", input = " + mesg);
 }
 
-//Creates an instance
-exports.createInstance = function(region_id, db, cb) {
+//----------------------------------------------------------------
+// Starts the instance
+//----------------------------------------------------------------
+exports.createInstance = function(region_id, db, emitter, cb) {
   
   //Get a lock on the region
   db.regions.findAndModify(
@@ -225,7 +267,7 @@ exports.createInstance = function(region_id, db, cb) {
       }
       
       //Start the instance
-      var instance = new Instance(region, db);
+      var instance = new Instance(region, emitter, db);
       instance.start(cb);
     });
 }

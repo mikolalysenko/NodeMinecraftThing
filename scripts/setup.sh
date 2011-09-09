@@ -38,6 +38,7 @@ echo "Installing NPM packages"
 sudo npm install -g socket.io
 sudo npm install -g mongodb
 sudo npm install -g nodester-cli
+sudo npm install -g dnode
 
 #Download and unzip mongodb locally
 mongo=`which mongo/mongo 2>&1`

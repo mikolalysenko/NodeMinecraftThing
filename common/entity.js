@@ -66,4 +66,3 @@ Entity.prototype.send = function(msg) {
     components[i].recv(msg);
   }
 }
-
