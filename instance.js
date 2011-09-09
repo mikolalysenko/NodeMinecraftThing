@@ -32,13 +32,13 @@ function Player(player_rec, entity) {
 // An Instance is a process that simulates a region in the game.
 // It keeps a local copy of all entities within the region.
 //----------------------------------------------------------------
-function Instance(region, db, emitter) {
+function Instance(region, db, gateway) {
   this.entities   = {};
   this.players    = {};
   this.region     = region;
   this.db         = db;
   this.running    = false;
-  this.emitter    = emitter;
+  this.gateway    = gateway;
 }
 
 //Sends a message to a single player
@@ -252,7 +252,7 @@ Instance.prototype.playerInput = function(player_id, mesg) {
 //----------------------------------------------------------------
 // Starts the instance
 //----------------------------------------------------------------
-exports.createInstance = function(region_id, db, emitter, cb) {
+exports.createInstance = function(region_id, db, gateway, cb) {
   
   //Get a lock on the region
   db.regions.findAndModify(

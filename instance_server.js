@@ -1,56 +1,37 @@
-var mongodb   = require("mongodb"),
-    DNode     = require("dnode"),
-    createInstance = require("./instance.js").createInstance,
-    EventEmitter = require("events").EventEmitter;
-
+var DNode           = require("dnode"),
+    initializeDb    = require("./db_start.js").initializeDB,
+    createInstance  = require("./instance.js").createInstance;
 
 //Parse out arguments
-var listen_portnum  = process.argv[2],
-    db_name         = process.argv[3],
-    db_server       = process.argv[4],
-    db_port         = process.argv[5];
-
+var listen_port  = (process.argv[2] ? process.argv[2] : 6060),
+    db_name      = (process.argv[3] ? process.argv[3] : "test"),
+    db_server    = (process.argv[4] ? process.argv[4] : "localhost"),
+    db_port      = (process.argv[5] ? process.argv[5] : 27017),;
 
 //A player record
 function Player(player_id, region_id, client) {
   this.player_id  = player_id;
   this.region_id  = region_id;
-  this.client     = client;
 }
 
-//Database connection and instances
-var db = new mongodb.Db(db_name, new mongodb.Server(db_server, db_port, {}), {});
-var instances         = {},
-    clients           = [],
-    players           = {};    
-
-
-//Communication from instances to clients passes through this emitter
-var emitter = new EventEmitter();
-
-emitter.on('send', function(player_id, mesg) {
-  var player = players[player_id];
-  if(!player) {
-    return;
-  }
-  player.client.sendMessage({'type':'send', 'player_id':player_id, 'mesg':mesg });
-});
-
-emitter.on('broadcast', function(region_id, mesg) {
-  for(var i=0; i<clients.length; ++i) {
-    clients[i].sendMessage({'type':'broadcast', 'region_id':region_id, 'mesg':mesg});
-  }
-});
-
 //Starts server
-function startServer() {
+function startServer(db) {
+
+  //Instances, players and the login gateway
+  var instances         = {},
+      players           = {},
+      gateway           = null;
 
   //Create server object
-  var server;
-  server = DNode(function (client, conn) {
+  var server = DNode(function (gateway_, conn) {
     
-    //Add client
-    clients.push(client);
+    if(gateway !== null) {
+      console.log("WARNING!  A second gateway attempted to connect!");
+      return;
+    }
+    
+    //Add reference to the gateway
+    gateway = gateway_;
     
     //Returns server stats, like load, etc. (not much here for now)
     this.status = function(callback) {
@@ -118,7 +99,7 @@ function startServer() {
           return;
         }
         
-        var player = new Player(player_id, player_rec.region_id, client);
+        var player = new Player(player_id, player_rec.region_id);
         players[player_id] = player;
         
         instance.addPlayer(player_rec);
@@ -147,38 +128,11 @@ function startServer() {
   });
   
   //Begin listening
-  server.listen(listen_portnum);
+  server.listen(listen_port);
   
   console.log("Instance server started!");
 }
 
 
 //Start the listen server and database connection
-function addCollection(col, cb) {
-  db.collection(col, function(err, collection) {
-    if(err) {
-      console.log("Error adding collection '" + col + "': " + err);
-      return;
-    }
-    db[col] = collection;
-    cb();
-  });
-}
-
-
-//Open database and start server
-db.open(function(err, db_){
-
-  if(err) {
-    console.log("Error connecting to database");
-    return;
-  }
-  
-  db = db_;
-  
-  addCollection('entities', function() { 
-    addCollection('players', function() { 
-      addCollection('regions', startServer); 
-    });
-  });
-});
+initializeDb(db_name, db_server, db_port, startServer);
