@@ -45,6 +45,12 @@ function startGateway(db) {
       //TODO: Broadcast a message to all clients
     }
   };
+  
+  //The interface for a client
+  function ClientInterface(client, conn) {
+  
+    
+  };
 
   //Connects to each of the instances
   function connectToInstances(next) {
@@ -65,6 +71,8 @@ function startGateway(db) {
       connectToInstance(i);
     }  
   }
+  
+  
   
   connectToInstances(function() {
   
