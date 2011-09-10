@@ -7,19 +7,19 @@ function check_arg(arg, def) {
   }
   return def;
 }
-var web_port   = check_arg(argv.web_port, 8080),
-    rpc_port   = check_arg(argv.rpc_port, 6060),
+var web_port   = check_arg(argv.web_port, 8081),
+    rpc_port   = check_arg(argv.rpc_port, 8080),
     db_name    = check_arg(argv.db_name, 'test'),
     db_server  = check_arg(argv.db_server, 'localhost'),
     db_port    = check_arg(argv.db_port, 27017);
 
 
 //Parse out local http scripts
-var shared_scripts = require('./config/shared_scripts.js').shared_scripts,
-    server_aliases = { '/dnode.js' : 'dnode/web' };
+var server_aliases = { '/dnode.js' : 'dnode/web' };
 
-//Create http server
-var httpServer = require("./server.js").createStaticHttpServer("www", server_aliases);
+//Create http server & websocket server
+var httpServer = require("./server.js").createStaticHttpServer("www", server_aliases),
+    io = require('socket.io').listen(httpServer);
 
 console.log("Starting server...");                
 
@@ -33,8 +33,8 @@ require("./database.js").initializeDB(db_name, db_server, db_port, function(db) 
     }
     
     //Bind http server and gateway
+    gateway.server.listen(io);
     httpServer.listen(web_port);
-    gateway.server.listen(rpc_port).listen(httpServer);
 
     //Off to the races!
     console.log("Server initialized!");  
