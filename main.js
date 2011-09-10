@@ -2,17 +2,15 @@
 var settings = {
 
   web_port    : 8080,
-  io_port     : 6060,
+  wwwroot     : 'www'
   
   db_name     : 'test',
   db_server   : 'localhost',
-  db_port     : 27017,
-  
-  wwwroot     : 'www'
+  db_port     : 27017,  
 };
 
 
-//Parse out arguments
+//Parse out arguments from commandline
 var argv = require('optimist').argv;
 for(var i in argv) {
   if(i in settings) {
@@ -26,8 +24,10 @@ var express = require('express');
 var server = express.createServer();
 server.use(express.static(settings.wwwroot));
 
-//Connect to database and start the application
+//Connect to database
 require("./database.js").initializeDB(settings.db_name, settings.db_server, settings.db_port, function(db) {
+
+  //Start the gateway server
   require("./gateway.js").createGateway(db, function(err, gateway) {
     if(err) {
       console.log("Error creating gateway: " + err);
