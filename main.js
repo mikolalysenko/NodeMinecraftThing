@@ -7,23 +7,17 @@ function check_arg(arg, def) {
   }
   return def;
 }
-var web_port   = check_arg(argv.web_port, 8081),
-    rpc_port   = check_arg(argv.rpc_port, 8080),
+var web_port   = check_arg(argv.web_port, 8000),
     db_name    = check_arg(argv.db_name, 'test'),
     db_server  = check_arg(argv.db_server, 'localhost'),
     db_port    = check_arg(argv.db_port, 27017);
 
-
-//Parse out local http scripts
-var server_aliases = { '/dnode.js' : 'dnode/web' };
-
 //Create http server & websocket server
-var httpServer = require("./server.js").createStaticHttpServer("www", server_aliases),
+console.log("Starting server...");
+var httpServer = require("./server.js").createStaticHttpServer("www"),
     io = require('socket.io').listen(httpServer);
 
-console.log("Starting server...");                
-
-//Start the application
+//Connect to database and start the application
 require("./database.js").initializeDB(db_name, db_server, db_port, function(db) {
   require("./gateway.js").createGateway(db, function(err, gateway) {
     if(err) {

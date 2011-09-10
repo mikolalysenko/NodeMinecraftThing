@@ -39,28 +39,29 @@ function serveFile(filename, response) {
   });
 }
 
-exports.createStaticHttpServer = function(wwwroot, aliases) {
+//DNode routing hook
+var route = require('dnode/web').route;
+
+exports.createStaticHttpServer = function(wwwroot) {
   return http.createServer(function(request, response) {
-    var uri = fixPath(url.parse(request.url).pathname),
-        parts = uri.split("/"),
-        filename;
+    route(request, response, function() {
     
-    //Fix leading /
-    if(parts.length > 0 && parts[0] == '') {
-      parts.shift();
-    }
-    
-    if(request.url in aliases) {
-     console.log("Writing aliased file: " + request.url);
-     response.writeHead(200, { 'Content-Type' : 'text/javascript' });
-     response.end(aliases[req.url]);
-    }
-    else if(parts.length == 0) {
-      serveFile(path.join(wwwroot, "index.html"), response);
-    }
-    else {
-      serveFile(path.join(wwwroot, uri), response);
-    }
+      var uri = fixPath(url.parse(request.url).pathname),
+          parts = uri.split("/"),
+          filename;
+      
+      //Fix leading /
+      if(parts.length > 0 && parts[0] == '') {
+        parts.shift();
+      }
+      
+      if(parts.length == 0) {
+        serveFile(path.join(wwwroot, "index.html"), response);
+      }
+      else {
+        serveFile(path.join(wwwroot, uri), response);
+      }
+    });
   });
 };
 
