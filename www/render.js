@@ -1,37 +1,50 @@
 "use strict";
 
-var Render = {};
+var Render = {
+
+  background_color = [ 0.3, 0.5, 0.9, 1.0 ];
+};
 
 (function(){
 
+  //Private variables for rendering context
+  var canvas = document.getElementById("renderCanvas"),
+      gl = null,
+      EXT_FPTex,
+      EXT_StdDeriv,
+      EXT_VertexArray;
+      
 
-  var canvas = document.getElementById("renderCanvas");
-  
-  
-
+  //Initialize the renderer
   Render.init = function(cb) {
-    	//Initialize WebGL
-		Game.canvas = document.getElementById("gameCanvas");
-		var gl;
+  	//Initialize WebGL
+		canvas = document.getElementById("gameCanvas");
 		try {
-			gl = Game.canvas.getContext("experimental-webgl");
+			gl = canvas.getContext("experimental-webgl");
 		}
 		catch(e) {
-		  App.crashNoWebGL();
+		  cb(e);
+		  return;
 		}
 		
 		if(!gl) {
-      App.crashNoWebGL();
+      cb("WebGL not supported");
+      return;
 		}
-		Game.gl = gl;
+		
+		//Save gl object
+		Render.gl = gl;
 
 		//Get extensions
-		Game.EXT_FPTex = gl.getExtension("OES_texture_float");
-		Game.EXT_StdDeriv = gl.getExtension("OES_standard_derivatives");
-		Game.EXT_VertexArray = gl.getExtension("OES_vertex_array_object");	
-
+		EXT_FPTex = gl.getExtension("OES_texture_float");
+		EXT_StdDeriv = gl.getExtension("OES_standard_derivatives");
+		EXT_VertexArray = gl.getExtension("OES_vertex_array_object");	
+		
+		//Done
+		cb(null);
   };
   
+  //Shutdown renderer
   Render.deinit = function(cb) {
     cb(null);
   };
@@ -39,116 +52,85 @@ var Render = {};
   //Resize the canvas
   Render.resize = function() {
   
+    //Update height variables
+		Render.width  = canvas.width  = window.innerWidth;
+		Render.height = canvas.height = window.innerHeight;
+	
+	  //Resize app panel
+		var appPanel    = document.getElementById("gamePane");
+		appPanel.width  = canvas.width;
+		appPanel.height = canvas.height;
   };
-
-	/*
-	
-
-
-	resize : function() {
-		Game.canvas.width = window.innerWidth;
-		Game.canvas.height = window.innerHeight;
-	
-		Game.width = Game.canvas.width;
-		Game.height = Game.canvas.height;
-	
-		var appPanel = document.getElementById("gamePane");
-		appPanel.width = Game.canvas.width;
-		appPanel.height = Game.canvas.height;
-	},
-
-
-
-		var gl = Game.gl;
-	
-		gl.bindFramebuffer(gl.FRAMEBUFFER, null);	
-		gl.viewport(0, 0, Game.width, Game.height);
-		gl.clearColor(0.3, 0.5, 0.9, 1.0);
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-	
-		gl.enable(gl.DEPTH_TEST);
-		gl.disable(gl.CULL_FACE);
-
-
-	
-	getShader: function(url) {
-		var gl = Game.gl, script = Loader.data[url];
-		if(!script) {
-			App.crash("Error requesting document: " + url);
+  
+  
+  //Creates a shader object
+  // frag_src = fragment shader source/url
+  // vert_src = vertex shader srouce/url
+  //  options = if explicit_frag is set, don't retrieve frag_src, instead just use frag_src as shader.  Similarly for explicit_vert.
+  //  cb = Continuation
+  Render.getShader = function(frag_src, vert_src, options, cb) {
+  
+    var frag_url = frag_src,
+        vert_url = vert_src;
+  
+    if(!options["explicit_frag"]) {
+      frag_src = Loader.data[frag_url];
+      if(!frag_src) {
+        App.crash("Could not find fragment shader: " + frag_url);
+        return;
+      }
     }
-
-		//Extract file extension
-		var ext = url.split('.');
-		ext = ext[ext.length-1];
-
-		var shader;
-		if(ext == 'vs') {
-			shader = gl.createShader(gl.VERTEX_SHADER);
-		}
-		else if(ext == 'fs') {
-			shader = gl.createShader(gl.FRAGMENT_SHADER);
-		}
-		else {
-			App.crash("Invalid file extension for shader " + url);
-		}
-
-		gl.shaderSource(shader, script);
-		gl.compileShader(shader);
-		if(!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-			App.crash("Error compling shader: " + url + ", Message: " + gl.getShaderInfoLog(shader));
-		}
-		return shader;
-	},
-
-	getProgram: function(fs_url, vs_url) {
-		var gl = Game.gl, 
-		    fs = Loader.getShader(fs_url),
-		    vs = Loader.getShader(vs_url),
-        prog = gl.createProgram();
     
-		gl.attachShader(prog, vs);
+    if(!options["explicit_vert"]) {
+      vert_src = Loader.data[vert_url];
+      if(!vert_src) {
+        App.crash("Could not find vertex shader: " + vert_url);
+        return;
+      }
+    }
+    
+    //Helper method to create a shader object
+    var makeShaderObject = function(type, src, url) {
+      var shader_obj = gl.createShader(type == 'vs' ? gl.VERTEX_SHADER : gl.FRAGMENT_SHADER);
+      
+      gl.shaderSource(shader_obj, src);
+      gl.compileShader(shader_obj);
+      
+		  if(!gl.getShaderParameter(shader_obj, gl.COMPILE_STATUS)) {
+		    ErrorState.postError("Error compling shader: " + url + 
+		        "\n\nReason: " + gl.getShaderInfoLog(shader));
+        return null;
+		  }
+		  return shader_obj;
+    };
+    
+    var frag_shader = getShader('fs', frag_src, frag_url),
+        vert_shader = getShader('vs', vert_src, vert_url);
+        
+    if(!frag_shader || !vert_shader) {
+      App.crash("Shader compile error!");
+      return;
+    }
+    
+    var prog = gl.createProgram();
+    
+    gl.attachShader(prog, vs);
 		gl.attachShader(prog, fs);
 		gl.linkProgram(prog);
+		
 		if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-			App.crash("Shader link error (" + fs_url +", " + vs_url + "): Could not link shaders");
+			App.crash("Shader link error (" + frag_url +", " + vs_url + "): Could not link shaders");
 		}
 
-		return prog;
-	},
-
-	getProgramFromSource: function(fs_source, vs_source) {
-		var gl = Game.gl, vshader, fshader, prog;
-
-		vshader = gl.createShader(gl.VERTEX_SHADER);
-		gl.shaderSource(vshader, vs_source);
-		gl.compileShader(vshader);		
-		if(!gl.getShaderParameter(vshader, gl.COMPILE_STATUS)) {
-			App.crash("Error compling shader:\n" + vs_source + "\n\nMessage: " + gl.getShaderInfoLog(vshader));
-		}		
-	
-		fshader = gl.createShader(gl.FRAGMENT_SHADER);
-		gl.shaderSource(fshader, fs_source);
-		gl.compileShader(fshader);
-		if(!gl.getShaderParameter(fshader, gl.COMPILE_STATUS)) {
-			App.crash("Error compling shader:\n" + fs_source + "\n\nMessage: " + gl.getShaderInfoLog(fshader));
-		}
-	
-		prog = gl.createProgram();
-		gl.attachShader(prog, vshader);
-		gl.attachShader(prog, fshader);
-		gl.linkProgram(prog);
-		if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-			App.crash("Shader link error for Frag shader:\n" + fs_source + "\n\nVert shader:\n" + vs_source);
-		}
-
-		return prog;
-	},
-
-	getTexture: function(url) {
-		var gl = Game.gl, 
-        img = Loader.data[url];
+		cb(prog);
+  };
+  
+  //Retrieves a texture
+  function getTexture(url, options, cb) {
+    var img = Loader.data[url];
 		if(!img) {
 			App.crash("Could not load image " + url);
+			return;
 		}
 
 		var gl = Game.gl, 
@@ -158,10 +140,22 @@ var Render = {};
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 
-		return tex;	
-	}
+		cb(tex);
+  };
 
-*/
-
+  //Begins drawing to the main screen
+  Render.beginDraw = function() {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);	
+		gl.viewport(0, 0, Render.width, Render.height);
+		gl.clearColor(
+		  background_color[0],
+		  background_color[1], 
+		  background_color[2], 
+		  background_color[3]);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	
+		gl.enable(gl.DEPTH_TEST);
+		gl.disable(gl.CULL_FACE);
+  };
 
 })();
