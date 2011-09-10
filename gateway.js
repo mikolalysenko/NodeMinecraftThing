@@ -1,85 +1,120 @@
-var path              = require("path"),
-    child_process     = require("child_process"),
-    DNode             = require("dnode"),
-    initializeDB      = require("./db_start.js").initializeDB;
+var DNode = require('dnode'),
+    createInstance = require("./instance.js").createInstance;
 
-//Parse out arguments
-var web_port  = (process.argv[2] ? process.argv[2] : 8080),
-    db_name   = (process.argv[3] ? process.argv[3] : "test"),
-    db_server = (process.argv[4] ? process.argv[4] : "localhost"),
-    db_port   = (process.argv[5] ? process.argv[5] : 27017);
-    
-var worker_ports = process.argv.slice(6);
-if(worker_ports.length == 0) {
-  worker_ports = [ 6060 ];
+//A client connection data structure
+function ClientConnection(rpc, conn) {
+  this.rpc_interface = rpc;
+  this.connection    = conn;
+  this.state         = "login";
 }
 
-//Starts the gateway server
-function startGateway(db) {
 
-  //The player data type
-  function Player(player_rec) {
-    this.player_id  = player_rec._id;
-    this.region_id  = player_rec.region_id;
-  };
+//The gateway object
+function Gateway(db) {
+  this.instances  = {};
+  this.clients    = {};
+  this.db         = db;
   
-  //A region datatype
-  function Region(region_rec) {
-    this.region_id    = region_rec._id;
-    this.players      = [];
-  };
+  this.server = DNode(function(rpc_interface, connection) {
 
-  //The array of all instance workers
-  var instances  = new Array(worker_ports.length),
-      regions    = {},
-      players    = {};
-
-  //DNode connection to instance server
-  var GatewayInterface = {
+    //Add self to the client list on the server    
+    var client = new ClientConnection(rpc_interface, connection);
+    this.clients[this] = client;
     
-    send : function(player_id, mesg) {
-      //TODO: Send a message to all clients
-    },
-     
-    broadcast : function(region_id, mesg) {
-      //TODO: Broadcast a message to all clients
-    }
-  };
-  
-  //The interface for a client
-  function ClientInterface(client, conn) {
-  
+    //Now define the client interface
+    this.createCharacter = function(player_name, player_password) {
+      if(client.state !== "login") {
+        return "Already logged in";
+      }
     
-  };
-
-  //Connects to each of the instances
-  function connectToInstances(next) {
-    var pending = worker_ports.length;
-
-    function connectToInstance(num) {
-      console.log("Connecting to worker: " + num);
-      DNode(GatewayInterface).connect(worker_ports[num], 
-        function(remote, conn) {
-          instances[num] = remote;
-          if(--pending == 0) {
-            next();
-          }
-        });
-    }
-
-    for(var i=0; i<worker_ports.length; ++i) {
-      connectToInstance(i);
-    }  
-  }
-  
-  
-  
-  connectToInstances(function() {
-  
-    console.log("All done!");
+    };
+    
+    //Player connection event
+    this.connect = function(player_name, player_password) {
+      if(client.state !== "login") {
+        return "Already logged in";
+      }
+      
+    };
+    
+    //Player disconnect event
+    this.disconnect = function() {
+    };
   });
 }
 
-//Start gateway server and database
-initializeDB(db_name, db_server, db_port, startGateway);
+//Shutsdown the gateway
+Gateway.prototype.shutdown = function(cb) {
+}
+
+//Begins listening
+Gateway.prototype.listen = function(port) {
+  this.server.listen(port);
+}
+
+//Kicks a player from the game
+Gateway.prototype.kickPlayer = function(player_id) {
+}
+
+//Sends a message to all players in a region
+Gateway.prototype.regionMessage = function(region_id, mesg) {
+}
+
+//Sends a message to all players in the game
+Gateway.prototype.globalMessage = function(mesg) {
+}
+
+//Migrates a player to a new region
+Gateway.prototype.migratePlayer = function(player_id, new_region_id) {
+}
+
+
+//Creates a gateway server
+exports.createGateway = function(db, cb) {
+
+  var gateway = new Gateway(db);
+
+  //Start all of the regions
+  db.regions.find({ }, function(err, cursor) {
+    if(err) {
+      console.log("Error loading regions");
+      cb(err, null);
+      return;
+    }
+    
+    var num_regions = 0, closed = false;
+    
+    cursor.each(function(err, region) {  
+      if(err) {
+        console.log("Error enumerating regions: " + err);
+        cb(err, null);
+        return;
+      }
+      else if(region !== null) {
+        num_regions++;
+        var instance = new Instance(region, db, gateway);
+        instance.start(function(err) {
+          num_regions--;
+          if(err) {
+            console.log("Error starting region instance: " + region + ", reason: " + err);
+            check_finished();
+          }
+          else {
+            console.log("Registered instance: " + region);
+            instances[region._id] = instance;
+            check_finished();
+          }
+        });
+      }
+      else {
+        closed = true;
+      }
+      
+      if(num_regions == 0 && closed) {
+        cb(null, gateway);
+        return;
+      }
+    });
+  });
+}
 

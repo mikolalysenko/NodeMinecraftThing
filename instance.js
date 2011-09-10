@@ -41,16 +41,6 @@ function Instance(region, db, gateway) {
   this.gateway    = gateway;
 }
 
-//Sends a message to a single player
-Instance.prototype.sendMessage = function(player_id, mesg) {
-  emitter.emit('send', player_id, mesg);
-}
-
-//Sends a message to all players
-Instance.prototype.broadcastMessage = function(mesg) {
-  emitter.emit('broadcast', region.region_id, mesg);
-}
-
 //Start the instance server
 Instance.prototype.start = function(cb) {  
 
@@ -235,40 +225,15 @@ Instance.prototype.sync = function() {
 
 
 //Called when a player connects
-Instance.prototype.playerConnect = function(player_rec) {
+Instance.prototype.addPlayer = function(player_rec) {
   console.log("Player connected: " + player_id);
 }
 
 //Called when a player diconnects
-Instance.prototype.playerDisconnect = function(player_id) {
+Instance.prototype.removePlayer = function(player_id) {
   console.log("Player disconnected: " + player_id);
 }
 
-//Called when player sends input
-Instance.prototype.playerInput = function(player_id, mesg) {
-  console.log("Got input from player: " + player_id + ", input = " + mesg);
-}
 
-//----------------------------------------------------------------
-// Starts the instance
-//----------------------------------------------------------------
-exports.createInstance = function(region_id, db, gateway, cb) {
-  
-  //Get a lock on the region
-  db.regions.findAndModify(
-    {_id:region_id, running:false}, 
-    [['_id', 'asc']], 
-    {$set: {running:true}}, 
-    {},
-    function(err, region) {
-      if(err) {
-        cb(err, null);
-        return;
-      }
-      
-      //Start the instance
-      var instance = new Instance(region, emitter, db);
-      instance.start(cb);
-    });
-}
+exports.Instance = Instance;
 

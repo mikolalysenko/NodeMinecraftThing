@@ -39,7 +39,7 @@ function serveFile(filename, response) {
   });
 }
 
-exports.createStaticHttpServer = function(wwwroot, commonroot, commonpath) {
+exports.createStaticHttpServer = function(wwwroot, aliases) {
   return http.createServer(function(request, response) {
     var uri = fixPath(url.parse(request.url).pathname),
         parts = uri.split("/"),
@@ -50,11 +50,13 @@ exports.createStaticHttpServer = function(wwwroot, commonroot, commonpath) {
       parts.shift();
     }
     
-    if(parts.length == 0) {
-      serveFile(path.join(wwwroot, "index.html"), response);
+    if(request.url in aliases) {
+     console.log("Writing aliased file: " + request.url);
+     response.writeHead(200, { 'Content-Type' : 'text/javascript' });
+     response.end(aliases[req.url]);
     }
-    else if(parts[0] == commonpath) {
-      serveFile(path.join(commonroot, parts.slice(1).join("/")), response);
+    else if(parts.length == 0) {
+      serveFile(path.join(wwwroot, "index.html"), response);
     }
     else {
       serveFile(path.join(wwwroot, uri), response);
