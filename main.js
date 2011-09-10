@@ -15,11 +15,8 @@ var web_port   = check_arg(argv.web_port, 8080),
 
 
 //Parse out local http scripts
-var shared_scripts = require('./shared_scripts.js').shared_scripts,
-    server_aliases = { };
-for(var script in shared_scripts) {
-  server_aliases[script] = require(script).source();
-}
+var shared_scripts = require('./config/shared_scripts.js').shared_scripts,
+    server_aliases = { '/dnode.js' : 'dnode/web' };
 
 //Create http server
 var httpServer = require("./server.js").createStaticHttpServer("www", server_aliases);
