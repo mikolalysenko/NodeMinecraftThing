@@ -22,6 +22,13 @@
 <body id="docBody">
 
 <div id="loginPane" style="display:none;" align=center>
+  <div class=loginBubble>
+    Please enter a player name and password: <br/>
+    Name: <input type="text" id="userName"> <br/>
+    Password: <input type="password" id="password"> <br/>
+    <input type="button" id="loginButton"> <br/>
+    <div id="loginError"></div>
+  </div>
 </div>
 
 <div id="progressPane" style="display:none;" align=center></div>
@@ -39,7 +46,7 @@
   </h1>
 </div>
 
-<div id="noGLPane" style="display:none;">
+<div id="noGLPane" style="display:none;font-family:Arial, Helvetica, sans-serif;">
   <div align=center>
     <h1>Sorry :(</h1>
     <h1>Your browser does not support WebGL</h1>

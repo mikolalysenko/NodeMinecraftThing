@@ -1,0 +1,11 @@
+
+body {
+  font-family:Arial, Helvetica, sans-serif;
+}
+
+loginBubble {
+  -moz-border-radius: 1em 1em 1em 1em;
+  border-radius: 1em 1em 1em 1em;
+  background-color: #CCFFFF;
+}
+

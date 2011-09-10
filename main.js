@@ -1,24 +1,30 @@
+
+//Default settings
+var settings = {
+
+  web_port    : 8080,
+  io_port     : 6060,
+  
+  db_name     : 'test',
+  db_server   : 'localhost',
+  db_port     : 27017,
+};  
+
+
 //Parse out arguments
 var argv = require('optimist').argv;
-
-function check_arg(arg, def) {
-  if(arg) {
-    return arg;
+for(var i in argv) {
+  if(i in settings) {
+    settins[i] = argv[i];
   }
-  return def;
 }
-var web_port   = check_arg(argv.web_port, 8000),
-    db_name    = check_arg(argv.db_name, 'test'),
-    db_server  = check_arg(argv.db_server, 'localhost'),
-    db_port    = check_arg(argv.db_port, 27017);
 
 //Create http server & websocket server
 console.log("Starting server...");
-var httpServer = require("./server.js").createStaticHttpServer("www"),
-    io = require('socket.io').listen(httpServer);
+var httpServer = require("./statichttp.js").createStaticHttpServer("www");
 
 //Connect to database and start the application
-require("./database.js").initializeDB(db_name, db_server, db_port, function(db) {
+require("./database.js").initializeDB(settings.db_name, settings.db_server, settings.db_port, function(db) {
   require("./gateway.js").createGateway(db, function(err, gateway) {
     if(err) {
       console.log("Error creating gateway: " + err);
@@ -27,8 +33,8 @@ require("./database.js").initializeDB(db_name, db_server, db_port, function(db) 
     }
     
     //Bind http server and gateway
-    gateway.server.listen(io);
-    httpServer.listen(web_port);
+    gateway.server.listen(httpServer);
+    httpServer.listen(settings.web_port);
 
     //Off to the races!
     console.log("Server initialized!");  

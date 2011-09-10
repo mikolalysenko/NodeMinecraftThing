@@ -10,9 +10,9 @@ if [ $ret -ne 0 ] || ! [ -x "$node" ]; then
   echo "Installing node"
   mkdir -p node
   cd node
-  curl http://nodejs.org/dist/v0.5.5/node-v0.5.5.tar.gz > node.tgz
+  curl http://nodejs.org/dist/node-v0.4.11.tar.gz > node.tgz
   tar xzf node.tgz
-  cd node-v0.5.5
+  cd node-v0.4.11
   ./configure
   make
   sudo make install

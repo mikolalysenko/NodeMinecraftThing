@@ -40,28 +40,23 @@ function serveFile(filename, response) {
 }
 
 //DNode routing hook
-var route = require('dnode/web').route;
-
 exports.createStaticHttpServer = function(wwwroot) {
   return http.createServer(function(request, response) {
-    route(request, response, function() {
+    var uri = fixPath(url.parse(request.url).pathname),
+        parts = uri.split("/"),
+        filename;
     
-      var uri = fixPath(url.parse(request.url).pathname),
-          parts = uri.split("/"),
-          filename;
-      
-      //Fix leading /
-      if(parts.length > 0 && parts[0] == '') {
-        parts.shift();
-      }
-      
-      if(parts.length == 0) {
-        serveFile(path.join(wwwroot, "index.html"), response);
-      }
-      else {
-        serveFile(path.join(wwwroot, uri), response);
-      }
-    });
+    //Fix leading /
+    if(parts.length > 0 && parts[0] == '') {
+      parts.shift();
+    }
+    
+    if(parts.length == 0) {
+      serveFile(path.join(wwwroot, "index.html"), response);
+    }
+    else {
+      serveFile(path.join(wwwroot, uri), response);
+    }
   });
 };
 
