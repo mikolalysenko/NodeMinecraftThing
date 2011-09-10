@@ -23,7 +23,6 @@ var Loader = {
   ],
 };
 
-
 (function() {
 
   Loader.data = {};
@@ -129,7 +128,7 @@ var Loader = {
   //Listens for a completed event in the loader
   Loader.listenCompleted = function(complete) {    
     if(finished) {
-      setTimer(complete, 0);
+      setTimeout(complete, 1);
       return;
     }
 

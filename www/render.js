@@ -5,8 +5,12 @@ var Render = {};
 (function(){
 
 
-	
-		//Initialize WebGL
+  var canvas = document.getElementById("renderCanvas");
+  
+  
+
+  Render.init = function(cb) {
+    	//Initialize WebGL
 		Game.canvas = document.getElementById("gameCanvas");
 		var gl;
 		try {
@@ -26,6 +30,19 @@ var Render = {};
 		Game.EXT_StdDeriv = gl.getExtension("OES_standard_derivatives");
 		Game.EXT_VertexArray = gl.getExtension("OES_vertex_array_object");	
 
+  };
+  
+  Render.deinit = function(cb) {
+    cb(null);
+  };
+  
+  //Resize the canvas
+  Render.resize = function() {
+  
+  };
+
+	/*
+	
 
 
 	resize : function() {
@@ -143,6 +160,8 @@ var Render = {};
 
 		return tex;	
 	}
+
+*/
 
 
 })();

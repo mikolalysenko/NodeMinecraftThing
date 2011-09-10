@@ -1,108 +1,122 @@
 "use strict";
 
-//The preloader
-var LoadState = {
+var App = { };
 
-	init : function() {
-	  Game.preload();
-		if(Loader.finished) {
-			App.setState(Game);
-		}
-		else {
-			document.getElementById('progressPane').style.display = 'block';
-		}
-	},
-
-	shutdown : function() {
-		document.getElementById('progressPane').style.display = 'none';
-	},
-
-	updateProgress : function(url) {
-		var prog_txt = document.getElementById('progressPane');
-		prog_txt.innerHTML = "Loaded: " + url + "<br\/\>%" + Loader.pct_loaded * 100.0 + " Complete";
-	
-		if(Loader.finished && App.state == LoadState)
-		{
-			App.setState(Game);
-		}
-	}
-};
-
-//Application crash state
-var ErrorState = {
-
-	init : function() {
-		document.getElementById('errorPane').style.display = 'block';
-	},
-
-	shutdown : function() {
-		document.getElementById('errorPane').style.display = 'none';
-	},
-
-	postError : function(msg) {
-		//Scrub message
-		msg = msg.replace(/\&/g, "&amp;")
-				 .replace(/\</g, "&lt;")
-				 .replace(/\>/g, "&gt;")
-				 .replace(/\n/g, "\<br\/\>");
-				 
-		document.getElementById('errorReason').innerHTML = msg;
-	}
-}
-
+(function(){
 
 //The default state (doesn't do anything)
 var DefaultState = {
-	init : function() { },
-	shutdown : function() { }
+	init   : function(cc) { cc(null); },
+	deinit : function(cc) { cc(null); }
 };
 
+//Sets the application to a crashed state
+function setCrashed(err, cb) {
+  App.state = ErrorState;
+  App.state.postError(err);
+  App.state.init(function(wtf) {
+    if(wtf) {
+      console.log("The error state errored? Err = " + wtf);
+      throw err;
+    }
+    if(cb) {
+      cb(err);
+    }
+  });
+};
 
-//Called when the 
-var NoWebGLState = {
-  init : function() {
-    document.getElementById('noGLPane').style.display = 'block';
-    document.getElementById('videoItem').innerHTML = '<iframe width="560" height="345" src="http://www.youtube.com/embed/bV8Yus_atoE" frameborder="0" allowfullscreen></iframe>';
-  },
+//Set application state to default state initially
+App.state = DefaultState;
+
+//Changes the application state, if an error occurs in initialization, set error state
+//This method fires an event, and so it will not block the code
+App.setState = function(next_state, cb) {
+
+  //Otherwise, fire event to transition to next state
+  setTimeout(function() {
   
-  shutdown : function() {
-  }
+    //Don't transition if we are already on the correct state
+    if(state === next_state) {
+      if(cb) {
+        cb(null);
+      }
+      return;
+    }
+
+	  App.state.deinit(function(err) {	
+	    if(err) {
+	      setCrashed(err, cb);
+	      return;
+	    }
+	    else {
+	      App.state = next_state;
+	      App.state.init(function(err) {
+	        if(err) {
+	          App.state.deinit(function(err2) {
+	            if(err2) {
+                ErrorState.postError(err2);
+              }
+	            setCrashed(err, cb);
+            });
+	        } else if(cb) {
+	          cb(null);
+	        }
+	      });
+	    }
+	  });
+	}, 1);
+};
+
+//Called to initialize the application
+App.init = function() {
+
+  //Start loading data in the background
+  Loader.init(function(missing_url) {
+    App.crash("Missing url: " + missing_url);
+    return;
+  });
+
+
+  //Connect to network
+  Network.init(function(err) {
+    if(err) {
+      App.crash("Error connecting to server: " + err);
+      return;
+    }
+
+    //Initialize WebGL/rendering stuff
+    Render.init(function(err) {
+      if(err) {
+        App.setState(NoWebGLState);
+        return;
+      }
+      else {
+        App.setState(LoginState);
+        return;
+      }
+    });
+  });
+};
+
+//Shuts down the application
+App.deinit = function() {
+  App.setState(DefaultState);
+};
+
+//Called when something errors out
+App.crash = function(err) {
+  ErrorState.postMessage(err);
+  App.setState(ErrorState);
+  throw Error("!!!ERROR!!!");
 };
 
 
-//The application object
-var App = {
-	state : DefaultState,
-	
-	init : function() {
-		Loader.start(LoadState.updateProgress, App.crash);
-		App.setState(LoadState);
-	},
-
-	shutdown : function() {
-		App.setState(DefaultState);
-	},
-
-	setState : function(next_state) {
-		App.state.shutdown();
-		App.state = next_state;
-		App.state.init();
-	},
-	
-	crashNoWebGL : function() {
-	  App.setState(NoWebGLState);
-	  throw "No WebGL";
-	},
-
-	crash : function(msg) {
-		App.setState(ErrorState);	
-		App.state.postError(msg);
-		throw msg;
-	},
-	
-	postError : function(msg) {
-		App.state.postError(msg);
-	}
+//Register call backs
+window.onload   = App.init;
+window.onunload = App.deinit;
+window.onclose  = App.deinit;
+window.onerror  = function(errMsg, url, lineno) {
+  App.crash("Script error (" + url + ":" + lineno + ") -- " + errMsg);
 };
 
-
+})();

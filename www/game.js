@@ -9,7 +9,7 @@ Game.running        = false;
 Game.tick_interval  = null;
 Game.draw_interval  = null;
 
-//Start game
+//Starts executing the game state
 Game.init = function(cb) {
 	//Initialize input
 	Input.init(function(err) {
@@ -22,9 +22,8 @@ Game.init = function(cb) {
 	  document.getElementById('gamePane').style.display = 'block';
 
 	  //Initialize screen
-	  window.onresize = Render.resize();
+	  window.onresize = Render.resize;
 	  Render.resize();
-	  
 	  
 	  //TODO: Create the instance
 
@@ -35,7 +34,7 @@ Game.init = function(cb) {
 	});
 };
 
-//Shutsdown the game
+//Pauses/disables the game state
 Game.deinit = function(cb) {
 
 	document.getElementById('gamePane').style.display = 'none';
@@ -49,7 +48,6 @@ Game.deinit = function(cb) {
 	}
 	
 	window.onresize = null;
-	
 	Input.shutdown(cb);
 };
 

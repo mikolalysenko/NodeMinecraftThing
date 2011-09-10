@@ -19,7 +19,7 @@ Network.init = function(cb) {
   DNode(network_interface).connect(function(remote) {
     Network.connected = true;
     Network.remote_interface = remote;
-    cb();
+    cb(null);
   });
 };
 
