@@ -1,4 +1,3 @@
-
 //Default settings
 var settings = {
 
@@ -8,7 +7,9 @@ var settings = {
   db_name     : 'test',
   db_server   : 'localhost',
   db_port     : 27017,
-};  
+  
+  wwwroot     : 'www'
+};
 
 
 //Parse out arguments
@@ -21,7 +22,9 @@ for(var i in argv) {
 
 //Create http server & websocket server
 console.log("Starting server...");
-var httpServer = require("./statichttp.js").createStaticHttpServer("www");
+var express = require('express');
+var server = express.createServer();
+server.use(express.static(settings.wwwroot));
 
 //Connect to database and start the application
 require("./database.js").initializeDB(settings.db_name, settings.db_server, settings.db_port, function(db) {
@@ -33,8 +36,8 @@ require("./database.js").initializeDB(settings.db_name, settings.db_server, sett
     }
     
     //Bind http server and gateway
-    gateway.server.listen(httpServer);
-    httpServer.listen(settings.web_port);
+    gateway.server.listen(server);
+    server.listen(settings.web_port);
 
     //Off to the races!
     console.log("Server initialized!");  

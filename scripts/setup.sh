@@ -33,14 +33,14 @@ if [ $ret -ne 0 ] || ! [ -x "$npm" ]; then
   rm -rf npm
 fi
 
-#Download npm packages
+#Install npm packages
 echo "Installing NPM packages"
+sudo npm install -g express
 sudo npm install -g socket.io
 sudo npm install -g mongodb
 sudo npm install -g nodester-cli
 sudo npm install -g dnode
 sudo npm install -g optimist
-sudo npm install -g browserify
 
 #Download and unzip mongodb locally
 mongo=`which mongo/mongo 2>&1`
