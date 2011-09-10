@@ -1,5 +1,6 @@
 "use strict";
 
+
 var Input = {
 
   //0 is for the mouse button
@@ -29,7 +30,7 @@ var Input = {
 	mouse_state : [$V([0,0]), $V([0,0])],
 	
 	//Bind all the input handlers for the document
-	init : function() {
+	init : function(cb) {
 		var body = document.getElementById("docBody");
 	
 	  //Reset state
@@ -96,16 +97,19 @@ var Input = {
 			}
 			return true;
 		};
+		
+		cb(null);
 	},
 	
 	//Clear input handlers
-	shutdown : function() {
+	shutdown : function(cb) {
 		var body = document.getElementById("docBody");
 		document.onkeyup = null;
 		document.onkeydown = null;
 		body.onmousemove = null;
 		body.onmousedown = null;
 		body.onmouseup = null;
+		cb(null);
 	},
 	
 	//Update input state
