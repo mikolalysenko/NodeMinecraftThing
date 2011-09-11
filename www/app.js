@@ -36,7 +36,7 @@ App.setState = function(next_state, cb) {
   setTimeout(function() {
   
     //Don't transition if we are already on the correct state
-    if(state === next_state) {
+    if(App.state === next_state) {
       if(cb) {
         cb(null);
       }
@@ -105,7 +105,7 @@ App.deinit = function() {
 
 //Called when something errors out
 App.crash = function(err) {
-  ErrorState.postMessage(err);
+  ErrorState.postError(err);
   App.setState(ErrorState);
   throw Error("!!!ERROR!!!");
 };

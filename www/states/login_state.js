@@ -1,6 +1,6 @@
 "use strict";
 
-var LoginState = { }
+var LoginState = { };
 
 (function(){
 

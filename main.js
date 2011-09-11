@@ -2,7 +2,7 @@
 var settings = {
 
   web_port    : 8080,
-  wwwroot     : 'www'
+  wwwroot     : 'www',
   
   db_name     : 'test',
   db_server   : 'localhost',

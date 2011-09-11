@@ -2,7 +2,8 @@
 
 var Render = {
 
-  background_color = [ 0.3, 0.5, 0.9, 1.0 ];
+  //Background color for the renderer
+  background_color : [ 0.3, 0.5, 0.9, 1.0 ],
 };
 
 (function(){

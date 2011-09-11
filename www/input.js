@@ -72,7 +72,7 @@ var Input = {
 			    cy = h / 2;
 			    
 	    Input.mouse_state[1] = Input.mouse_state[0];
-	    Input.mouse_state[0] = [(event.x - cx) / w, (event.y - cy) / h]);
+	    Input.mouse_state[0] = [(event.x - cx) / w, (event.y - cy) / h];
 	    
 		  return false;
 	  };

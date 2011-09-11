@@ -101,8 +101,8 @@ var Loader = {
       fetchText(Loader.text[i], error_handler);
     }
     
-    for(i=0; i<Loader.audio.length; ++i) {
-      fetchAudio(Loader.audio[i], error_handler);
+    for(i=0; i<Loader.sounds.length; ++i) {
+      fetchAudio(Loader.sounds[i], error_handler);
     }
     
     for(i=0; i<Loader.images.length; ++i) {

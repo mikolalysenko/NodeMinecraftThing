@@ -16,7 +16,7 @@ var local_interface = {
 
 //Initialize the network interface
 Network.init = function(cb) {
-  DNode(network_interface).connect(function(remote) {
+  DNode(local_interface).connect(function(remote) {
     Network.connected = true;
     Network.remote_interface = remote;
     cb(null);

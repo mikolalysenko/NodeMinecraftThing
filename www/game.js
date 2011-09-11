@@ -60,10 +60,13 @@ Game.input = function() {
 };
 
 //Draw the game
-Game.draw : function() {
+Game.draw = function() {
 
   //Process user input before drawing each frame
   Game.input();
+  
+  //Draw the frame
+  Render.beginDraw();
   
 };
 

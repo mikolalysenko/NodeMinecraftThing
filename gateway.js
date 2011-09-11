@@ -2,24 +2,22 @@ var DNode = require('dnode'),
     createInstance = require("./instance.js").createInstance;
 
 //A client connection data structure
-function ClientConnection(rpc, conn) {
+function ClientConnection(session_id, rpc, conn) {
+  this.session_id    = session_id;
   this.rpc_interface = rpc;
   this.connection    = conn;
   this.state         = "login";
 }
 
-
-//The gateway object
-function Gateway(db) {
-  this.instances  = {};
-  this.clients    = {};
-  this.db         = db;
-  
-  this.server = DNode(function(rpc_interface, connection) {
+//The client interface
+function ClientInterface(gateway) {
+  return DNode(function(rpc_interface, connection) {
 
     //Add self to the client list on the server    
-    var client = new ClientConnection(rpc_interface, connection);
-    this.clients[this] = client;
+    var client = new ClientConnection(gateway.next_session_id++, rpc_interface, connection);
+    gateway.clients[client.session_id] = client;
+    
+    console.log("Got client connection: " + client.session_id);
     
     //Now define the client interface
     this.createCharacter = function(player_name, player_password) {
@@ -41,6 +39,17 @@ function Gateway(db) {
     this.disconnect = function() {
     };
   });
+}
+
+//The gateway object
+function Gateway(db) {
+  this.instances         = {};
+  this.clients           = {};
+  this.db                = db;
+  this.next_session_id   = 0;
+  
+  //Create server last
+  this.server     = ClientInterface(this);
 }
 
 //Shutsdown the gateway
