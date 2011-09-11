@@ -14,12 +14,11 @@ var Render = {
       EXT_FPTex,
       EXT_StdDeriv,
       EXT_VertexArray;
-      
 
   //Initialize the renderer
   Render.init = function(cb) {
   	//Initialize WebGL
-		canvas = document.getElementById("gameCanvas");
+		canvas = document.getElementById("renderCanvas");
 		try {
 			gl = canvas.getContext("experimental-webgl");
 		}
@@ -148,11 +147,10 @@ var Render = {
   Render.beginDraw = function() {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);	
 		gl.viewport(0, 0, Render.width, Render.height);
-		gl.clearColor(
-		  background_color[0],
-		  background_color[1], 
-		  background_color[2], 
-		  background_color[3]);
+		
+		var bg = Render.background_color;
+		
+		gl.clearColor(bg[0], bg[1], bg[2], bg[3]);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	
 		gl.enable(gl.DEPTH_TEST);

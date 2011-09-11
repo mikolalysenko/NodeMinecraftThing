@@ -4,6 +4,7 @@
 	<title>WebGL Game</title>
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
 
+  <script src="compat.js"></script>
   <script src="/dnode.js"></script>
 
 	<script src="loader.js"></script>
@@ -16,6 +17,8 @@
 	<script src="states/load_state.js"></script>
 	<script src="states/login_state.js"></script>
 	<script src="states/nogl_state.js"></script>
+	
+	<link rel=StyleSheet href="style.css" type="text/css">
 
 </head>
 
@@ -24,9 +27,9 @@
 <div id="loginPane" style="display:none;" align=center>
   <div class=loginBubble>
     Please enter a player name and password: <br/>
-    Name: <input type="text" id="userName"> <br/>
-    Password: <input type="password" id="password"> <br/>
-    <input type="button" id="loginButton"> <br/>
+    Name: <input type="text" id="loginName"> <br/>
+    Password: <input type="password" id="loginPassword"> <br/>
+    <input type="button" id="loginButton" value="Login/Create Account"> <br/>
     <div id="loginError"></div>
   </div>
 </div>
@@ -55,7 +58,7 @@
     <h2>To fix this problem, update your browser and video drivers to the latest version:</h2>
   </div>
   <div>
-    <div style="float:left;position:absolute;left:25%;">
+    <div style="float:left;position:absolute;left:50%;margin-left:5%;">
       <h3>Browsers that support WebGL:</h3>
       <ul>
         <li><a href=http://www.google.com/chrome>Google Chrome (Recommended)</a></li>

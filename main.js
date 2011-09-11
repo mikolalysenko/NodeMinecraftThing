@@ -36,7 +36,7 @@ require("./database.js").initializeDB(settings.db_name, settings.db_server, sett
     }
     
     //Bind http server and gateway
-    gateway.server.listen(server);
+    gateway.listen(server);
     server.listen(settings.web_port);
 
     //Off to the races!

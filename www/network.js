@@ -18,7 +18,7 @@ var local_interface = {
 Network.init = function(cb) {
   DNode(local_interface).connect(function(remote) {
     Network.connected = true;
-    Network.remote_interface = remote;
+    Network.rpc       = remote;
     cb(null);
   });
 };
