@@ -49,11 +49,12 @@ function ClientInterface(gateway) {
 //--------------------------------------------------------------
 // The gateway object
 //--------------------------------------------------------------
-function Gateway(db) {
+function Gateway(db, rules) {
   this.instances         = {};
   this.clients           = {};
   this.db                = db;
   this.next_session_id   = 0;
+  this.rules             = rules;
   
   //Create server last
   this.server     = ClientInterface(this);
@@ -167,9 +168,9 @@ Gateway.prototype.leaveGame = function(client, cb) {
 //--------------------------------------------------------------
 // Gateway constructor
 //--------------------------------------------------------------
-exports.createGateway = function(db, cb) {
+exports.createGateway = function(db, rules, cb) {
 
-  var gateway = new Gateway(db);
+  var gateway = new Gateway(db, rules);
 
   //Start all of the regions
   db.regions.find({ }, function(err, cursor) {
@@ -189,7 +190,7 @@ exports.createGateway = function(db, cb) {
       }
       else if(region !== null) {
         num_regions++;
-        var instance = new Instance(region, db, gateway);
+        var instance = new Instance(region, db, gateway, rules);
         instance.start(function(err) {
           num_regions--;
           if(err) {

@@ -1,4 +1,5 @@
-var Entity = require("./entity.js").Entity;
+var ObjectID = require('mongodb').ObjectID,
+    Entity = require("./entity.js").Entity;
 
 // A function that just eats events
 function sink(err, result) {
@@ -31,13 +32,14 @@ function Player(player_rec, entity) {
 // An Instance is a process that simulates a region in the game.
 // It keeps a local copy of all entities within the region.
 //----------------------------------------------------------------
-function Instance(region, db, gateway) {
+function Instance(region, db, gateway, rules) {
   this.entities   = {};
   this.players    = {};
   this.region     = region;
   this.db         = db;
   this.running    = false;
   this.gateway    = gateway;
+  this.rules      = rules;
 }
 
 //Start the instance server
@@ -139,7 +141,7 @@ Instance.prototype.createEntity = function(state) {
 
   //Generate entity id if needed
   if(!("_id" in state)) {
-    state["_id"] = GENERATE_OBJECT_ID;  //FIXME: Do this properly
+    state["_id"] = new ObjectID();
   }
   
   //Create the entity and register it
@@ -147,7 +149,8 @@ Instance.prototype.createEntity = function(state) {
   this.entities[entity.state._id] = entity;
   entity.state.region = this.region.region_id;
   
-  //TODO: Add components to entity
+  //Add components to entity
+  rules.initializeComponents(entity);
   
   //Initialize the entity if we are running
   if(running) {
@@ -232,7 +235,6 @@ Instance.prototype.addPlayer = function(player_rec) {
 Instance.prototype.removePlayer = function(player_id) {
   console.log("Player disconnected: " + player_id);
 }
-
 
 exports.Instance = Instance;
 

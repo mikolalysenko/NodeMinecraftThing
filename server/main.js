@@ -1,8 +1,10 @@
+var path = require('path');
+
 //Default settings
 var settings = {
 
   web_port    : 8080,
-  wwwroot     : '../www',
+  wwwroot     : path.join(__dirname, "../www"),
   
   db_name     : 'test',
   db_server   : 'localhost',
@@ -18,6 +20,9 @@ for(var i in argv) {
   }
 }
 
+//Create the rules object
+var rules = new (require('./rules.js').Rules)();
+
 //Create http server & websocket server
 console.log("Starting server...");
 var express = require('express');
@@ -28,7 +33,7 @@ server.use(express.static(settings.wwwroot));
 require("./database.js").initializeDB(settings.db_name, settings.db_server, settings.db_port, function(db) {
 
   //Start the gateway server
-  require("./gateway.js").createGateway(db, function(err, gateway) {
+  require("./gateway.js").createGateway(db, rules, function(err, gateway) {
     if(err) {
       console.log("Error creating gateway: " + err);
       db.close();

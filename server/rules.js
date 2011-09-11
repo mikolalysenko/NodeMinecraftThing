@@ -1,25 +1,29 @@
-//Rules for the game
-var Rules;
-if(exports === undefined) {
 
-
-}
-else {
-  Rules = exports;
-}
-
-
-//Rules for thawing an entity
-Rules.thaw = function(entity) {
+//----------------------------------------------------------------
+// The Rules object manages the rules for a particular game
+//----------------------------------------------------------------
+function Rules() {
 };
 
+
 //Create the game world from scratch
-Rules.initializeWorld = function() {
+Rules.prototype.initializeWorld = function() {
+
+  
+
 };
 
 //Locates initial position for a player
-Rules.createPlayerEntity = function() {
+Rules.prototype.createPlayer = function(player_name) {
+
+  //Create a default player entity
+  
+
 };
 
+//Adds components to an entity
+Rules.prototype.initializeComponents = function(entity) {
+};
 
+exports.Rules = Rules;
 

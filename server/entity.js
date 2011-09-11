@@ -1,5 +1,14 @@
+var EventEmitter = require('events').EventEmitter;
+
 //----------------------------------------------------------------
-// Entities are composite objects built from many communicating components
+// Entities are composite objects built from many communicating components.
+//  In other words,
+//    + state
+//    + components
+//    + an event emitter
+//
+// On the client side we need to reimplement event-listener, and also we can ignore
+// many of the networking/database variables
 //----------------------------------------------------------------
 function Entity(instance, state) {
 
@@ -7,8 +16,12 @@ function Entity(instance, state) {
   this.state      = state;       //A local cache of the database record representing this entity's state
                                  //This data is what gets written to both the DB and the client.
                                  // Put only dicts, arrays and pods in here, no fancy object types.
-                                 
-  this.active     = true;        //When turned off, tick is not called on the entity.
+
+  //Event handler
+  this.emitter    = new EventEmitter();   //Event emitter for sending events
+
+  //Server-side config                     
+  this.active     = true;        //When turned off, tick is not called on the entity.  Entity is not updated or replicated to database (used for player entities when not logged in, for example)
   this.persistent = false;       //If set, entity gets stored to db.  This is done using copy-on-write semantics.
   this.net_replicated = false;   //If set, then the entity gets sent across the network
                                  // Useful for objects that are important for the client or have long lives.
@@ -37,32 +50,16 @@ Entity.prototype.addComponent = function(component) {
 
 //Initialize the entity (this is called by the instance at start time, do not call this)
 Entity.prototype.init = function() {
-  for(var i=0; i<components.length; ++i) {
-    components[i].init();
-  }
+  this.emitter.emit('init');
 }
 
 //Ticks the entity
 Entity.prototype.tick = function() {
-  for(var i=0; i<components.length; ++i) {
-    components[i].tick();
-  }
+  this.emitter.emit('tick');
 }
 
 //Stop the entity (do not call this to delete an enemy, call destroy instead)
 Entity.prototype.deinit = function() {
-  for(var i=0; i<components.length; ++i) {
-    components[i].deinit();
-  }
+  this.emitter.emit('deinit');
 }
 
-//--------------------------------------------------------
-// Scripting functions  (these can be called while the game is running)
-//--------------------------------------------------------
-
-//Sends a message to the entity
-Entity.prototype.send = function(msg) {
-  for(var i=0; i<components.length; ++i) {
-    components[i].recv(msg);
-  }
-}
