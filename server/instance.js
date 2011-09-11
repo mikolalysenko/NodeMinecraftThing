@@ -1,5 +1,4 @@
-var Entity = require("./common/entity.js").Entity;
-
+var Entity = require("./entity.js").Entity;
 
 // A function that just eats events
 function sink(err, result) {
