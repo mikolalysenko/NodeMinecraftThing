@@ -50,15 +50,14 @@ require("./database.js").initializeDB(settings.db_name, settings.db_server, sett
     }
 
     //Start the gateway server
-    require("./gateway.js").createGateway(db, rules, function(err, gateway) {
+    require("./gateway.js").createGateway(server, db, rules, function(err, gateway) {
       if(err) {
         util.log("Error creating gateway: " + err);
         db.close();
         return;
       }
-        
-      //Bind http server and gateway
-      gateway.listen(server);
+      
+      //Start http server
       server.listen(settings.web_port);
 
       //Off to the races!

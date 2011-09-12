@@ -81,9 +81,13 @@ Player.prototype.pushUpdates = function() {
       
       var patch = patcher.computePatch(known_entities[id], entity.state);
       patch._id = entity.state._id;
+      
+      util.log(patch);
       buffer.push(patch);
     }
     else {
+    
+      util.log(JSON.stringify(entity.state));
       buffer.push(entity.state);
     }
   }
@@ -174,26 +178,6 @@ Instance.prototype.start = function(cb) {
   });
 }
 
-//Stops a running instance
-Instance.prototype.stop = function(callback) {
-
-  //Kick all the players
-  for(var player_id in this.players) {
-    this.kickPlayer(this.players[player_id]);
-  }
-
-  //Stop clocks
-  clearInterval(this.tick_interval);
-  clearInterval(this.sync_interval);
-  
-  
-  //Stop all the entities and save them to the database
-  for(var id in this.entities) {
-    this.entities[id].deinit();
-    this.db.entities.save(entities[id].state, sink);
-  }
-}
-
 //Tick all the entities in the game world
 Instance.prototype.tick = function() {
   var id, ent;
@@ -244,6 +228,11 @@ Instance.prototype.lookupEntity = function(entity_id) {
 
 //Destroy an entity
 Instance.prototype.destroyEntity = function(entity) {
+
+  if( !(typeof(entity) === "object" && entity instanceof Entity) ) {
+    entity = this.entities[entity];
+  }
+
   if(!entity || entity.deleted) {
     return;
   }

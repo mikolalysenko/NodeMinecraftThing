@@ -1,4 +1,6 @@
 var util = require('util'),
+    path = require('path'),
+    mount = require('./mount.js').mount,
     ObjectID = require('mongodb').ObjectID,
     DNode = require('dnode'),
     Instance = require('./instance.js').Instance;
@@ -83,10 +85,6 @@ function Gateway(db, rules) {
   
   //Create server last
   this.server     = ClientInterface(this);
-}
-
-Gateway.prototype.listen = function(port) {
-  this.server.listen(port);
 }
 
 Gateway.prototype.lookupRegion = function(region_name) {
@@ -235,63 +233,77 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
 //--------------------------------------------------------------
 // Gateway constructor
 //--------------------------------------------------------------
-exports.createGateway = function(db, rules, cb) {
+exports.createGateway = function(server, db, rules, cb) {
 
   var gateway = new Gateway(db, rules);
-
-  //Start all of the regions
-  db.regions.find({ }, function(err, cursor) {
+  gateway.server.listen(server);
+  
+  //Create list of files to mount
+  var mount_files = {
+    '/patcher.js' : path.join(__dirname, '/patcher.js'),
+  };
+  
+  //Mount files
+  mount(server, mount_files, function(err) {
     if(err) {
-      util.log("Error loading regions");
-      cb(err, null);
+      cb("Error mounting files: " + err);
       return;
     }
-    
-    var num_regions = 0, closed = false;
-    
-    var check_finished = function() {
-      if(num_regions == 0 && closed) {
-        cb(null, gateway);
-      }
-    }
-    
-    
-    cursor.each(function(err, region) {  
+
+    //Start all of the regions
+    db.regions.find({ }, function(err, cursor) {
       if(err) {
-        util.log("Error enumerating regions: " + err);
+        util.log("Error loading regions: " + err);
         cb(err, null);
         return;
       }
-      else if(region !== null) {
       
-        //Register region
-        gateway.regions[region.region_name] = region._id;
+      var num_regions = 0, closed = false;
       
-        num_regions++;
+      var check_finished = function() {
+        if(num_regions == 0 && closed) {
+          cb(null, gateway);
+        }
+      }
+      
+      
+      cursor.each(function(err, region) {  
+        if(err) {
+          util.log("Error enumerating regions: " + err);
+          cb(err, null);
+          return;
+        }
+        else if(region !== null) {
         
-        //Start instance server
-        var instance = new Instance(region, db, gateway, rules);
-        instance.start(function(err) {
-          num_regions--;
-          if(err) {
-            util.log("Error starting region instance: " + region + ", reason: " + err);
-            check_finished();
-          }
-          else {
-            util.log("Registered instance: " + JSON.stringify(region));
-            gateway.instances[region._id] = instance;
-            check_finished();
-          }
-        });
-      }
-      else {
-        closed = true;
-      }
-      
-      if(num_regions == 0 && closed) {
-        cb(null, gateway);
-        return;
-      }
+          //Register region
+          gateway.regions[region.region_name] = region._id;
+        
+          num_regions++;
+          
+          //Start instance server
+          var instance = new Instance(region, db, gateway, rules);
+          instance.start(function(err) {
+            num_regions--;
+            if(err) {
+              util.log("Error starting region instance: " + region + ", reason: " + err);
+              check_finished();
+            }
+            else {
+              util.log("Registered instance: " + JSON.stringify(region));
+              gateway.instances[region._id] = instance;
+              check_finished();
+            }
+          });
+        }
+        else {
+          closed = true;
+        }
+        
+        if(num_regions == 0 && closed) {
+          cb(null, gateway);
+          return;
+        }
+      });
     });
   });
 }

@@ -9,6 +9,9 @@ Game.running        = false;
 Game.tick_interval  = null;
 Game.draw_interval  = null;
 
+//Game instance
+Game.instance       = null;
+
 //Starts executing the game state
 Game.init = function(cb) {
 
@@ -19,19 +22,27 @@ Game.init = function(cb) {
 	    return;
 	  }
 	  
-	  //Turn on display
-	  document.getElementById('gamePane').style.display = 'block';
-
-	  //Initialize screen
-	  window.onresize = Render.resize;
-	  Render.resize();
+	  //Create instance
+	  Game.instance = new Client.Instance();
+	  Game.instance.init(function(err) {
+	    if(err) {
+	      cb(err);
+	      return;
+	    }
 	  
-	  //TODO: Create the instance
+	    //Show game UI and resize it
+	    document.getElementById('gamePane').style.display = 'block';
+	    Render.resize();
 
-	  //Start running the game
-	  Game.running 		     = true;
-	  Game.tick_interval 	 = setInterval(Game.tick, 50);
-	  Game.draw_interval 	 = setInterval(Game.draw, 20);
+      //Bind necessary callbacks
+	    window.onresize = Render.resize;
+	    
+	    //Start running the game
+	    Game.running 		     = true;
+	    Game.tick_interval 	 = setInterval(Game.tick, 50);
+	    Game.draw_interval 	 = setInterval(Game.draw, 20);
+	    
+	  });
 	});
 };
 
@@ -49,11 +60,18 @@ Game.deinit = function(cb) {
 	}
 	
 	window.onresize = null;
-	Input.shutdown(cb);
+	
+	Input.deinit(function(err) {
+	
+	  if(Game.instance) {
+      Game.instance.deinit(cb);
+    }
+	});
 };
 
 //Called when the game ticks
-Game.tick = function() {	
+Game.tick = function() {
+  Game.instance.tick();
 };
 
 //Process user input

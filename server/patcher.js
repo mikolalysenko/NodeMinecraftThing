@@ -9,7 +9,7 @@
 //-------------------------------------------------------------
 
 //node.js interoperability
-if(exports === undefined) {
+if(typeof(exports) === "undefined") {
   var patcher = {};
 }
 
@@ -62,7 +62,7 @@ function computePatch(prev, next, update_in_place) {
   var processElement = function(id) {
   
     //Add _ to escape ids which start with _
-    var target_id = (typeof(id) === "string" && id.charAt(0) == "_" ? "_" + id : id);
+    var target_id = (typeof(id) === "string" && id.charAt(0) == "$" ? "$" + id : id);
     
     //First, check if the element exists and types match
     if(id in prev && typeof(prev[id]) === typeof(next[id])) {
@@ -106,7 +106,7 @@ function computePatch(prev, next, update_in_place) {
         prev.length = next.length;
       }
       has_updates = true;
-      updates["_r"] = next.length;
+      updates["$r"] = next.length;
     }
     for(var i=next.length-1; i>=0; --i) {
       processElement(i);
@@ -122,7 +122,7 @@ function computePatch(prev, next, update_in_place) {
     }
     if(removals.length > 0) {
       has_updates = true;
-      updates["_r"] = (removals.length === 1 ? removals[0] : removals);
+      updates["$r"] = (removals.length === 1 ? removals[0] : removals);
       
       if(update_in_place) {
         for(var i=removals.length-1; i>=0; --i) {
@@ -147,12 +147,12 @@ function computePatch(prev, next, update_in_place) {
 //-------------------------------------------------------------
 function applyPatch(obj, patch) {
   var i;
-  if("_r" in patch) {
+  if("$r" in patch) {
     if(obj instanceof Array) {
-      obj.length = patch["_r"];
+      obj.length = patch["$r"];
     }
     else {
-      var removals = patch["_r"];
+      var removals = patch["$r"];
       
       if(removals instanceof Array) {
         for(i=0; i<removals.length; ++i) {
@@ -162,12 +162,12 @@ function applyPatch(obj, patch) {
         delete obj[removals];
       }
     }
-    delete patch["_r"];
+    delete patch["$r"];
   }
   
   for(i in patch) {
     //Unescape underscore
-    var t = (typeof(i) === "string" && i.charAt(0) == "_" ? i.substring(1) : i);
+    var t = (typeof(i) === "string" && i.charAt(0) == "$" ? i.substring(1) : i);
     
     if(typeof(obj[t]) === typeof(patch[i]) &&
       typeof(patch[i]) === "object" &&
@@ -182,7 +182,7 @@ function applyPatch(obj, patch) {
 
 
 //Add methods to patcher
-if(exports === undefined) {
+if(typeof(exports) === "undefined") {
   patcher.computePatch = computePatch;
   patcher.applyPatch   = applyPatch;
 } else {

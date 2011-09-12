@@ -108,7 +108,7 @@ var Input = {
   },
 
   //Clear input handlers
-  shutdown : function(cb) {
+  deinit : function(cb) {
 	  window.onkeyup      = null;
 	  window.onkeydown    = null;
 	  window.onmousemove  = null;
