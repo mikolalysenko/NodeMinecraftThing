@@ -29,6 +29,7 @@ function Entity(instance, state) {
                                  // Useful for big entities with, small frequently changing variables.
   this.net_one_shot = false;     //If set, only replicate entity creation event.  Do not synchronize after creation.
                                  // Useful for projectiles and other shortly lived objects
+  this.net_priority = 1.0;       //Replication priority
 
   //Internal variables
   this.instance   = instance;    //A reference to the region instance this entity is in
@@ -65,14 +66,7 @@ Entity.prototype.deinit = function() {
 
 //Checks if an entity was modified
 Entity.prototype.checkModified = function() {
-  var mod = patcher.computePatch(this.last_state, this.state, true);
-  
-  for(var i in mod) {
-    console.log(i);
-  }
-  
-  console.log("modified = " + !!mod + ", mod = " + JSON.stringify(mod));
-  return !!mod;
+  return !!patcher.computePatch(this.last_state, this.state, true);
 }
 
 exports.Entity = Entity;

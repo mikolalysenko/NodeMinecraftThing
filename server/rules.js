@@ -1,4 +1,5 @@
-var path = require('path');
+var util = require('util'),
+    path = require('path');
 
 //----------------------------------------------------------------
 // The Rules object manages the interface between game logic
@@ -9,7 +10,7 @@ var path = require('path');
 //----------------------------------------------------------------
 function Rules(gamedir) {
 
-  console.log("Loading game from: " + gamedir);
+  util.log("Loading game from: " + gamedir);
 
   this.game_module  = require(path.join(gamedir, 'index.js'));
   this.components   = this.game_module.components;
@@ -41,13 +42,13 @@ Rules.prototype.initializeWorld = function(db, cb) {
         region_name : regions[i].region_name
       };
       
-      console.log("Creating region: " + JSON.stringify(record));
+      util.log("Creating region: " + JSON.stringify(record));
       
       //Save the region to the database
       db.regions.save(record, function(err, region) {
         setTimeout(function() {
           if(err) {
-            console.log("Error creating region!");
+            util.log("Error creating region!");
           }
           
           //FIXME: Create entities in this region
@@ -61,7 +62,7 @@ Rules.prototype.initializeWorld = function(db, cb) {
   };
   
   //Clear out database and create the world
-  console.log("!!!!CLEARING GAME DATABASE!!!!!");
+  util.log("!!!!CLEARING GAME DATABASE!!!!!");
   db.entities.remove({}, function(err, r) {
     db.regions.remove({}, function(err, r) {
       db.players.remove({}, function(err, r) {

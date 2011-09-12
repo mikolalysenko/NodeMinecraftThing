@@ -13,11 +13,13 @@ Network.rpc = null;
 var local_interface = {
   
   //Updates an entity locally
-  updateEntity : function(entity_id, patch) {
+  updateEntities : function(patches) {
+    console.log("Got patches: " + JSON.stringify(patches));
   },
   
   //Deletes an entity
-  deleteEntity : function(entity_id) {
+  deleteEntities : function(deletions) {
+    console.log("Deleted entity: " + JSON.stringify(deletions));
   },
   
   //Displays a chat message

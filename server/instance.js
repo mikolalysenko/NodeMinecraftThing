@@ -13,11 +13,17 @@ function sink(err, result) {
 //----------------------------------------------------------------
 // A player connection
 //----------------------------------------------------------------
-function Player(player_rec, entity) {
+function Player(instance, client, player_rec, entity) {
 
   //Player record  
   this.player_id = player_rec._id;
   this.entity    = entity;
+  
+  //RPC interface
+  this.client    = client;
+  
+  //Instance
+  this.instance = instance;
   
   //Input from client
   this.client_state = {};
@@ -28,8 +34,9 @@ function Player(player_rec, entity) {
   this.pending_entity_deletes = {};
 }
 
-Player.prototype.init = function() {
-  this.update_interval = setInterval(this.pushUpdates, 50);
+Player.prototype.init = function(instance) {
+  var player = this;
+  this.update_interval = setInterval(function() { player.pushUpdates(); }, 50);
 }
 
 Player.prototype.deinit = function() {
@@ -50,16 +57,50 @@ Player.prototype.deleteEntity = function(entity) {
 
 //Marks an entity for getting updated
 Player.prototype.updateEntity = function(entity) {
-  this.pending_entity_updates[entity.state._id] = true;
+  this.pending_entity_updates[entity.state._id] = entity.net_priority;
 }
 
 //Pushes updates to the player over the network
 Player.prototype.pushUpdates = function() {
 
-  //FIXME: Push entity updates here
-
-  this.pending_entity_updates = {};
-  this.pending_entity_deletes = {};
+  if(this.client.state !== "game") {
+    return;
+  }
+  
+  //Send update messages
+  // FIXME: Prioritize updates
+  var buffer = [];
+  for(var id in this.pending_entity_updates) {
+    var entity = this.instance.lookupEntity(id);
+    
+    if(entity.net_cached) {
+      
+      if(!(id in cached_entities)) {
+        cached_entities[id] = {};
+      }
+      
+      var patch = patcher.computePatch(known_entities[id], entity.state);
+      patch._id = entity.state._id;
+      buffer.push(patch);
+    }
+    else {
+      buffer.push(entity.state);
+    }
+  }
+  if(buffer.length > 0) {
+    this.client.rpc.updateEntities(buffer);
+    this.pending_entity_updates = {};
+  }
+  
+  //Send delete messages
+  var removals = [];
+  for(var id in this.pending_entity_deletes) {
+    removals.push(id);
+  }
+  if(removals.length > 0) {
+    this.client.rpc.deleteEntities(removals);
+    this.pending_entity_deletes = {};
+  }
 }
 
 //----------------------------------------------------------------
@@ -194,7 +235,7 @@ Instance.prototype.createEntity = function(state) {
 
 //Looks up an entity in this region
 Instance.prototype.lookupEntity = function(entity_id) {
-  var e = entities[entity_id];
+  var e = this.entities[entity_id];
   if(e && !e.deleted) {
     return e;
   }
@@ -202,19 +243,29 @@ Instance.prototype.lookupEntity = function(entity_id) {
 }
 
 //Destroy an entity
-Instance.prototype.destroyEntity = function(entity_id) {
-  if(!(entity_id in entities)) {
-    return;
-  }
-  
-  var entity = entities[entity_id];
+Instance.prototype.destroyEntity = function(entity) {
   if(!entity || entity.deleted) {
     return;
   }
-  
+
+  //Deinitialize entity  
   entity.deinit();
-  entity.deleted = true;
-  this.deleted_entities.push(entity.state._id);
+  
+  //Remove from database
+  if(entity.persistent) {
+    entity.deleted = true;
+    this.deleted_entities.push(entity.state._id);
+  }
+  else {
+    delete this.entities[entity.state._id];
+  }
+  
+  //Send message out to players if needed
+  if(entity.net_replicated) {
+    for(var pl in this.players) {
+      this.players[pl].deleteEntity(entity);
+    }
+  }
 }
 
 //Called whenever an entity's state changes
@@ -272,7 +323,7 @@ Instance.prototype.sync = function() {
 
 
 //Called when a player enters the instance
-Instance.prototype.activatePlayer = function(player_rec, player_entity, cb) {
+Instance.prototype.activatePlayer = function(client, player_rec, entity_rec, cb) {
   
   if((player_rec.entity_id in this.entities) ||
      (player_rec._id in this.players) ) {
@@ -281,12 +332,20 @@ Instance.prototype.activatePlayer = function(player_rec, player_entity, cb) {
   }
   
   //Create the player entity
-  var entity = this.createEntity(player_entity);
+  var player_entity = this.createEntity(entity_rec);
   
   //Add to player list
-  var player = new Player(player_rec, entity);
+  var player = new Player(this, client, player_rec, player_entity);
   this.players[player_rec._id] = player;
   player.init();
+  
+  //Send initial copy of game state to player
+  for(var id in this.entities) {
+    var entity = this.entities[id];
+    if( entity.net_replicated || entity.net_one_shot ) {
+      player.updateEntity(entity);
+    }
+  }
   
   //Done
   cb(null);

@@ -171,9 +171,8 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
     client.instance = instance;
     
     //Activate the player
-    instance.activatePlayer(player_rec, entity_rec, function(err) {
+    instance.activatePlayer(client, player_rec, entity_rec, function(err) {
       if(err) {
-        client.state = "prelogin";
         cb(err);
         return;
       }
