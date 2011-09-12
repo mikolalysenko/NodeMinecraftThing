@@ -5,7 +5,7 @@ body {
 
 div.loginBubble {
   position:absolute;
-  top:50%;
+  top:20%;
   left:50%;
   width:40em;
   margin-left:-20em;

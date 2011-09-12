@@ -1,8 +1,5 @@
 var DNode = require('dnode'),
-    createInstance = require("./instance.js").createInstance;
-
-//Session id counter (this is not exposed, just used internally)
-var next_session_id = 0;
+    Instance = require('./instance.js').Instance;
 
 //--------------------------------------------------------------
 // A client connection record
@@ -18,6 +15,10 @@ function ClientConnection(session_id, rpc, conn) {
 //--------------------------------------------------------------
 // The RPC interface which is exposed to the client
 //--------------------------------------------------------------
+
+//Session id counter (this is not exposed, just used internally)
+var next_session_id = 0;
+
 function ClientInterface(gateway) {
   return DNode(function(rpc_interface, connection) {
 
@@ -36,7 +37,12 @@ function ClientInterface(gateway) {
         client,
         player_name,
         player_password,
-        cb);
+        function (err) {
+          if(err) {
+            client.state = "prelogin";
+          }
+          cb(err);
+        });
     };
     
     this.leaveGame = function(cb) {
@@ -53,8 +59,11 @@ function Gateway(db, rules) {
   this.instances         = {};
   this.clients           = {};
   this.db                = db;
-  this.next_session_id   = 0;
   this.rules             = rules;
+  this.rules.register(this);
+  
+  //List of regions in the game
+  this.regions           = {};
   
   //Create server last
   this.server     = ClientInterface(this);
@@ -62,6 +71,14 @@ function Gateway(db, rules) {
 
 Gateway.prototype.listen = function(port) {
   this.server.listen(port);
+}
+
+Gateway.prototype.lookupRegion = function(region_name) {
+  var region_id = this.regions[region_name];
+  if(region_id) {
+    return region_id;
+  }
+  return null;
 }
 
 
@@ -94,6 +111,18 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
     return;
   }
 
+  //Validate player name
+  if(player_name.length < 3 || player_name.length > 36 ||
+     !(player_name.match(/^[0-9a-zA-Z]+$/))) {
+     cb("Invalid player name");
+     return;
+  }
+  
+  //Validate password (lame, I know)
+  if(password.length < 1 || password.length > 128) {
+    cb("Invalid password");
+    return;
+  }
 
   console.log("Player joining: " + player_name);
 
@@ -106,25 +135,37 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
     //Set player state
     client.state = "game";
   
-    //FIXME: Add player to instance here
+    //Lookup instance
+    var region_id = player_rec['region_id'];
+    if(!region_id) {
+      cb("Missing player region id");
+      return;
+    }
+    var instance = gateway.instances[region_id];
+    if(!instance) {
+      cb("Player region does not exist!");
+      return;
+    }
     
-    //Send a null element for an error free login
-    cb(null);
+    //Activate the player
+    instance.activatePlayer(player_rec, function(err) {
+      if(err) {
+        client.state = "prelogin";
+      }
+      cb(err);
+    });
   };
   
   var handleError = function(err_mesg) {
     client.state = "prelogin";
+    
+    console.log("Error: " + err_mesg);
+    
     cb(err_mesg);
   };
   
   var gateway = this;
   this.db.players.findOne({ 'name': player_name }, function(err, doc) {
-    if(client.state != "login") {
-      return;
-    }
-  
-    //FIXME: Check for errors on query here
-    
     if(doc) {
       if(doc.password == password) {
         handleJoin(doc);
@@ -137,20 +178,47 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
       //Assume player not found, then create record
       console.log("Creating player: " + player_name);
       gateway.db.players.save({ 'name':player_name, 'password':password }, function(err, doc) {
-        if(client.state != "login") {
-          return;
-        }
-        else if(err) {
+        if(err) {
           handleError("Error creating account");
           return;
         }
         else if(doc) {
           
-          //FIXME: Create initial state for player's entity here
-        
-          handleJoin(doc);
+          console.log('doc = ' + JSON.stringify(doc));
+          
+          
+          //Create player entity
+          gateway.rules.createPlayerEntity(player_name, function(err, player_entity) {
+          
+            console.log("here2");
+            
+            if(err) {
+              handleError("Error creating player entity: " + JSON.stringify(err));
+              return;
+            }
+            
+            //Link entity id back to player object
+            doc.entity_id = player_entity._id;
+            
+            console.log("Doing upsert with: " + JSON.stringify(doc));
+            
+            gateway.db.players.save(doc, function(err, doc) {
+            
+              console.log("here");
+            
+              if(err) {
+                handleError("Error setting player entity?! " + JSON.stringify(err));
+                return;
+              }
+              
+              console.log('doc = ' + JSON.stringify(doc));
+              
+              handleJoin(doc);
+            });
+          });
         }
         else {
+          //This should never happen
           handleError("Unspecified error");
         }
       });
@@ -182,6 +250,13 @@ exports.createGateway = function(db, rules, cb) {
     
     var num_regions = 0, closed = false;
     
+    var check_finished = function() {
+      if(num_regions == 0 && closed) {
+        cb(null, gateway);
+      }
+    }
+    
+    
     cursor.each(function(err, region) {  
       if(err) {
         console.log("Error enumerating regions: " + err);
@@ -189,7 +264,13 @@ exports.createGateway = function(db, rules, cb) {
         return;
       }
       else if(region !== null) {
+      
+        //Register region
+        gateway.regions[region.region_name] = region._id;
+      
         num_regions++;
+        
+        //Start instance server
         var instance = new Instance(region, db, gateway, rules);
         instance.start(function(err) {
           num_regions--;
@@ -198,8 +279,8 @@ exports.createGateway = function(db, rules, cb) {
             check_finished();
           }
           else {
-            console.log("Registered instance: " + region);
-            instances[region._id] = instance;
+            console.log("Registered instance: " + JSON.stringify(region));
+            gateway.instances[region._id] = instance;
             check_finished();
           }
         });

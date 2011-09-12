@@ -1,13 +1,12 @@
 var ObjectID = require('mongodb').ObjectID,
     Entity = require("./entity.js").Entity;
 
-// A function that just eats events
+// A function that just eats events (called when updating the database)
 function sink(err, result) {
   if(err) {
     console.log(err);
   }
 }
-
 
 //----------------------------------------------------------------
 // A player connection
@@ -21,12 +20,45 @@ function Player(player_rec, entity) {
   //Input from client
   this.client_state = {};
   
-  //Known entities
-  this.known_entities = {};
-  this.pending_entity_updates = [];
-  this.pending_entity_deletes = [];
+  //Entity replication information
+  this.cached_entities = {};
+  this.pending_entity_updates = {};
+  this.pending_entity_deletes = {};
 }
 
+Player.prototype.init = function() {
+  this.update_interval = setInterval(this.pushUpdates, 50);
+}
+
+Player.prototype.deinit = function() {
+  this.clearInterval(this.update_interval);
+}
+
+//Deletes an entity on the client
+Player.prototype.deleteEntity = function(entity) {
+  var entity_id = entity.state._id;
+  if(entity_id in this.cached_entities) {
+    delete this.cached_entities[entity_id];
+  }
+  if(entity_id in this.pending_entity_updates) {
+    delete this.pending_entity_updates[entity_id];
+  }
+  this.pending_entity_deletes[entity_id] = true;
+}
+
+//Marks an entity for getting updated
+Player.prototype.updateEntity = function(entity) {
+  this.pending_entity_updates[entity.state._id] = true;
+}
+
+//Pushes updates to the player over the network
+Player.prototype.pushUpdates = function() {
+
+  //FIXME: Push entity updates here
+
+  this.pending_entity_updates = {};
+  this.pending_entity_deletes = {};
+}
 
 //----------------------------------------------------------------
 // An Instance is a process that simulates a region in the game.
@@ -52,9 +84,14 @@ Instance.prototype.start = function(cb) {
   //Reset message queues
   this.dirty_entities = [];
   this.deleted_entities = [];
+  
+  
+  //Get ref to db
+  var db    = this.db,
+      inst  = this;
 
   //Thaw out all the objects
-  db.entities.find({ region: this.region._id }, function(err, cursor) {
+  db.entities.find({ region: inst.region._id }, function(err, cursor) {
     //Check for database error
     if(err) {
       cb(err);
@@ -66,21 +103,25 @@ Instance.prototype.start = function(cb) {
       if(err !== null) {
         cb(err);
       } else if(entity !== null) {
-        entities[entity._id] = this.createEntity(entity);
+        //Do not instantiate player entities until they actually connect
+        if(entity.type && entity.type == 'player') {
+          return;
+        }
+        entities[entity._id] = inst.createEntity(entity);
       } else {
       
         //Start running
-        this.running = true;
+        inst.running = true;
       
         //Initialize all the entities
-        for(var id in this.entities) {
-          this.entities[id].init();
-          this.updateEntity(this.entities[id]);
+        for(var id in inst.entities) {
+          inst.entities[id].init();
+          inst.updateEntity(inst.entities[id]);
         }
       
         //Set up interval counters
-        this.tick_interval = setInterval(this.tick, 100);
-        this.sync_interval = setInterval(this.sync, 5000);
+        inst.tick_interval = setInterval( function() { inst.tick(); }, 50);
+        inst.sync_interval = setInterval( function() { inst.sync(); }, 10000);
         
         
         //Continue
@@ -107,22 +148,22 @@ Instance.prototype.stop = function(callback) {
   for(var id in this.entities) {
     this.entities[id].deinit();
     this.db.entities.save(entities[id].state, sink);
-  }  
+  }
 }
 
 //Tick all the entities in the game world
 Instance.prototype.tick = function() {
   var id, ent;
-  for(id in entities) {
-    ent = entities[id];
+  for(id in this.entities) {
+    ent = this.entities[id];
     if(!ent.active || ent.deleted)
       continue;
     ent.tick();
   }
   
   //Check for any entities that got modified (need to do this after all ticks are complete)
-  for(id in entities) {
-    ent = entities[id];
+  for(id in this.entities) {
+    ent = this.entities[id];
     
     //If the entity does not need to be checked, don't do it.
     if(ent.deleted || (!(ent.persistent && !dirty) && !ent.net_replicated)) {
@@ -197,7 +238,7 @@ Instance.prototype.updateEntity = function(entity) {
   //Mark entity in each player
   if(entity.net_replicated) {
     for(var player_id in this.players) {
-      this.players[player_id].notifyEntity(entity);
+      this.players[player_id].updateEntity(entity);
     }
     
     //If entity is one-shot, only replicate it once
@@ -210,30 +251,81 @@ Instance.prototype.updateEntity = function(entity) {
 //Synchronize with the database
 Instance.prototype.sync = function() {
   var e;
-  for(var i=0; i<dirty_entities.length; ++i) {
-    e = entities[dirty_entities[i]];
+  for(var i=0; i<this.dirty_entities.length; ++i) {
+    e = this.entities[this.dirty_entities[i]];
     if(!e.deleted) {
-      db.entities.save(e.state, sink);
+      this.db.entities.save(e.state, sink);
       e.dirty = false;
     }
   }
-  dirty_entities.length = 0;
+  this.dirty_entities.length = 0;
 
-  for(var i=0; i<deleted_entities.length; ++i) {
-    db.entities.remove({id: deleted_entities[i]}, sink);
+  for(var i=0; i<this.deleted_entities.length; ++i) {
+    this.db.entities.remove({id: this.deleted_entities[i]}, sink);
   }
-  deleted_entities.length = 0;
+  this.deleted_entities.length = 0;
 }
 
 
-//Called when a player connects
-Instance.prototype.addPlayer = function(player_rec) {
-  console.log("Player connected: " + player_id);
+//Called when a player enters the instance
+Instance.prototype.activatePlayer = function(player_rec, cb) {
+  
+  if((player_rec.entity_id in this.entities) ||
+     (player_rec._id in this.players) ) {
+    cb("Player already in instance");
+    return;
+  }
+  
+  //Extract player entity from database
+  var instance = this;
+  this.db.entities.find({ _id:player_rec.entity_id }, function(err, player_entity) {
+  
+    //Create the player entity
+    var entity = instance.createEntity(player_entity);
+    
+    //Add to player list
+    var player = new Player(player_rec, entity);
+    this.players[player_rec._id] = player;
+    player.start();
+    
+    //Done
+    cb(null);
+  });
 }
 
-//Called when a player diconnects
-Instance.prototype.removePlayer = function(player_id) {
-  console.log("Player disconnected: " + player_id);
+//Called when a player leaves the instance
+Instance.prototype.deactivatePlayer = function(player_id, cb) {
+  
+  //Remove from player list
+  var player = this.players[player_id];
+  if(!player) {
+    cb("Player does not exist");
+    return;
+  }
+  delete this.players[player_id];
+  
+  var entity_id = player.entity.state._id;
+  
+  //Remove player from dirty entity list
+  for(var i=0; i<dirty_entities.length; ++i) {
+    if(dirty_entities[i] == entity_id) {
+      dirty_entities[i] = dirty_entities[dirty_entities.length-1];
+      dirty_entities.length = dirty_entities.length -1;
+    }
+  }
+  
+  //Remove from entity list
+  delete this.entities[entity_id];
+  
+  //Remove entity from all players
+  for(var pl in this.players) {
+    this.players[pl].deleteEntity(player.entity);
+  }
+  
+  //Save entity changes to database, and continue
+  this.db.entities.update(player.entity, function(err, doc) {
+    cb(err);
+  });
 }
 
 exports.Instance = Instance;
