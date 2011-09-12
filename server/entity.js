@@ -65,15 +65,7 @@ Entity.prototype.deinit = function() {
 
 //Checks if an entity was modified
 Entity.prototype.checkModified = function() {
-
-  console.log("prev_state = " + JSON.stringify(this.last_state));
-  console.log("next_state = " + JSON.stringify(this.state));
-
-  var patch = patcher.computePatch(this.last_state, this.state, true);
-  
-  console.log("delta = " + JSON.stringify(patch));
-  
-  return !!patch;
+  return !!patcher.computePatch(this.last_state, this.state, true);
 }
 
 exports.Entity = Entity;
