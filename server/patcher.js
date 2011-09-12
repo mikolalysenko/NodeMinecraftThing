@@ -153,7 +153,7 @@ function applyPatch(obj, patch) {
 
 
 //Add methods to patcher
-if(typeof(exports) == "unedefined") {
+if(exports === "undefined") {
   patcher.computePatch = computePatch;
   patcher.applyPatch   = applyPatch;
 } else {

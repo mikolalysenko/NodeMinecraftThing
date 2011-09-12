@@ -1,4 +1,4 @@
-var patcher = require("../common/patcher.js");
+var patcher = require("../server/patcher.js");
 
 function assert(expr, mesg) {
   if(!expr) {
