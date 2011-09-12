@@ -1,4 +1,5 @@
-var path = require('path');
+var path = require('path'),
+    util = require('util');
 
 //Default settings
 var settings = {
@@ -33,7 +34,7 @@ for(var i in argv) {
 var rules = new (require('./rules.js').Rules)(settings.game_dir);
 
 //Create http server & websocket server
-console.log("Starting server...");
+util.log("Starting server...");
 var express = require('express');
 var server = express.createServer();
 server.use(express.static(settings.wwwroot));
@@ -43,7 +44,7 @@ require("./database.js").initializeDB(settings.db_name, settings.db_server, sett
 
   var cc = function(err) {
     if(err) {
-      console.log("Error initializing world");
+      util.log("Error initializing world");
       db.close();
       return;
     }
@@ -51,7 +52,7 @@ require("./database.js").initializeDB(settings.db_name, settings.db_server, sett
     //Start the gateway server
     require("./gateway.js").createGateway(db, rules, function(err, gateway) {
       if(err) {
-        console.log("Error creating gateway: " + err);
+        util.log("Error creating gateway: " + err);
         db.close();
         return;
       }
@@ -61,7 +62,7 @@ require("./database.js").initializeDB(settings.db_name, settings.db_server, sett
       server.listen(settings.web_port);
 
       //Off to the races!
-      console.log("Server initialized!"); 
+      util.log("Server initialized!"); 
     });
   };
   

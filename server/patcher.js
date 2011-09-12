@@ -9,11 +9,12 @@
 //-------------------------------------------------------------
 
 //node.js interoperability
-if(typeof(exports) == "undefined") {
+if(exports === undefined) {
   var patcher = {};
 }
 
 (function(){
+
 
 //-------------------------------------------------------------
 // Helper function, clones an object doing a deep copy
@@ -22,7 +23,7 @@ function clone(obj) {
   if(obj === null) {
     return null;
     
-  } else if(typeof(obj) != "object") {
+  } else if(typeof(obj) !== "object") {
     return obj;
     
   } else if(obj instanceof Array) {
@@ -45,8 +46,6 @@ function clone(obj) {
 // Computes a patch between a pair of json objects
 // Note that this assumes both prev and next are simple, acyclic
 // dictionaries.  This does not support serializing functions.
-// Also removals are stored in a special field called "_r", so 
-// don't name any variables that.
 //
 //  prev - Object we are patching from
 //  next - Object we are patching to
@@ -57,31 +56,33 @@ function clone(obj) {
 //    2. null if the objects are equal.
 //-------------------------------------------------------------
 function computePatch(prev, next, update_in_place) {
-  var updates = { }, removals = [ ];
+  var updates = { }, has_updates = false;
   
   //Checks if an element common to prev and next 
   var processElement = function(id) {
+  
+    //Add _ to escape ids which start with _
+    var target_id = (typeof(id) === "string" && id.charAt(0) == "_" ? "_" + id : id);
+    
     //First, check if the element exists and types match
-    if(id in prev && typeof(prev[id]) == typeof(next[id])) {
+    if(id in prev && typeof(prev[id]) === typeof(next[id])) {
     
-    
-      if(typeof(next[id]) == "object") {
+      if(typeof(next[id]) === "object") {
       
-        //Check for overloaded equals method
-        if(next[id].equals !== undefined && next[id].equals(prev[id])) { 
+        if(next[id].equals !== undefined && next[id].equals(prev[id])) {
           return;
         }
-        else if( (prev[id] instanceof Array) == (next[id] instanceof Array) ) {
-        
+        else if((prev[id] instanceof Array) == (next[id] instanceof Array) ) {
           //Object case
           var res = computePatch(prev[id], next[id], update_in_place);
-          if(res) {
-            updates[id] = res;
+          if(res !== null) {
+            has_updates = true;
+            updates[target_id] = res;
           }
           return;
         }
       }
-      else if(prev[id] == next[id]) {
+      else if(prev[id] === next[id]) {
       
         //P.O.D. case
         return;
@@ -89,22 +90,23 @@ function computePatch(prev, next, update_in_place) {
     }
     
     //Add to update list
-    updates[id] = clone(next[id]);
+    has_updates = true;
+    updates[target_id] = clone(next[id]);
+    
     if(update_in_place) {
-      prev[id] = updates[id];
+      prev[id] = updates[target_id];
     }
   };
   
   //Two cases to deal with for plain old javascript objects:
   if(next instanceof Array) {
     //Case 1: Arrays
-    if(prev.length != next.length) {
-      for(var i=prev.length-1; i>next.length; --i) {
-        removals.push(i);
-      }
+    if(prev.length !== next.length) {
       if(update_in_place) {
         prev.length = next.length;
       }
+      has_updates = true;
+      updates["_r"] = next.length;
     }
     for(var i=next.length-1; i>=0; --i) {
       processElement(i);
@@ -112,14 +114,20 @@ function computePatch(prev, next, update_in_place) {
     
   } else {
     //Case 2: Objects
+    var removals = [];
     for(var i in prev) {
       if(!(i in next)) {
         removals.push(i);
       }
     }
-    if(update_in_place) {
-      for(var i=removals.length-1; i>=0; --i) {
-        delete prev[removals[i]];
+    if(removals.length > 0) {
+      has_updates = true;
+      updates["_r"] = (removals.length === 1 ? removals[0] : removals);
+      
+      if(update_in_place) {
+        for(var i=removals.length-1; i>=0; --i) {
+          delete prev[removals[i]];
+        }
       }
     }
     for(var i in next) {
@@ -127,11 +135,10 @@ function computePatch(prev, next, update_in_place) {
     }
   }
   
-  //If nothing changed, don't post an update
-  if(removals.length > 0) {
-    updates["_r"] = removals;  
+  if(has_updates) {
+    return updates;
   }
-  return updates;
+  return null;
 };
 
 
@@ -139,29 +146,43 @@ function computePatch(prev, next, update_in_place) {
 // Applies a patch to an object
 //-------------------------------------------------------------
 function applyPatch(obj, patch) {
-  var removals = patch["_r"], i;
-  if(removals) {
-    for(i=0; i<removals.length; ++i) {
-      delete obj[removals[i]];
+  var i;
+  if("_r" in patch) {
+    if(obj instanceof Array) {
+      obj.length = patch["_r"];
+    }
+    else {
+      var removals = patch["_r"];
+      
+      if(removals instanceof Array) {
+        for(i=0; i<removals.length; ++i) {
+          delete obj[removals[i]];
+        }
+      } else {
+        delete obj[removals];
+      }
     }
     delete patch["_r"];
   }
   
   for(i in patch) {
-    if(typeof(obj[i]) == typeof(patch[i]) &&
-      typeof(patch[i]) == "object" &&
-      patch[i] != null &&
-      (obj[i] instanceof Array) == (patch[i] instanceof Array)) {
-      applyPatch(obj[i], patch[i]);
+    //Unescape underscore
+    var t = (typeof(i) === "string" && i.charAt(0) == "_" ? i.substring(1) : i);
+    
+    if(typeof(obj[t]) === typeof(patch[i]) &&
+      typeof(patch[i]) === "object" &&
+      patch[i] !== null &&
+      (obj[t] instanceof Array) === (patch[i] instanceof Array)) {
+      applyPatch(obj[t], patch[i]);
       continue;
     }
-    obj[i] = patch[i]
+    obj[t] = patch[i]
   }
 };
 
 
 //Add methods to patcher
-if(exports === "undefined") {
+if(exports === undefined) {
   patcher.computePatch = computePatch;
   patcher.applyPatch   = applyPatch;
 } else {
