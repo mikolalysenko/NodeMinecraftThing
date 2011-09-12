@@ -64,14 +64,22 @@ function computePatch(prev, next, update_in_place) {
     //First, check if the element exists and types match
     if(id in prev && typeof(prev[id]) == typeof(next[id])) {
     
-      if(typeof(next[id]) == "object" && (prev[id] instanceof Array) == (next[id] instanceof Array) ) {
+    
+      if(typeof(next[id]) == "object") {
       
-        //Object case
-        var res = computePatch(prev[id], next[id], update_in_place);
-        if(res) {
-          updates[id] = res;
+        //Check for overloaded equals method
+        if(next[id].equals !== undefined && next[id].equals(prev[id])) { 
+          return;
         }
-        return;
+        else if( (prev[id] instanceof Array) == (next[id] instanceof Array) ) {
+        
+          //Object case
+          var res = computePatch(prev[id], next[id], update_in_place);
+          if(res) {
+            updates[id] = res;
+          }
+          return;
+        }
       }
       else if(prev[id] == next[id]) {
       
