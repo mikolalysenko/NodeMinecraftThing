@@ -1,4 +1,6 @@
-var DNode = require('dnode'),
+var util = require('util'),
+    ObjectID = require('mongodb').ObjectID,
+    DNode = require('dnode'),
     Instance = require('./instance.js').Instance;
 
 //--------------------------------------------------------------
@@ -32,7 +34,16 @@ function ClientInterface(gateway) {
     });
     
     //Define the RPC interface
-    this.joinGame = function(player_name, player_password, cb) {      
+    this.joinGame = function(player_name, player_password, cb) {
+    
+      if(client.state != "prelogin") {
+        util.log("Got spam join event, discarding.  Session id = " + client.session_id + ", name = " + player_name);
+        cb("Processing...");
+        return;
+      }
+    
+      client.state = "login";
+    
       gateway.joinGame(
         client,
         player_name,
@@ -40,8 +51,12 @@ function ClientInterface(gateway) {
         function (err) {
           if(err) {
             client.state = "prelogin";
+            cb(err);
           }
-          cb(err);
+          else {
+            client.state = "game";
+            cb("");
+          }
         });
     };
     
@@ -86,13 +101,13 @@ Gateway.prototype.lookupRegion = function(region_name) {
 // Connection events
 //--------------------------------------------------------------
 Gateway.prototype.clientConnect = function(client) {
-  console.log("Client connected: " + client.session_id);
+  util.log("Client connected: " + client.session_id);
 
   this.clients[client.session_id] = client;
 }
 
 Gateway.prototype.clientDisconnect = function(client) {
-  console.log("Client disconnected: " + client.session_id);
+  util.log("Client disconnected: " + client.session_id);
   
   client.state = "disconnect";
   if(client.session_id in this.clients) {
@@ -105,12 +120,7 @@ Gateway.prototype.clientDisconnect = function(client) {
 //--------------------------------------------------------------
 
 Gateway.prototype.joinGame = function(client, player_name, password, cb) {
-  if(client.state != "prelogin") {
-    console.log("Got spam join event, discarding.  Session id = " + client.session_id + ", name = " + player_name);
-    cb("Processing...");
-    return;
-  }
-
+ 
   //Validate player name
   if(player_name.length < 3 || player_name.length > 36 ||
      !(player_name.match(/^[0-9a-zA-Z]+$/))) {
@@ -124,19 +134,21 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
     return;
   }
 
-  console.log("Player joining: " + player_name);
+  util.log("Player joining: " + player_name);
 
-  //Set state
-  client.state = "login";
+
+  //Join successful function
+  var gateway = this;
 
   //Handles the actual join event
-  var handleJoin = function(player_rec) {
-  
-    //Set player state
-    client.state = "game";
-  
-    //Lookup instance
-    var region_id = player_rec['region_id'];
+  var handleJoin = function(player_rec, entity_rec) {
+
+    util.log('player joining: ' + JSON.stringify(player_rec) + ', entity: ' + JSON.stringify(entity_rec));
+
+    
+    //Pull out region id
+    var region_id = entity_rec['region_id'];
+    
     if(!region_id) {
       cb("Missing player region id");
       return;
@@ -148,27 +160,32 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
     }
     
     //Activate the player
-    instance.activatePlayer(player_rec, function(err) {
+    instance.activatePlayer(player_rec, entity_rec, function(err) {
       if(err) {
         client.state = "prelogin";
+        cb(err);
+        return;
       }
-      cb(err);
+      cb(null);
     });
   };
   
   var handleError = function(err_mesg) {
-    client.state = "prelogin";
-    
-    console.log("Error: " + err_mesg);
-    
+    util.log("Error: " + err_mesg);
     cb(err_mesg);
   };
   
-  var gateway = this;
   this.db.players.findOne({ 'name': player_name }, function(err, doc) {
     if(doc) {
       if(doc.password == password) {
-        handleJoin(doc);
+        gateway.db.entities.findOne({ '_id': doc.entity_id }, function(err, ent) {
+          if(err) {
+            handleError("Error locating player entity: " + JSON.stringify(err));
+            return;
+          }
+          
+          handleJoin(doc, ent);
+        });
       }
       else {
         handleError("Invalid password");
@@ -176,51 +193,30 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
     }
     else {
       //Assume player not found, then create record
-      console.log("Creating player: " + player_name);
-      gateway.db.players.save({ 'name':player_name, 'password':password }, function(err, doc) {
+      util.log("Creating player: " + player_name);
+          
+      //Create player entity
+      gateway.rules.createPlayerEntity(player_name, function(err, player_entity) {
+      
         if(err) {
-          handleError("Error creating account");
+          handleError("Error creating player entity: " + JSON.stringify(err));
           return;
         }
-        else if(doc) {
+        
+        //Create player entity
+        gateway.db.players.save({
+          'name':player_name,
+          'password':password,
+          'entity_id':player_entity._id }, function(err, doc) {
           
-          console.log('doc = ' + JSON.stringify(doc));
-          
-          
-          //Create player entity
-          gateway.rules.createPlayerEntity(player_name, function(err, player_entity) {
-          
-            console.log("here2");
-            
             if(err) {
-              handleError("Error creating player entity: " + JSON.stringify(err));
+              handleError("Error setting player entity?! " + JSON.stringify(err));
               return;
             }
+            util.log('doc = ' + JSON.stringify(doc));
             
-            //Link entity id back to player object
-            doc.entity_id = player_entity._id;
-            
-            console.log("Doing upsert with: " + JSON.stringify(doc));
-            
-            gateway.db.players.save(doc, function(err, doc) {
-            
-              console.log("here");
-            
-              if(err) {
-                handleError("Error setting player entity?! " + JSON.stringify(err));
-                return;
-              }
-              
-              console.log('doc = ' + JSON.stringify(doc));
-              
-              handleJoin(doc);
-            });
-          });
-        }
-        else {
-          //This should never happen
-          handleError("Unspecified error");
-        }
+            handleJoin(doc, player_entity);
+        });
       });
     }
   });
@@ -243,7 +239,7 @@ exports.createGateway = function(db, rules, cb) {
   //Start all of the regions
   db.regions.find({ }, function(err, cursor) {
     if(err) {
-      console.log("Error loading regions");
+      util.log("Error loading regions");
       cb(err, null);
       return;
     }
@@ -259,7 +255,7 @@ exports.createGateway = function(db, rules, cb) {
     
     cursor.each(function(err, region) {  
       if(err) {
-        console.log("Error enumerating regions: " + err);
+        util.log("Error enumerating regions: " + err);
         cb(err, null);
         return;
       }
@@ -275,11 +271,11 @@ exports.createGateway = function(db, rules, cb) {
         instance.start(function(err) {
           num_regions--;
           if(err) {
-            console.log("Error starting region instance: " + region + ", reason: " + err);
+            util.log("Error starting region instance: " + region + ", reason: " + err);
             check_finished();
           }
           else {
-            console.log("Registered instance: " + JSON.stringify(region));
+            util.log("Registered instance: " + JSON.stringify(region));
             gateway.instances[region._id] = instance;
             check_finished();
           }

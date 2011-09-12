@@ -45,15 +45,17 @@ Rules.prototype.initializeWorld = function(db, cb) {
       
       //Save the region to the database
       db.regions.save(record, function(err, region) {
-        if(err) {
-          console.log("Error creating region!");
-        }
-        
-        //FIXME: Create entities in this region
-        
-        if(--pending_regions == 0) {
-          cb(null);
-        }
+        setTimeout(function() {
+          if(err) {
+            console.log("Error creating region!");
+          }
+          
+          //FIXME: Create entities in this region
+          
+          if(--pending_regions == 0) {
+            cb(null);
+          }
+        }, 0);
       });
     }
   };
@@ -63,11 +65,13 @@ Rules.prototype.initializeWorld = function(db, cb) {
   db.entities.remove({}, function(err, r) {
     db.regions.remove({}, function(err, r) {
       db.players.remove({}, function(err, r) {
-        if(err) {
-          cb(err);
-          return;
-        }
-        createWorld();
+        setTimeout(function() {
+          if(err) {
+            cb(err);
+            return;
+          }
+          createWorld();
+        }, 0);
       });
     });
   });  
@@ -78,7 +82,6 @@ Rules.prototype.createPlayerEntity = function(player_name, cb) {
   
   //Compute player spawn position
   var player_spawn = this.game_module.playerSpawn(player_name);
-  
   if(!('region' in player_spawn)) {
     cb("Missing region data in playerSpawn");
     return;
@@ -99,7 +102,7 @@ Rules.prototype.createPlayerEntity = function(player_name, cb) {
   };
   
   this.db.entities.save(record, function(err, player) {
-    cb(err, player);
+    cb(err, record);
   });
 };
 

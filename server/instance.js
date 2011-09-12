@@ -1,10 +1,11 @@
-var ObjectID = require('mongodb').ObjectID,
+var util = require('util'),
+    ObjectID = require('mongodb').ObjectID,
     Entity = require("./entity.js").Entity;
 
 // A function that just eats events (called when updating the database)
 function sink(err, result) {
   if(err) {
-    console.log(err);
+    util.log(err);
   }
 }
 
@@ -14,7 +15,7 @@ function sink(err, result) {
 function Player(player_rec, entity) {
 
   //Player record  
-  this.player_id = player_id;
+  this.player_id = player_rec._id;
   this.entity    = entity;
   
   //Input from client
@@ -180,6 +181,8 @@ Instance.prototype.tick = function() {
 //Creates an entity from the state
 Instance.prototype.createEntity = function(state) {
 
+  util.log("Creating entity: " + JSON.stringify(state));
+
   //Generate entity id if needed
   if(!("_id" in state)) {
     state["_id"] = new ObjectID();
@@ -191,10 +194,10 @@ Instance.prototype.createEntity = function(state) {
   entity.state.region = this.region.region_id;
   
   //Add components to entity
-  rules.initializeComponents(entity);
+  this.rules.initializeComponents(entity);
   
   //Initialize the entity if we are running
-  if(running) {
+  if(this.running) {
     entity.init();
     this.updateEntity(entity);
   }
@@ -268,7 +271,7 @@ Instance.prototype.sync = function() {
 
 
 //Called when a player enters the instance
-Instance.prototype.activatePlayer = function(player_rec, cb) {
+Instance.prototype.activatePlayer = function(player_rec, player_entity, cb) {
   
   if((player_rec.entity_id in this.entities) ||
      (player_rec._id in this.players) ) {
@@ -277,20 +280,19 @@ Instance.prototype.activatePlayer = function(player_rec, cb) {
   }
   
   //Extract player entity from database
-  var instance = this;
-  this.db.entities.find({ _id:player_rec.entity_id }, function(err, player_entity) {
+  util.log("player entity = " + JSON.stringify(player_entity.keys));
   
-    //Create the player entity
-    var entity = instance.createEntity(player_entity);
-    
-    //Add to player list
-    var player = new Player(player_rec, entity);
-    this.players[player_rec._id] = player;
-    player.start();
-    
-    //Done
-    cb(null);
-  });
+
+  //Create the player entity
+  var entity = this.createEntity(player_entity);
+  
+  //Add to player list
+  var player = new Player(player_rec, entity);
+  this.players[player_rec._id] = player;
+  player.init();
+  
+  //Done
+  cb(null);
 }
 
 //Called when a player leaves the instance
@@ -302,6 +304,7 @@ Instance.prototype.deactivatePlayer = function(player_id, cb) {
     cb("Player does not exist");
     return;
   }
+  player.deinit();
   delete this.players[player_id];
   
   var entity_id = player.entity.state._id;

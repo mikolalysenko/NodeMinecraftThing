@@ -63,3 +63,5 @@ Entity.prototype.deinit = function() {
   this.emitter.emit('deinit');
 }
 
+exports.Entity = Entity;
+
