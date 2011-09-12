@@ -1,6 +1,7 @@
 var util = require('util'),
     ObjectID = require('mongodb').ObjectID,
-    Entity = require("./entity.js").Entity;
+    Entity = require("./entity.js").Entity,
+    patcher = require("./patcher.js");
 
 // A function that just eats events (called when updating the database)
 function sink(err, result) {
@@ -164,24 +165,12 @@ Instance.prototype.tick = function() {
   
   //Check for any entities that got modified (need to do this after all ticks are complete)
   for(id in this.entities) {
-    ent = this.entities[id];
-    
-    //If the entity does not need to be checked, don't do it.
-    if(ent.deleted || (!(ent.persistent && !dirty) && !ent.net_replicated)) {
-      continue;
-    }
-      
-    //Check if entity got modified, do copy on write
-    if(ent.checkModified()) {
-      this.updateEntity(ent);
-    }
+    this.updateEntity(this.entities[id]);
   }
 }
 
 //Creates an entity from the state
 Instance.prototype.createEntity = function(state) {
-
-  util.log("Creating entity: " + JSON.stringify(state));
 
   //Generate entity id if needed
   if(!("_id" in state)) {
@@ -234,12 +223,23 @@ Instance.prototype.updateEntity = function(entity) {
     return;
   }
   
-  if(!entity.dirty) {
+  var persistent = entity.persistent && (!entity.dirty),
+      replicated = entity.net_replicated,
+      need_check = persistent || replicated; 
+  
+  //Check if the entity was modified
+  if( !(need_check && entity.checkModified()) ) {
+    return;
+  }
+  
+  //If the entity is not dirty
+  if(persistent) {
+    entity.dirty = true;
     this.dirty_entities.push(entity);
   }
   
   //Mark entity in each player
-  if(entity.net_replicated) {
+  if(replicated) {
     for(var player_id in this.players) {
       this.players[player_id].updateEntity(entity);
     }
@@ -255,7 +255,8 @@ Instance.prototype.updateEntity = function(entity) {
 Instance.prototype.sync = function() {
   var e;
   for(var i=0; i<this.dirty_entities.length; ++i) {
-    e = this.entities[this.dirty_entities[i]];
+    e = this.dirty_entities[i];
+    util.log("Syncing: " + JSON.stringify(e.state));
     if(!e.deleted) {
       this.db.entities.save(e.state, sink);
       e.dirty = false;
@@ -264,7 +265,7 @@ Instance.prototype.sync = function() {
   this.dirty_entities.length = 0;
 
   for(var i=0; i<this.deleted_entities.length; ++i) {
-    this.db.entities.remove({id: this.deleted_entities[i]}, sink);
+    this.db.entities.remove({'_id': this.deleted_entities[i]}, sink);
   }
   this.deleted_entities.length = 0;
 }
@@ -279,10 +280,6 @@ Instance.prototype.activatePlayer = function(player_rec, player_entity, cb) {
     return;
   }
   
-  //Extract player entity from database
-  util.log("player entity = " + JSON.stringify(player_entity.keys));
-  
-
   //Create the player entity
   var entity = this.createEntity(player_entity);
   

@@ -12,8 +12,6 @@ Game.draw_interval  = null;
 //Starts executing the game state
 Game.init = function(cb) {
 
-  alert("In game state!");
-
 	//Initialize input
 	Input.init(function(err) {
 	  if(err) {

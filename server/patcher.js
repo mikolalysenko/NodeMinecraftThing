@@ -73,7 +73,7 @@ function computePatch(prev, next, update_in_place) {
         }
         return;
       }
-      else if(prev[id] === next[id]) {
+      else if(prev[id] == next[id]) {
       
         //P.O.D. case
         return;

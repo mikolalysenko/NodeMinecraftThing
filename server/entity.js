@@ -1,4 +1,5 @@
-var EventEmitter = require('events').EventEmitter;
+var EventEmitter = require('events').EventEmitter,
+    patcher = require('./patcher.js');
 
 //----------------------------------------------------------------
 // Entities are composite objects built from many communicating components.
@@ -21,9 +22,8 @@ function Entity(instance, state) {
   this.emitter    = new EventEmitter();   //Event emitter for sending events
 
   //Server-side config                     
-  this.active     = true;        //When turned off, tick is not called on the entity.  Entity is not updated or replicated to database (used for player entities when not logged in, for example)
-  this.persistent = false;       //If set, entity gets stored to db.  This is done using copy-on-write semantics.
-  this.net_replicated = false;   //If set, then the entity gets sent across the network
+  this.persistent = true;        //If set, entity gets stored to db.  This is done using copy-on-write semantics.
+  this.net_replicated = true;    //If set, then the entity gets sent across the network
                                  // Useful for objects that are important for the client or have long lives.
   this.net_cache  = false;       //If set along with net_replicated, keep track of entity state for each player to delta encode updates.  
                                  // Useful for big entities with, small frequently changing variables.
@@ -61,6 +61,19 @@ Entity.prototype.tick = function() {
 //Stop the entity (do not call this to delete an enemy, call destroy instead)
 Entity.prototype.deinit = function() {
   this.emitter.emit('deinit');
+}
+
+//Checks if an entity was modified
+Entity.prototype.checkModified = function() {
+
+  console.log("prev_state = " + JSON.stringify(this.last_state));
+  console.log("next_state = " + JSON.stringify(this.state));
+
+  var patch = patcher.computePatch(this.last_state, this.state, true);
+  
+  console.log("delta = " + JSON.stringify(patch));
+  
+  return !!patch;
 }
 
 exports.Entity = Entity;

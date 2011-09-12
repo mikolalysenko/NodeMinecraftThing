@@ -11,6 +11,7 @@ function ClientConnection(session_id, rpc, conn) {
   this.rpc        = rpc;
   this.connection = conn;
   this.player_id  = null;
+  this.instance   = null;
   this.state      = "prelogin";
 }
 
@@ -60,8 +61,8 @@ function ClientInterface(gateway) {
         });
     };
     
-    this.leaveGame = function(cb) {
-      gateway.leaveGame(client, cb);
+    this.chat = function(mesg) {
+      gateway.chat(client, mesg);
     };
   });
 }
@@ -109,14 +110,20 @@ Gateway.prototype.clientConnect = function(client) {
 Gateway.prototype.clientDisconnect = function(client) {
   util.log("Client disconnected: " + client.session_id);
   
+  var pstate = client.state;
+
   client.state = "disconnect";
   if(client.session_id in this.clients) {
     delete this.clients[client.session_id];
   }
+    
+  if(pstate == "game") {
+    client.instance.deactivatePlayer(client.player_id, function() { });
+  }
 }
 
 //--------------------------------------------------------------
-// Login events
+// Player login
 //--------------------------------------------------------------
 
 Gateway.prototype.joinGame = function(client, player_name, password, cb) {
@@ -136,16 +143,17 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
 
   util.log("Player joining: " + player_name);
 
-
   //Join successful function
   var gateway = this;
 
   //Handles the actual join event
   var handleJoin = function(player_rec, entity_rec) {
 
-    util.log('player joining: ' + JSON.stringify(player_rec) + ', entity: ' + JSON.stringify(entity_rec));
+    if(client.state == "disconnect") {
+      util.log('Client disconnected while logging in');
+      return;
+    }
 
-    
     //Pull out region id
     var region_id = entity_rec['region_id'];
     
@@ -158,6 +166,9 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
       cb("Player region does not exist!");
       return;
     }
+    
+    //Set client instance
+    client.instance = instance;
     
     //Activate the player
     instance.activatePlayer(player_rec, entity_rec, function(err) {
@@ -193,7 +204,7 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
     }
     else {
       //Assume player not found, then create record
-      util.log("Creating player: " + player_name);
+      util.log("Creating new player: " + player_name);
           
       //Create player entity
       gateway.rules.createPlayerEntity(player_name, function(err, player_entity) {
@@ -213,19 +224,12 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
               handleError("Error setting player entity?! " + JSON.stringify(err));
               return;
             }
-            util.log('doc = ' + JSON.stringify(doc));
             
             handleJoin(doc, player_entity);
         });
       });
     }
   });
-}
-
-Gateway.prototype.leaveGame = function(client, cb) {
-
-  //FIXME: Handle player leave event here
-
 }
 
 
