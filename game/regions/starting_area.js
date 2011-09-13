@@ -1,6 +1,6 @@
 exports.region_name = "Starting Area";
 
-exports.register = function(inst) {
+exports.registerInstance = function(inst) {
 
 var instance  = inst,
     region    = inst.region,

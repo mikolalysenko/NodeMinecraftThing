@@ -39,38 +39,44 @@ var express = require('express');
 var server = express.createServer();
 server.use(express.static(settings.wwwroot));
 
-//Connect to database
-require("./database.js").initializeDB(settings.db_name, settings.db_server, settings.db_port, function(db) {
 
-  function startGame(err) {
-    if(err) {
-      util.log("Error initializing world: " + err);
-      db.close();
-      return;
-    }
+rules.init(function(err) {
+  if(err) {
+    util.log("Error creating rules: " + err);
+    return;
+  }
 
-    //Start the gateway server
-    require("./gateway.js").createGateway(server, db, rules, function(err, gateway) {
+  //Connect to database
+  require("./database.js").initializeDB(settings.db_name, settings.db_server, settings.db_port, function(db) {
+
+    function startGame(err) {
       if(err) {
-        util.log("Error creating gateway: " + err);
+        util.log("Error initializing world: " + err);
         db.close();
         return;
       }
-      
-      //Start http server
-      server.listen(settings.web_port);
 
-      //Off to the races!
-      util.log("Server initialized!"); 
-    });
-  };
-  
-  //Check if we need to initialize the world
-  if(settings.RESET) {
-    rules.initializeWorld(db, startGame);
-  } else {
-    startGame(null);
-  }
-  
+      //Start the gateway server
+      require("./gateway.js").createGateway(server, db, rules, function(err, gateway) {
+        if(err) {
+          util.log("Error creating gateway: " + err);
+          db.close();
+          return;
+        }
+        
+        //Start http server
+        server.listen(settings.web_port);
+
+        //Off to the races!
+        util.log("Server initialized!"); 
+      });
+    };
+    
+    //Check if we need to initialize the world
+    if(settings.RESET) {
+      rules.initializeWorld(db, startGame);
+    } else {
+      startGame(null);
+    }
+  });
 });
-

@@ -1,18 +1,26 @@
 
-//Game components (give path to component file here)
-exports.components = {
-  'player' : 'components/player_component.js',
-};
-
 //Game regions
 exports.regions = [
   require('./regions/starting_area.js'),
 ];
 
-//Entity type classes (basically name of type, followed by list of components)
-exports.entity_templates = {
-  'player' : [ 'player' ],
-};
+//Game components
+exports.components = [
+  { name       : 'player',
+    path       : './components/player_component.js',
+    server     : true,
+    client     : true,
+  },
+];
+
+//Entity templates
+exports.entity_templates = [
+  { name        : 'player',
+    components  : [ 'player' ],
+    server      : true,
+    client      : true,
+  },
+];
 
 //Set up initial data for a player and their entity
 exports.createPlayer = function(player_name, options) {

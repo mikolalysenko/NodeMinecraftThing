@@ -1,5 +1,6 @@
 var util = require('util'),
     path = require('path'),
+    fs = require('fs'),
     mount = require('./mount.js').mount,
     ObjectID = require('mongodb').ObjectID,
     DNode = require('dnode'),
@@ -217,69 +218,71 @@ exports.createGateway = function(server, db, rules, cb) {
   gateway.server.listen(server);
   
   //Create list of files to mount
-  var mount_files = {
-    '/patcher.js' : path.join(__dirname, '/patcher.js'),
-  };
-  
-  //Mount files
-  mount(server, mount_files, function(err) {
+  var patcher_path = path.join(__dirname, '/patcher.js');
+
+  //Mount files  
+  mount(server, {
+    '/patcher.js' : { 
+      src: fs.readFileSync(patcher_path), 
+      modified: fs.statSync(patcher_path).mtime,
+    },
+    '/components.js' : {
+      src: rules.client_file,
+      modified: rules.client_mtime,
+    },
+  });
+
+  //Start all of the regions
+  db.regions.find({ }, function(err, cursor) {
     if(err) {
-      cb("Error mounting files: " + err);
+      util.log("Error loading regions: " + err);
+      cb(err, null);
       return;
     }
-
-    //Start all of the regions
-    db.regions.find({ }, function(err, cursor) {
+    
+    var num_regions = 0, closed = false;
+    
+    function check_finished() {
+      if(num_regions == 0 && closed) {
+        cb(null, gateway);
+      }
+    }
+    
+    cursor.each(function(err, region) {  
       if(err) {
-        util.log("Error loading regions: " + err);
+        util.log("Error enumerating regions: " + err);
         cb(err, null);
         return;
       }
+      else if(region !== null) {
       
-      var num_regions = 0, closed = false;
+        //Register region
+        gateway.regions[region.region_name] = region._id;
       
-      function check_finished() {
-        if(num_regions == 0 && closed) {
-          cb(null, gateway);
-        }
+        num_regions++;
+        
+        
+        util.log("Starting region: " + JSON.stringify(region));
+        
+        //Start instance server
+        var instance = new Instance(region, db, gateway, rules);
+        instance.start(function(err) {
+          num_regions--;
+          if(err) {
+            util.log("Error starting region instance: " + region + ", reason: " + err);
+            check_finished();
+          }
+          else {
+            util.log("Registered instance: " + JSON.stringify(region));
+            gateway.instances[region._id] = instance;
+            check_finished();
+          }
+        });
       }
-      
-      cursor.each(function(err, region) {  
-        if(err) {
-          util.log("Error enumerating regions: " + err);
-          cb(err, null);
-          return;
-        }
-        else if(region !== null) {
-        
-          //Register region
-          gateway.regions[region.region_name] = region._id;
-        
-          num_regions++;
-          
-          
-          util.log("Starting region: " + JSON.stringify(region));
-          
-          //Start instance server
-          var instance = new Instance(region, db, gateway, rules);
-          instance.start(function(err) {
-            num_regions--;
-            if(err) {
-              util.log("Error starting region instance: " + region + ", reason: " + err);
-              check_finished();
-            }
-            else {
-              util.log("Registered instance: " + JSON.stringify(region));
-              gateway.instances[region._id] = instance;
-              check_finished();
-            }
-          });
-        }
-        else {
-          closed = true;
-          check_finished();
-        }
-      });
+      else {
+        closed = true;
+        check_finished();
+      }
     });
   });
 }

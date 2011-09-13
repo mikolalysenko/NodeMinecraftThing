@@ -34,7 +34,6 @@ function Entity(instance, state) {
   //Internal variables
   this.instance   = instance;    //A reference to the region instance this entity is in
   this.last_state = {};          //Last state entity was in
-  this.components = [];          //The entity component set
   this.deleted    = false;       //When set, the entity has been marked for deletion.  This object reference is just a zombie
   this.dirty      = false;       //If set, the entity has pending writes and will be moved to DB at next sync point
 }
@@ -42,12 +41,6 @@ function Entity(instance, state) {
 //--------------------------------------------------------
 // Methods that game logic and scripts should never call:
 //--------------------------------------------------------
-
-//Adds a component to the entity
-Entity.prototype.addComponent = function(component) {
-  this.components.push(component);
-  component.register(this);
-}
 
 //Initialize the entity (this is called by the instance at start time, do not call this)
 Entity.prototype.init = function() {

@@ -1,27 +1,11 @@
+//Player component
+var util = require('util');
 
-var PositionComponent = {};
-
-if(typeof(exports) !== "undefined") {
-  PositionComponent = exports;
-}
-
-(function(){
-
-
-PositionComponent.init = function(instance) {  
+exports.registerInstance = function(instance) {
+  util.log("Registered instance");
 };
 
-PositionComponent.deinit = function(instance) {
+exports.registerEntity = function(entity) {
+  util.log("Registered entity");
 };
 
-PositionComponent.register = function(entity) {
-  var state = entity.state;
-  if(!state.position) {
-    state.position = [0,0,0];
-  }
-  if(!state.rotation) {
-    state.rotation = 0;
-  }
-};
-
-})();
