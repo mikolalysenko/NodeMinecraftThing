@@ -1,22 +1,32 @@
 
-//Game components
-exports.components = [];
+//Game components (give path to component file here)
+exports.components = {
+  'player' : 'components/player_component.js',
+};
 
 //Game regions
 exports.regions = [
-
-  { region_name: 'Starting Area' },
-  
-  { region_name: 'Dungeon' },
+  require('./regions/starting_area.js'),
 ];
 
-//Player spawn location/parameter function
-exports.playerSpawn = function(player_name) {
-  return { region: 'Starting Area' };
+//Entity type classes (basically name of type, followed by list of components)
+exports.entity_templates = {
+  'player' : [ 'player' ],
+};
+
+//Set up initial data for a player and their entity
+exports.createPlayer = function(player_name, options) {
+  
+  var player_rec = {
+    'player_name' : player_name,
+  };
+  
+  var entity_rec = {
+    'player_name' : player_name,
+    'type' : 'player',
+  };
+  
+  return [player_rec, entity_rec, 'Starting Area'];
 }
 
-//Entity type classes
-exports.entity_types = {
-  'player' : [],
-};
 

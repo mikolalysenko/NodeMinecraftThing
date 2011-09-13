@@ -37,7 +37,7 @@ function ClientInterface(gateway) {
     });
     
     //Define the RPC interface
-    this.joinGame = function(player_name, player_password, cb) {
+    this.joinGame = function(player_name, player_password, options, cb) {
     
       if(client.state != "prelogin") {
         util.log("Got spam join event, discarding.  Session id = " + client.session_id + ", name = " + player_name);
@@ -51,6 +51,7 @@ function ClientInterface(gateway) {
         client,
         player_name,
         player_password,
+        options,
         function (err) {
           if(err) {
             client.state = "prelogin";
@@ -78,7 +79,7 @@ function Gateway(db, rules) {
   this.clients           = {};
   this.db                = db;
   this.rules             = rules;
-  this.rules.register(this);
+  this.rules.registerGateway(this);
   
   //List of regions in the game
   this.regions           = {};
@@ -124,24 +125,20 @@ Gateway.prototype.clientDisconnect = function(client) {
 // Player login
 //--------------------------------------------------------------
 
-Gateway.prototype.joinGame = function(client, player_name, password, cb) {
+Gateway.prototype.joinGame = function(client, player_name, password, options, cb) {
  
-  //Validate player name
+  //Validate
   if(player_name.length < 3 || player_name.length > 36 ||
      !(player_name.match(/^[0-9a-zA-Z]+$/))) {
      cb("Invalid player name");
      return;
   }
-  
-  //Validate password (lame, I know)
   if(password.length < 1 || password.length > 128) {
     cb("Invalid password");
     return;
   }
-
+  
   util.log("Player joining: " + player_name);
-
-  //Join successful function
   var gateway = this;
 
   //Handles the actual join event
@@ -152,9 +149,8 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
       return;
     }
 
-    //Pull out region id
+    //Look up instance
     var region_id = entity_rec['region_id'];
-    
     if(!region_id) {
       cb("Missing player region id");
       return;
@@ -164,9 +160,6 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
       cb("Player region does not exist!");
       return;
     }
-    
-    //Set client instance
-    client.instance = instance;
     
     //Activate the player
     instance.activatePlayer(client, player_rec, entity_rec, function(err) {
@@ -183,16 +176,16 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
     cb(err_mesg);
   };
   
-  this.db.players.findOne({ 'name': player_name }, function(err, doc) {
-    if(doc) {
-      if(doc.password == password) {
-        gateway.db.entities.findOne({ '_id': doc.entity_id }, function(err, ent) {
+  this.db.players.findOne({ 'name': player_name }, function(err, player_rec) {
+    if(player_rec) {
+      if(player_rec.password == password) {
+        gateway.db.entities.findOne({ '_id': doc.entity_id }, function(err, entity_rec) {
           if(err) {
             handleError("Error locating player entity: " + JSON.stringify(err));
             return;
           }
           
-          handleJoin(doc, ent);
+          handleJoin(player_rec, entity_rec);
         });
       }
       else {
@@ -202,28 +195,13 @@ Gateway.prototype.joinGame = function(client, player_name, password, cb) {
     else {
       //Assume player not found, then create record
       util.log("Creating new player: " + player_name);
-          
-      //Create player entity
-      gateway.rules.createPlayerEntity(player_name, function(err, player_entity) {
       
+      gateway.rules.createPlayer(player_name, password, options, function(err, player_rec, entity_rec) {
         if(err) {
           handleError("Error creating player entity: " + JSON.stringify(err));
           return;
         }
-        
-        //Create player entity
-        gateway.db.players.save({
-          'name':player_name,
-          'password':password,
-          'entity_id':player_entity._id }, function(err, doc) {
-          
-            if(err) {
-              handleError("Error setting player entity?! " + JSON.stringify(err));
-              return;
-            }
-            
-            handleJoin(doc, player_entity);
-        });
+        handleJoin(player_rec, entity_rec);
       });
     }
   });
@@ -260,12 +238,11 @@ exports.createGateway = function(server, db, rules, cb) {
       
       var num_regions = 0, closed = false;
       
-      var check_finished = function() {
+      function check_finished() {
         if(num_regions == 0 && closed) {
           cb(null, gateway);
         }
       }
-      
       
       cursor.each(function(err, region) {  
         if(err) {
@@ -279,6 +256,9 @@ exports.createGateway = function(server, db, rules, cb) {
           gateway.regions[region.region_name] = region._id;
         
           num_regions++;
+          
+          
+          util.log("Starting region: " + JSON.stringify(region));
           
           //Start instance server
           var instance = new Instance(region, db, gateway, rules);
@@ -297,11 +277,7 @@ exports.createGateway = function(server, db, rules, cb) {
         }
         else {
           closed = true;
-        }
-        
-        if(num_regions == 0 && closed) {
-          cb(null, gateway);
-          return;
+          check_finished();
         }
       });
     });

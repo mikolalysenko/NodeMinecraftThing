@@ -1,0 +1,19 @@
+Region data exists only sever.  It is not replicated to the client.  Region data is persistent.
+
+
+Events:
+
+  construct - Called when region is first constructed, use to create initial entities, etc. (This happens before first construct)
+  
+  init      - Called when the instance for a region starts up
+  
+  tick      - Called once per tick
+  
+  spawn[, entity]   - Called when an entity gets spawned
+  
+  destroy[, entity]   - Called when an entity gets destroyed
+  
+  join[, player]    - Called when a player joins the instance
+  
+  depart[, player]   - Called when a player leaves the instance
+  

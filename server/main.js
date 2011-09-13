@@ -42,9 +42,9 @@ server.use(express.static(settings.wwwroot));
 //Connect to database
 require("./database.js").initializeDB(settings.db_name, settings.db_server, settings.db_port, function(db) {
 
-  var cc = function(err) {
+  function startGame(err) {
     if(err) {
-      util.log("Error initializing world");
+      util.log("Error initializing world: " + err);
       db.close();
       return;
     }
@@ -67,9 +67,9 @@ require("./database.js").initializeDB(settings.db_name, settings.db_server, sett
   
   //Check if we need to initialize the world
   if(settings.RESET) {
-    rules.initializeWorld(db, cc);
+    rules.initializeWorld(db, startGame);
   } else {
-    cc(null);
+    startGame(null);
   }
   
 });

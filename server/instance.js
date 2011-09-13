@@ -1,4 +1,5 @@
 var util = require('util'),
+    EventEmitter = require('events').EventEmitter,
     ObjectID = require('mongodb').ObjectID,
     Entity = require("./entity.js").Entity,
     patcher = require("./patcher.js");
@@ -16,8 +17,9 @@ function sink(err, result) {
 function Player(instance, client, player_rec, entity) {
 
   //Player record  
-  this.player_id = player_rec._id;
+  this.state     = player_rec;
   this.entity    = entity;
+  this.emitter   = new EventEmitter();
   
   //RPC interface
   this.client    = client;
@@ -37,10 +39,16 @@ function Player(instance, client, player_rec, entity) {
 Player.prototype.init = function(instance) {
   var player = this;
   this.update_interval = setInterval(function() { player.pushUpdates(); }, 50);
+  this.emitter.emit('init');
 }
 
 Player.prototype.deinit = function() {
   this.clearInterval(this.update_interval);
+  this.emitter.emit('deinit');
+}
+
+Player.prototype.tick = function() {
+  this.emitter.emit('tick');
 }
 
 //Deletes an entity on the client
@@ -81,13 +89,9 @@ Player.prototype.pushUpdates = function() {
       
       var patch = patcher.computePatch(known_entities[id], entity.state);
       patch._id = entity.state._id;
-      
-      util.log(patch);
       buffer.push(patch);
     }
     else {
-    
-      util.log(JSON.stringify(entity.state));
       buffer.push(entity.state);
     }
   }
@@ -119,7 +123,11 @@ function Instance(region, db, gateway, rules) {
   this.running    = false;
   this.gateway    = gateway;
   this.rules      = rules;
+  this.emitter    = new EventEmitter();
 }
+
+Instance.prototype.TICK_TIME    = 50;
+Instance.prototype.SYNC_TIME    = 60 * 1000;
 
 //Start the instance server
 Instance.prototype.start = function(cb) {  
@@ -132,8 +140,7 @@ Instance.prototype.start = function(cb) {
   this.dirty_entities = [];
   this.deleted_entities = [];
   
-  
-  //Get ref to db
+  //Save ref to db
   var db    = this.db,
       inst  = this;
 
@@ -144,7 +151,7 @@ Instance.prototype.start = function(cb) {
       cb(err);
       return;
     }
-    
+        
     //Iterate over result set
     cursor.each(function(err, entity) {
       if(err !== null) {
@@ -154,7 +161,7 @@ Instance.prototype.start = function(cb) {
         if(entity.type && entity.type == 'player') {
           return;
         }
-        entities[entity._id] = inst.createEntity(entity);
+        inst.entities[entity._id] = inst.createEntity(entity);
       } else {
       
         //Start running
@@ -167,9 +174,16 @@ Instance.prototype.start = function(cb) {
         }
       
         //Set up interval counters
-        inst.tick_interval = setInterval( function() { inst.tick(); }, 50);
-        inst.sync_interval = setInterval( function() { inst.sync(); }, 10000);
+        inst.tick_interval = setInterval( function() { inst.tick(); }, inst.TICK_TIME);
+        inst.sync_interval = setInterval( function() { inst.sync(); }, inst.SYNC_TIME);
         
+        //Send events to game
+        inst.rules.registerInstance(inst);
+        if(inst.region.brand_new) {
+          inst.region.brand_new = false;
+          inst.emitter.emit('construct');
+        }
+        inst.emitter.emit('init');
         
         //Continue
         cb(null);
@@ -180,10 +194,20 @@ Instance.prototype.start = function(cb) {
 
 //Tick all the entities in the game world
 Instance.prototype.tick = function() {
+
+  //Send a tick event to the game world
+  this.emitter.emit('tick');
+  
+  //Tick all players
+  for(var pl in this.players) {
+    this.players[pl].tick();
+  }
+
+  //Tick all the entities
   var id, ent;
   for(id in this.entities) {
     ent = this.entities[id];
-    if(!ent.active || ent.deleted)
+    if(ent.deleted)
       continue;
     ent.tick();
   }
@@ -208,11 +232,12 @@ Instance.prototype.createEntity = function(state) {
   entity.state.region = this.region.region_id;
   
   //Add components to entity
-  this.rules.initializeComponents(entity);
+  this.rules.registerEntity(entity);
   
   //Initialize the entity if we are running
   if(this.running) {
     entity.init();
+    this.emitter.emit('spawn', entity);
     this.updateEntity(entity);
   }
 }
@@ -232,10 +257,11 @@ Instance.prototype.destroyEntity = function(entity) {
   if( !(typeof(entity) === "object" && entity instanceof Entity) ) {
     entity = this.entities[entity];
   }
-
   if(!entity || entity.deleted) {
     return;
   }
+  
+  this.emitter.emit('destroy', entity);
 
   //Deinitialize entity  
   entity.deinit();
@@ -293,6 +319,8 @@ Instance.prototype.updateEntity = function(entity) {
 
 //Synchronize with the database
 Instance.prototype.sync = function() {
+
+  //Apply entity updates
   var e;
   for(var i=0; i<this.dirty_entities.length; ++i) {
     e = this.dirty_entities[i];
@@ -304,10 +332,19 @@ Instance.prototype.sync = function() {
   }
   this.dirty_entities.length = 0;
 
+  //Apply entity deletes
   for(var i=0; i<this.deleted_entities.length; ++i) {
     this.db.entities.remove({'_id': this.deleted_entities[i]}, sink);
   }
   this.deleted_entities.length = 0;
+  
+  //Synchronize all players
+  for(var pl in this.players) {
+    this.db.players.update(pl.state, sink);
+  }
+  
+  //Synchronize region
+  this.db.regions.update(this.region, sink);
 }
 
 
@@ -320,14 +357,23 @@ Instance.prototype.activatePlayer = function(client, player_rec, entity_rec, cb)
     return;
   }
   
+  //Set client instance
+  client.instance = this;
+  
   //Create the player entity
   var player_entity = this.createEntity(entity_rec);
   
   //Add to player list
   var player = new Player(this, client, player_rec, player_entity);
   this.players[player_rec._id] = player;
+  
+  //Initialize player
+  this.rules.registerPlayer(player);
   player.init();
   
+  //Send a join event to all listeners
+  this.emitter.emit('join', player);
+    
   //Send initial copy of game state to player
   for(var id in this.entities) {
     var entity = this.entities[id];
@@ -349,6 +395,9 @@ Instance.prototype.deactivatePlayer = function(player_id, cb) {
     cb("Player does not exist");
     return;
   }
+  
+  this.emitter.emit('depart', player);
+  
   player.deinit();
   delete this.players[player_id];
   
@@ -371,8 +420,10 @@ Instance.prototype.deactivatePlayer = function(player_id, cb) {
   }
   
   //Save entity changes to database, and continue
-  this.db.entities.update(player.entity, function(err, doc) {
-    cb(err);
+  this.db.players.update(player.state, function(err0, doc0) {
+    this.db.entities.update(player.entity.state, function(err1, doc1) {
+      cb(err0 || err1);
+    });
   });
 }
 

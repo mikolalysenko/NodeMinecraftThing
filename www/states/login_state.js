@@ -4,6 +4,8 @@ var LoginState = { };
 
 (function(){
 
+  var logging_in = false;
+
   LoginState.init = function(cb) {
     var loginPane = document.getElementById('loginPane');
     loginPane.style.display = 'block';
@@ -14,11 +16,19 @@ var LoginState = { };
         loginError    = document.getElementById('loginError');
   
     loginButton.onclick = function() {
+
+      if(logging_in) {
+        loginError.innerHTML = "Processing...";
+        return;
+      }
+      logging_in = true;
     
       var player_name = loginName.value,
           password    = loginPassword.value;
-
-      Network.rpc.joinGame(player_name, password, function(err) {
+      
+      Network.rpc.joinGame(player_name, password, {}, function(err) {
+        logging_in = false;
+        
         if(err) {
           loginError.innerHTML = err;
           return;
