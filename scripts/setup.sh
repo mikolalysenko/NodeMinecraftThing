@@ -54,6 +54,13 @@ if [ $ret -ne 0 ] || ! [ -x "$mongo" ]; then
   tar xzf mongo.tgz
   mv mongodb-linux-i686-static-1.8.3/bin/* .
   rm -rf mongodb-linux-i686-static-1.8.3 mongo.tgz
+  mkdir db
+  echo 'dbpath    = ./mongo/db
+logpath   = ./mongo/mongodb.log
+bind_ip   = 127.0.0.1
+port      = 27017
+logappend = true
+auth      = false' > config.txt
   cd ..
 fi
 

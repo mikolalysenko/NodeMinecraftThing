@@ -17,14 +17,7 @@ function Entity(instance, state) {
   this.state        = state;
   this.emitter      = new EventEmitter();
   this.instance     = instance;
-  this.components   = [];
 };
-
-//Adds a component to the entity
-Entity.prototype.addComponent = function(component) {
-  this.components.push(component);
-  component.register(this);
-}
 
 //Initialize the entity (this is called by the instance at start time, do not call this)
 Entity.prototype.init = function() {
@@ -54,12 +47,16 @@ Entity.prototype.draw = function() {
 function Instance() {
   this.entities     = {};
   this.running      = false;
+  this.emitter      = new EventEmitter();
 }
 
 //Initialize instance
 Instance.prototype.init = function(cb) {
   this.tickInterval = setInterval(this.tick, 100);
   this.running = true;
+  for(var id in components) {
+    components[id].registerInstance(this);
+  }
   cb(null);
 }
 
@@ -102,7 +99,13 @@ Instance.prototype.createEntity = function(state) {
   var entity = new Entity(this, state);
   this.entities[state._id] = entity;
   
-  //FIXME: Register components
+  var type = state.type;
+  if(type) {
+    var template = entity_templates[type];
+    for(var i=0; i<template.length; ++i) {
+      template[i].registerEntity(entity);
+    }
+  }
   
   entity.init();  
   return entity;

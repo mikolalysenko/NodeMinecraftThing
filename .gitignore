@@ -1,9 +1,6 @@
 *.log
 *~
-data/dbpasswd
-data/db/*
 mongo/*
 *.o
-*antlr*
 node_modules/*
 

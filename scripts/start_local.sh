@@ -1,4 +1,4 @@
 #!/bin/sh
-./mongo/mongod --config=data/config.txt &
+./mongo/mongod --config=mongo/config.txt &
 sleep 1
-node main.js &
+node server/main.js > server.log &
