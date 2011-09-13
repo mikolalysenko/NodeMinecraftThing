@@ -37,4 +37,6 @@ exports.createPlayer = function(player_name, options) {
   return [player_rec, entity_rec, 'Starting Area'];
 }
 
-
+//Called when a player is created within an instance
+exports.registerPlayer = function(player) {
+}

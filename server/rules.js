@@ -170,6 +170,7 @@ Rules.prototype.registerEntity = function(entity) {
 
 //Registers a player upon connecting to the game
 Rules.prototype.registerPlayer = function(player) {
+  this.game_module.registerPlayer(player);
 }
 
 //Create the game world from scratch
