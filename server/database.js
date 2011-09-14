@@ -8,14 +8,14 @@ exports.initializeDB = function(db_name, db_server, db_port, next) {
   db.open(function(err, db){
 
     if(err) {
-      console.log("Error connecting to database");
+      util.log("Error connecting to database");
       return;
     }
     
     function addCollection(col, cb) {
       db.collection(col, function(err, collection) {
         if(err) {
-          console.log("Error adding collection '" + col + "': " + err);
+          util.log("Error adding collection '" + col + "': " + err);
           return;
         }
         db[col] = collection;
@@ -23,11 +23,13 @@ exports.initializeDB = function(db_name, db_server, db_port, next) {
       });
     }
     
-    addCollection('entities', function() { 
+    addCollection('entities', function() {
       addCollection('players', function() { 
-        addCollection('regions', function() {
-          next(db);
-        }); 
+        db.players.ensureIndex([['player_name',1]], true, function() {
+          addCollection('regions', function() {
+            next(db);
+          }); 
+        });
       });
     });
   });

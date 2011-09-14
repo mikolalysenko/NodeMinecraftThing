@@ -15,35 +15,26 @@ Game.instance       = null;
 //Starts executing the game state
 Game.init = function(cb) {
 
+  //Create instance
+  Game.instance = new Client.Instance();
+  Game.instance.init();
+  
 	//Initialize input
-	Input.init(function(err) {
-	  if(err) {
-	    cb(err);
-	    return;
-	  }
-	  
-	  //Create instance
-	  Game.instance = new Client.Instance();
-	  Game.instance.init(function(err) {
-	    if(err) {
-	      cb(err);
-	      return;
-	    }
-	  
-	    //Show game UI and resize it
-	    document.getElementById('gamePane').style.display = 'block';
-	    Render.resize();
+	Input.init();
 
-      //Bind necessary callbacks
-	    window.onresize = Render.resize;
-	    
-	    //Start running the game
-	    Game.running 		     = true;
-	    Game.tick_interval 	 = setInterval(Game.tick, 50);
-	    Game.draw_interval 	 = setInterval(Game.draw, 20);
-	    
-	  });
-	});
+  //Show game UI and resize it
+  document.getElementById('gamePane').style.display = 'block';
+  Render.resize();
+
+  //Bind necessary callbacks
+  window.onresize = Render.resize;
+  
+  //Start running the game
+  Game.running 		     = true;
+  Game.tick_interval 	 = setInterval(Game.tick, 50);
+  Game.draw_interval 	 = setInterval(Game.draw, 20);
+
+  cb(null);  
 };
 
 //Pauses/disables the game state
@@ -61,12 +52,14 @@ Game.deinit = function(cb) {
 	
 	window.onresize = null;
 	
-	Input.deinit(function(err) {
+	Input.deinit();
 	
-	  if(Game.instance) {
-      Game.instance.deinit(cb);
-    }
-	});
+	if(Game.instance) {
+  	Game.instance.deinit();
+	  delete Game.instance;
+  }
+  
+  cb(null);
 };
 
 //Called when the game ticks

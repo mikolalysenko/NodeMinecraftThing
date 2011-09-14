@@ -110,15 +110,22 @@ Gateway.prototype.clientConnect = function(client) {
 Gateway.prototype.clientDisconnect = function(client) {
   util.log("Client disconnected: " + client.session_id);
   
-  var pstate = client.state;
+  var gateway = this;
 
-  client.state = "disconnect";
-  if(client.session_id in this.clients) {
-    delete this.clients[client.session_id];
+  function finalizeLogout(err) {
+    if(err) {
+      util.log("Error logging out client: " + err);
+    }
+    client.state = "disconnect";
+    if(client.session_id in gateway.clients) {
+      delete gateway.clients[client.session_id];
+    }
   }
-    
-  if(pstate == "game") {
-    client.instance.deactivatePlayer(client.player_id, function() { });
+
+  if(client.state === "game") {
+    client.instance.deactivatePlayer(client.player_id, finalizeLogout);
+  } else {
+    finalizeLogout(null);
   }
 }
 
@@ -161,11 +168,14 @@ Gateway.prototype.joinGame = function(client, player_name, password, options, cb
       cb("Player region does not exist!");
       return;
     }
+
+    //Set player id
+    client.player_id = player_rec._id;
     
     //Activate the player
     instance.activatePlayer(client, player_rec, entity_rec, function(err) {
       if(err) {
-        cb(err);
+        cb("Error activating player: " + JSON.stringify(err));
         return;
       }
       cb(null);
@@ -177,16 +187,21 @@ Gateway.prototype.joinGame = function(client, player_name, password, options, cb
     cb(err_mesg);
   };
   
-  this.db.players.findOne({ 'name': player_name }, function(err, player_rec) {
+  this.db.players.findOne({ 'player_name': player_name }, function(err, player_rec) {
     if(player_rec) {
       if(player_rec.password == password) {
-        gateway.db.entities.findOne({ '_id': doc.entity_id }, function(err, entity_rec) {
+        util.log("Player connected: " + player_name);
+        gateway.db.entities.findOne({ '_id': player_rec.entity_id }, function(err, entity_rec) {
           if(err) {
             handleError("Error locating player entity: " + JSON.stringify(err));
             return;
           }
-          
-          handleJoin(player_rec, entity_rec);
+          else if(entity_rec) {          
+            handleJoin(player_rec, entity_rec);
+          }
+          else {
+            handleError("Missing player entity");
+          }
         });
       }
       else {
@@ -223,13 +238,12 @@ exports.createGateway = function(server, db, rules, cb) {
   //Mount files  
   mount(server, {
     '/patcher.js' : { 
-      src: fs.readFileSync(patcher_path), 
+      src: fs.readFileSync(patcher_path),
+      type: 'text/javascript',
       modified: fs.statSync(patcher_path).mtime,
     },
-    '/components.js' : {
-      src: rules.client_file,
-      modified: rules.client_mtime,
-    },
+    '/components.js'    : rules.client_file,
+    '/spritesheet.png'  : rules.spritesheet_file,
   });
 
   //Start all of the regions

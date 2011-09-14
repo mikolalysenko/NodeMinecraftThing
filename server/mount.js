@@ -11,7 +11,7 @@ exports.mount = function mount(server, cache) {
     if(req.url in cache) {
       var doc = cache[req.url];
       
-      res.setHeader('content-type', 'text/javascript');
+      res.setHeader('content-type', doc.type);
       res.setHeader('last-modified', doc.modified.toGMTString());
       res.setHeader('date', new Date().toGMTString());
       

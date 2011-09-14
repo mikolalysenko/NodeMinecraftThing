@@ -1,7 +1,5 @@
 var util = require('util'),
     EventEmitter = require('events').EventEmitter,
-    ObjectID = require('mongodb').ObjectID,
-    Entity = require("./entity.js").Entity,
     patcher = require("./patcher.js");
 
 // A function that just eats events (called when updating the database)
@@ -10,6 +8,66 @@ function sink(err, result) {
     util.log(err);
   }
 }
+
+
+//----------------------------------------------------------------
+// Entities are composite objects built from many communicating components.
+//  In other words,
+//    + state
+//    + components
+//    + an event emitter
+//
+// On the client side we need to reimplement event-listener, and also we can ignore
+// many of the networking/database variables
+//----------------------------------------------------------------
+function Entity(instance, state) {
+
+  //State variables
+  this.state      = state;       //A local cache of the database record representing this entity's state
+                                 //This data is what gets written to both the DB and the client.
+                                 // Put only dicts, arrays and pods in here, no fancy object types.
+
+  //Event handler
+  this.emitter    = new EventEmitter();   //Event emitter for sending events
+
+  //Server-side config                     
+  this.persistent = true;        //If set, entity gets stored to db.  This is done using copy-on-write semantics.
+  this.net_replicated = true;    //If set, then the entity gets sent across the network
+                                 // Useful for objects that are important for the client or have long lives.
+  this.net_cache  = false;       //If set along with net_replicated, keep track of entity state for each player to delta encode updates.  
+                                 // Useful for big entities with, small frequently changing variables.
+  this.net_one_shot = false;     //If set, only replicate entity creation event.  Do not synchronize after creation.
+                                 // Useful for projectiles and other shortly lived objects
+  this.net_priority = 1.0;       //Replication priority
+
+  //Internal variables
+  this.instance   = instance;    //A reference to the region instance this entity is in
+  this.last_state = {};          //Last state entity was in
+  this.deleted    = false;       //When set, the entity has been marked for deletion.  This object reference is just a zombie
+  this.dirty      = false;       //If set, the entity has pending writes and will be moved to DB at next sync point
+}
+
+//Initialize the entity (this is called by the instance at start time, do not call this)
+Entity.prototype.init = function() {
+  this.emitter.emit('init');
+}
+
+//Ticks the entity
+Entity.prototype.tick = function() {
+  this.emitter.emit('tick');
+}
+
+//Stop the entity (do not call this to delete an enemy, call destroy instead)
+Entity.prototype.deinit = function() {
+  this.emitter.emit('deinit');
+  this.emitter.removeAllListeners();
+}
+
+//Checks if an entity was modified
+Entity.prototype.checkModified = function() {
+  return !!patcher.computePatch(this.last_state, this.state, true);
+}
+
 
 //----------------------------------------------------------------
 // A player connection
@@ -43,8 +101,9 @@ Player.prototype.init = function(instance) {
 }
 
 Player.prototype.deinit = function() {
-  this.clearInterval(this.update_interval);
+  clearInterval(this.update_interval);
   this.emitter.emit('deinit');
+  this.emitter.removeAllListeners();
 }
 
 Player.prototype.tick = function() {
@@ -53,6 +112,8 @@ Player.prototype.tick = function() {
 
 //Deletes an entity on the client
 Player.prototype.deleteEntity = function(entity) {
+  util.log("Client: " + this.state._id + ", deleting entity: " + entity.state._id);
+
   var entity_id = entity.state._id;
   if(entity_id in this.cached_entities) {
     delete this.cached_entities[entity_id];
@@ -145,7 +206,7 @@ Instance.prototype.start = function(cb) {
       inst  = this;
 
   //Thaw out all the objects
-  db.entities.find({ region: inst.region._id }, function(err, cursor) {
+  db.entities.find({ region_id: inst.region._id }, function(err, cursor) {
     //Check for database error
     if(err) {
       cb(err);
@@ -229,7 +290,7 @@ Instance.prototype.createEntity = function(state) {
   //Create the entity and register it
   var entity = new Entity(this, state);
   this.entities[entity.state._id] = entity;
-  entity.state.region = this.region.region_id;
+  entity.state.region_id = this.region.region_id;
   
   //Add components to entity
   this.rules.registerEntity(entity);
@@ -240,6 +301,8 @@ Instance.prototype.createEntity = function(state) {
     this.emitter.emit('spawn', entity);
     this.updateEntity(entity);
   }
+  
+  return entity;
 }
 
 //Looks up an entity in this region
@@ -404,10 +467,10 @@ Instance.prototype.deactivatePlayer = function(player_id, cb) {
   var entity_id = player.entity.state._id;
   
   //Remove player from dirty entity list
-  for(var i=0; i<dirty_entities.length; ++i) {
-    if(dirty_entities[i] == entity_id) {
-      dirty_entities[i] = dirty_entities[dirty_entities.length-1];
-      dirty_entities.length = dirty_entities.length -1;
+  for(var i=0; i<this.dirty_entities.length; ++i) {
+    if(this.dirty_entities[i] == entity_id) {
+      this.dirty_entities[i] = this.dirty_entities[this.dirty_entities.length-1];
+      this.dirty_entities.length = this.dirty_entities.length -1;
     }
   }
   

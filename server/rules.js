@@ -111,10 +111,28 @@ Rules.prototype.init = function(cb) {
   loadComponents(function(err0) {
     loadTemplates(function(err1) {
     
-      client_file += '}})();';
+      client_file += '}})();\n';
       
-      rules.client_file   = client_file;
-      rules.client_mtime  = client_mtime;
+      //Add sprites and animations
+      client_file += fs.readFileSync(path.join(game_dir, '/sprites/index.js'), 'utf-8');
+      var sprite_mtime = fs.statSync(path.join(game_dir, '/sprites/index.js')).mtime;
+      if(sprite_mtime > client_mtime) {
+        client_mtime = sprite_mtime;
+      }
+      
+      //Cook up client file
+      rules.client_file   = { 
+        src:client_file, 
+        modified:client_mtime, 
+        type:'text/javascript'
+      };
+      
+      //Make the sprite file
+      rules.spritesheet_file = {
+        src: fs.readFileSync(path.join(game_dir, '/sprites/spritesheet.png')),
+        modified: fs.statSync(path.join(game_dir, '/sprites/spritesheet.png')).mtime,
+        type: 'image/png',
+      };
       
       util.log("Generated client component file = \n" + client_file);
       util.log("Last modified: " + client_mtime);
@@ -245,8 +263,8 @@ Rules.prototype.createPlayer = function(player_name, password, options, cb) {
   //Add to database
   var db = this.db;
   db.entities.save(entity_rec, function(err0) {
+    player_rec.entity_id = entity_rec._id;
     db.players.save(player_rec, function(err1) {
-      player_rec.entity_id = entity_rec._id;
       cb(err0 || err1, player_rec, entity_rec);
     });
   });

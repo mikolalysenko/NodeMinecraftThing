@@ -16,6 +16,7 @@ var Loader = {
 	
 	images :
 	[
+	  "spritesheet.png",
 	],
 
   sounds :
@@ -29,15 +30,13 @@ var Loader = {
 
   Loader.data = {};
   
-  var finished = false,
-      completed = 0, 
+  var completed = 0, 
       pending = 0;
 
   function progress_handler(url) {
     ++completed;
     Loader.emitter.emit('progress', url, completed, pending);
-    if(completed == pending) {
-      finished = true;
+    if(completed >= pending) {
       Loader.emitter.emit('finished');
     }
   };
@@ -52,7 +51,7 @@ var Loader = {
 		  if(XHR.readyState == 4) {
 			  if(XHR.status == 200 || XHR.status == 304 || XHR.status == 0) {
 				  Loader.data[url] = XHR.responseText;
-				  Loader.emitter.emit('text', url);
+				  Loader.emitter.emit('text', url, XHR.responseText);
 				  progress_handler(url);
 			  }
 			  else {
@@ -70,7 +69,7 @@ var Loader = {
 	  img.onload = function() {
 	    ++completed;
 		  Loader.data[url] = img;
-		  Loader.emitter.emit('image', url);
+		  Loader.emitter.emit('image', url, img);
 		  progress_handler(url);
 	  };
 	  img.onerror = function() {
@@ -85,7 +84,7 @@ var Loader = {
     audio.onload = function() {
       ++completed;
       Loader.data[url] = audio;
-      Loader.emitter.emit('audio', url);
+      Loader.emitter.emit('audio', url, audio);
       progress_handler(url);
     };
     audio.onerror = function() {
@@ -117,11 +116,13 @@ var Loader = {
   
   //Listens for a completed event in the loader
   Loader.listenFinished = function(listener) {    
-    if(finished) {
-      setTimeout(listener, 1);
+    if(completed >= pending) {
+      setTimeout(listener, 10);
       return;
     }
-    Loader.emitter.on('finished', listener);
+    else {
+      Loader.emitter.on('finished', listener);
+    }
   };
 
 })();

@@ -25,7 +25,7 @@ var local_interface = {
   //Deletes an entity
   deleteEntities : function(deletions) {
     if(Game.instance) {
-      for(var i=0; i<deletions.legnth; ++i) {
+      for(var i=0; i<deletions.length; ++i) {
         Game.instance.destroyEntity(deletions[i]);
       }
     }

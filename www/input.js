@@ -29,7 +29,7 @@ var Input = {
   mouse_state : [[0,0], [0,0]],
 
   //Bind all the input handlers for the game
-  init : function(cb) {
+  init : function() {
 
     //Reset state
 	  for(var i in Input.state) {
@@ -103,19 +103,16 @@ var Input = {
 		  }
 		  return true;
 	  };
-	
-	  cb(null);
   },
 
   //Clear input handlers
-  deinit : function(cb) {
+  deinit : function() {
 	  window.onkeyup      = null;
 	  window.onkeydown    = null;
 	  window.onmousemove  = null;
 	  window.onmousedown  = null;
 	  window.onmouseup    = null;
 	  window.onblur       = null;
-	  cb(null);
   },
 
   //Update input state

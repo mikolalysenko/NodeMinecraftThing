@@ -32,6 +32,7 @@ Entity.prototype.tick = function() {
 //Stop the entity (do not call this to delete an enemy, call destroy instead)
 Entity.prototype.deinit = function() {
   this.emitter.emit('deinit');
+  this.emitter.removeAllListeners();
 }
 
 //Draws the entity
@@ -51,17 +52,16 @@ function Instance() {
 }
 
 //Initialize instance
-Instance.prototype.init = function(cb) {
+Instance.prototype.init = function() {
   this.tickInterval = setInterval(this.tick, 100);
   this.running = true;
   for(var id in components) {
     components[id].registerInstance(this);
   }
-  cb(null);
 }
 
 //Shutdown instance
-Instance.prototype.deinit = function(cb) {
+Instance.prototype.deinit = function() {
   this.running = false;
   if(this.tickInterval) {
     clearInterval(this.tickInterval);  
@@ -69,7 +69,7 @@ Instance.prototype.deinit = function(cb) {
   for(var id in this.entities) {
     this.entities[id].deinit();
   }
-  cb(null);
+  this.emitter.removeAllListeners();
 }
 
 //Tick instance

@@ -42,8 +42,11 @@ App.setState = function(next_state, cb) {
       }
       return;
     }
-
-	  App.state.deinit(function(err) {	
+    
+    var tmp = App.state;
+    App.state = DefaultState;
+    
+	  tmp.deinit(function(err) {	
 	    if(err) {
 	      setCrashed(err, cb);
 	      return;
@@ -78,23 +81,19 @@ App.init = function() {
   });
 
 
-  //Connect to network
-  Network.init(function(err) {
+  //Start renderer
+  Render.init(function(err) {
     if(err) {
-      App.crash("Error connecting to server: " + err);
+      App.setState(NoWebGLState);
       return;
     }
-
-    //Initialize WebGL/rendering stuff
-    Render.init(function(err) {
+    //Connect to network
+    Network.init(function(err) {
       if(err) {
-        App.setState(NoWebGLState);
+        App.crash("Error connecting to server: " + err);
         return;
       }
-      else {
-        App.setState(LoginState);
-        return;
-      }
+      App.setState(LoginState);
     });
   });
 };
