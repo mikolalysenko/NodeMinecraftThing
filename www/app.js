@@ -71,7 +71,8 @@ App.setState = function(next_state, cb) {
 App.init = function() {
 
   //Start loading data in the background
-  Loader.init(function(missing_url) {
+  Loader.init();
+  Loader.emitter.on('error', function(url) {
     App.crash("Missing url: " + missing_url);
     return;
   });

@@ -3,27 +3,25 @@
 //The preloader
 var LoadState = {
 
-	init : function() {
-	  Game.preload();
-		if(Loader.finished) {
-			App.setState(Game);
-		}
-		else {
-			document.getElementById('progressPane').style.display = 'block';
-		}
-	},
+  init : function(cb) {
 
-	shutdown : function() {
-		document.getElementById('progressPane').style.display = 'none';
-	},
-
-	updateProgress : function(url) {
-		var prog_txt = document.getElementById('progressPane');
-		prog_txt.innerHTML = "Loaded: " + url + "<br\/\>%" + Loader.pct_loaded * 100.0 + " Complete";
+    var progress = document.getElementById('progressPane');
+	  progress.style.display = 'block';
 	
-		if(Loader.finished && App.state == LoadState)
-		{
-			App.setState(Game);
-		}
-	}
+	  Loader.emitter.on('progress', function(url, completed, pending) {
+	    var pct = completed / pending * 100.0;
+      progress.innerHTML = "Loaded: " + url + "<br\/\>%" + pct + " Complete";
+    });
+    
+    Loader.listenFinished(function() {
+      App.setState(Game);
+    });
+    
+    cb(null);
+  },
+
+  deinit : function(cb) {
+	  document.getElementById('progressPane').style.display = 'none';
+	  cb(null);
+  },
 };

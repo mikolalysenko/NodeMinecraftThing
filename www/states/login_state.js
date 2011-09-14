@@ -34,7 +34,7 @@ var LoginState = { };
           return;
         }
         
-        App.setState(Game);
+        App.setState(LoadState);
       });
       
       loginPassword.value = "";

@@ -21,6 +21,8 @@ var Loader = {
   sounds :
   [
   ],
+  
+  emitter : new EventEmitter(),
 };
 
 (function() {
@@ -29,23 +31,18 @@ var Loader = {
   
   var finished = false,
       completed = 0, 
-      pending = 0,
-      onprogress = null,
-      oncomplete = null;
+      pending = 0;
 
-  var progress_handler = function(url) {
+  function progress_handler(url) {
     ++completed;
+    Loader.emitter.emit('progress', url, completed, pending);
     if(completed == pending) {
       finished = true;
-      if(oncomplete) {
-        oncomplete();
-      }
-    } else if(onprogress) {
-      onprogress(completed, pending, url);
+      Loader.emitter.emit('finished');
     }
   };
   
-  var fetchText = function(url, cb) {
+  function fetchText(url) {
 	  ++pending;
   
 	  var XHR = new XMLHttpRequest();
@@ -55,10 +52,11 @@ var Loader = {
 		  if(XHR.readyState == 4) {
 			  if(XHR.status == 200 || XHR.status == 304 || XHR.status == 0) {
 				  Loader.data[url] = XHR.responseText;
+				  Loader.emitter.emit('text', url);
 				  progress_handler(url);
 			  }
 			  else {
-				  error_handler("Error loading text file: " + url);
+			    Loader.emitter.emit('error', url);
 			  }
 		  }
 	  }
@@ -66,82 +64,64 @@ var Loader = {
 	  XHR.send(null);
   };
 
-  var fetchImage = function(url, cb) {
+  function fetchImage(url) {
     ++pending;
 	  var img = new Image();
 	  img.onload = function() {
 	    ++completed;
 		  Loader.data[url] = img;
+		  Loader.emitter.emit('image', url);
 		  progress_handler(url);
 	  };
 	  img.onerror = function() {
-	    error_handler("Error loading image: " + url);
+	    Loader.emitter.emit('error', url);
 	  };
 	  img.src = url;
   };
   
-  var fetchAudio = function(url, error_handler) {
+  function fetchAudio(url) {
     ++pending;
     var audio = new Audio();
     audio.onload = function() {
       ++completed;
       Loader.data[url] = audio;
+      Loader.emitter.emit('audio', url);
       progress_handler(url);
     };
     audio.onerror = function() {
-      error_handler("Error loading audio: " + url);
+			    Loader.emitter.emit('error', url);
     };
     audio.src = url;
   };
 
   //Initializes the loader
-  Loader.init = function(error_handler) {
+  Loader.init = function() {
     var i;
     for(i=0; i<Loader.text.length; ++i) {
-      fetchText(Loader.text[i], error_handler);
+      fetchText(Loader.text[i]);
     }
     
     for(i=0; i<Loader.sounds.length; ++i) {
-      fetchAudio(Loader.sounds[i], error_handler);
+      fetchAudio(Loader.sounds[i]);
     }
     
     for(i=0; i<Loader.images.length; ++i) {
-      fetchImage(Loader.images[i], error_handler);
+      fetchImage(Loader.images[i]);
     }
   };
   
-  
-  //Waits until the loader is completed
-  Loader.listenProgress = function(progress) {
-    if(onprogress) {
-      var tprog = onprogress;
-      onprogress = function(c, p, u) {
-        progress(c, p, u);
-        tprog(c, p, u);
-      };
-    }
-    else {
-      onprogress = progress;
-    }
+  //Called upon crashing
+  Loader.deinit = function() {
+    Loader.emitter.removeAllListeners();
   };
   
   //Listens for a completed event in the loader
-  Loader.listenCompleted = function(complete) {    
+  Loader.listenFinished = function(listener) {    
     if(finished) {
-      setTimeout(complete, 1);
+      setTimeout(listener, 1);
       return;
     }
-
-    if(oncomplete) {
-      var tcomp = oncomplete;
-      oncomplete = function() {
-        completed();
-        tcomp();
-      }
-    }
-    else {
-      oncomplete = completed;
-    }
+    Loader.emitter.on('finished', listener);
   };
 
 })();
