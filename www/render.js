@@ -339,6 +339,7 @@ var Render = {
 	  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	  gl.enable(gl.DEPTH_TEST);
 	  gl.enable(gl.CULL_FACE);
+	  gl.disable(gl.BLEND);
 	
 	  //Set up intermediate variables
 	  Render.perspective(Render.fov_y, Render.width / Render.height, Render.z_near, Render.z_far);
@@ -389,7 +390,7 @@ void main(void) {\n\
 uniform sampler2D spritesheet;\n\
 varying vec2 tex_coord;\n\
 void main(void) {\n\
-	gl_FragColor = vec4(tex_coord, 0, 1) + texture2D(spritesheet, 10.0*tex_coord);\n\
+	gl_FragColor = texture2D(spritesheet, tex_coord);\n\
 }',
 
   //Options
@@ -432,7 +433,10 @@ void main(void) {\n\
     gl.activeTexture(gl.TEXTURE0);
     gl.enable(gl.TEXTURE_2D);
     gl.bindTexture(gl.TEXTURE_2D, spritesheet.texture);
-    shader.uniforms.spritesheet.set(0);
+    shader.uniforms.spritesheet.set(gl.TEXTURE0);
+    
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
     
     state.using_sprites = true;
   };
