@@ -385,23 +385,21 @@ if(typeof(Uint16Array) == "undefined") {
   		spritesheet.shader = Render.genShader(
 
 //Sprite vertex shader
-'attribute vec3 position;\n\
+'attribute vec3 pos;\n\
 \n\
 void main(void) {\n\
-	gl_Position = vec4(position, 1);\n\
+	gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);\n\
 }',
 		
 //Sprite frag shader
-'precision highp float;\n\
-\n\
-void main(void) {\n\
-	gl_FragColor = vec4(1,1,1,1);\n\
+'void main(void) {\n\
+	gl_FragColor = vec4(1.0,1.0,1.0,1.0);\n\
 }',
 
   //Options
   { explicit_frag : true, 
     explicit_vert : true,
-    attribs       : { 'position' : '3f', },
+    attribs       : { 'pos' : '3f', },
     uniforms      : { /* 'spritesheet' : '1i', 'sprite_rect' : '4f' */ },
   });
   
