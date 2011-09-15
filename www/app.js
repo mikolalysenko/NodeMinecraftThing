@@ -32,8 +32,14 @@ App.state = DefaultState;
 //This method fires an event, and so it will not block the code
 App.setState = function(next_state, cb) {
 
+  var tmp = App.state;
+
   //Otherwise, fire event to transition to next state
   setTimeout(function() {
+
+    if(App.state !== tmp) {
+      return;
+    }
   
     //Don't transition if we are already on the correct state
     if(App.state === next_state) {
@@ -43,16 +49,16 @@ App.setState = function(next_state, cb) {
       return;
     }
     
-    var tmp = App.state;
-    App.state = DefaultState;
-    
+    App.state = next_state;
 	  tmp.deinit(function(err) {	
 	    if(err) {
 	      setCrashed(err, cb);
 	      return;
 	    }
 	    else {
-	      App.state = next_state;
+	      if(App.state !== next_state) {
+	        return;
+	      }
 	      App.state.init(function(err) {
 	        if(err) {
 	          App.state.deinit(function(err2) {
@@ -93,7 +99,10 @@ App.init = function() {
         App.crash("Error connecting to server: " + err);
         return;
       }
-      App.setState(LoginState);
+      
+      if(App.state === DefaultState) {
+        App.setState(LoginState);
+      }
     });
   });
 };

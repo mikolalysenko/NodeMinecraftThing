@@ -19,14 +19,6 @@ var Render = {
 
 (function(){
 
-//Compatibility fixes
-if(typeof(Float32Array) == "undefined") {
-  var Float32Array = Array;
-}
-if(typeof(Uint16Array) == "undefined") {
-  var Uint16Array = Array;
-}
-
 //---------------------------------------------------
 // Initialization
 //---------------------------------------------------
@@ -341,15 +333,15 @@ if(typeof(Uint16Array) == "undefined") {
   
     //Reset opengl state  
   	var bg = Render.background_color;  
-    //gl.bindFramebuffer(gl.FRAMEBUFFER, null);	
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);	
 	  gl.viewport(0, 0, Render.width, Render.height);
 	  gl.clearColor(bg[0], bg[1], bg[2], bg[3]);
 	  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-	  //gl.disable(gl.DEPTH_TEST);
-	  //gl.disable(gl.CULL_FACE);
+	  gl.enable(gl.DEPTH_TEST);
+	  gl.enable(gl.CULL_FACE);
 	
 	  //Set up intermediate variables
-	  //Render.perspective(Render.fov_y, Render.width / Render.height, Render.z_near, Render.z_far);
+	  Render.perspective(Render.fov_y, Render.width / Render.height, Render.z_near, Render.z_far);
 	
 	  //Perform client side drawing
 	  draw_func(time);
@@ -385,29 +377,34 @@ if(typeof(Uint16Array) == "undefined") {
   		spritesheet.shader = Render.genShader(
 
 //Sprite vertex shader
-'attribute vec3 pos;\n\
-\n\
+'attribute vec2 vertex_position;\n\
+varying vec2 tex_coord;\n\
 void main(void) {\n\
-	gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);\n\
+	gl_Position = vec4(vertex_position, 0, 1);\n\
+	tex_coord = vertex_position;\n\
 }',
 		
 //Sprite frag shader
-'void main(void) {\n\
-	gl_FragColor = vec4(1.0,1.0,1.0,1.0);\n\
+'precision mediump float;\n\
+uniform sampler2D spritesheet;\n\
+varying vec2 tex_coord;\n\
+void main(void) {\n\
+	gl_FragColor = vec4(tex_coord, 0, 1) + texture2D(spritesheet, 10.0*tex_coord);\n\
 }',
 
   //Options
   { explicit_frag : true, 
     explicit_vert : true,
-    attribs       : { 'pos' : '3f', },
-    uniforms      : { /* 'spritesheet' : '1i', 'sprite_rect' : '4f' */ },
+    attribs       : { 'vertex_position' : '2f', },
+    uniforms      : { 'spritesheet' : '1i', /* 'sprite_rect' : '4f' */ },
   });
   
     //Create vertex buffer
     spritesheet.vertex_buffer = Render.genBuffer([
-       0.0,  1.0, 0.0,
-      -1.0, -1.0, 0.0,
-       1.0, -1.0, 0.0,
+       0, 0,
+       1, 0,
+       0, 1,
+       1, 1,
     ]);
     
     //Create texture
@@ -430,13 +427,12 @@ void main(void) {\n\
         
     gl.useProgram(shader);
     
-    shader.attribs.v_tex_coord.pointer(spritesheet.vertex_buffer);
+    attribs.vertex_position.pointer(spritesheet.vertex_buffer);
     
-    /*
+    gl.activeTexture(gl.TEXTURE0);
     gl.enable(gl.TEXTURE_2D);
     gl.bindTexture(gl.TEXTURE_2D, spritesheet.texture);
     shader.uniforms.spritesheet.set(0);
-    */
     
     state.using_sprites = true;
   };
@@ -444,7 +440,7 @@ void main(void) {\n\
 
   //Draws a sprite
   Render.drawSprite = function(position, rect, options) {
-    //beginSprites();
+    beginSprites();
     
     var shader    = spritesheet.shader,
         uniforms  = shader.uniforms,
@@ -456,18 +452,7 @@ void main(void) {\n\
     uniforms.sprite_rect.set(rect[0]/w, rect[1]/h, rect[2]/w, rect[3]/h);
     */
     
-    gl.useProgram(shader);
-    
-    gl.enableVertexAttribArray(0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, spritesheet.vertex_buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-      0, 0, 0,
-      0, 1, 0,
-      1, 0, 0
-    ]), gl.DYNAMIC_DRAW);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-    
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
 
 })();
