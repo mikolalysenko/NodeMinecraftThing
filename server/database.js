@@ -1,4 +1,5 @@
-var mongodb = require("mongodb");
+var util = require('util'),
+    mongodb = require("mongodb");
 
 //Starts a database connection and adds a reference for each table
 exports.initializeDB = function(db_name, db_server, db_port, next) {

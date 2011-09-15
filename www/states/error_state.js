@@ -18,7 +18,8 @@ var ErrorState = {
 		msg = msg.replace(/\&/g, '&amp;')
 				 .replace(/\</g, '&lt;')
 				 .replace(/\>/g, '&gt;')
-				 .replace(/\n/g, '<br/>');
+				 .replace(/\n/g, '<br/>')
+ 		     .replace(/\s/g, '&nbsp;');
 				 
 		document.getElementById('errorReason').innerHTML += '<p>' + msg + '</p>';
 	}

@@ -8,6 +8,7 @@ var Game = { };
 Game.running        = false;
 Game.tick_interval  = null;
 Game.draw_interval  = null;
+Game.drawPane
 
 //Game instance
 Game.instance       = null;
@@ -31,8 +32,8 @@ Game.init = function(cb) {
   
   //Start running the game
   Game.running 		     = true;
-  Game.tick_interval 	 = setInterval(Game.tick, 50);
-  Game.draw_interval 	 = setInterval(Game.draw, 20);
+  Game.tick_interval 	 = setInterval(Game.tick, 50)
+  Render.bindDraw(Game.draw);
 
   cb(null);  
 };
@@ -46,10 +47,8 @@ Game.deinit = function(cb) {
 	if(Game.tick_interval) {
 	  clearInterval(Game.tick_interval);
   }
-	if(Game.draw_interval) {
-	  clearInterval(Game.draw_interval);
-	}
-	
+  Render.clearDraw();
+  	
 	window.onresize = null;
 	
 	Input.deinit();
@@ -72,14 +71,16 @@ Game.input = function() {
 };
 
 //Draw the game
-Game.draw = function() {
-
+Game.draw = function(time) {
+  if(!Game.running) {
+    return;
+  }
+  
   //Process user input before drawing each frame
   Game.input();
   
-  //Draw the frame
-  Render.beginDraw();
-  
+  //Draw stuff
+  Render.drawSprite();
 };
 
 })();

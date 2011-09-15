@@ -35,7 +35,8 @@ fi
 
 #Install npm packages
 echo "Installing NPM packages"
-sudo npm install -g express socket.io mongodb dnode optimist nodester-cli
+sudo npm install express socket.io mongodb dnode optimist
+sudo npm install -g nodester-cli
 
 #Download and unzip mongodb locally
 mongo=`which mongo/mongo 2>&1`

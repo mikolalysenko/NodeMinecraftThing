@@ -4,14 +4,6 @@
 var Loader = { 
 	text :
 	[
-		"shaders/simple.vs",
-		"shaders/simple.fs",
-		"shaders/shadow.fs",
-		"shaders/shadow.vs",
-		"shaders/shadow_init.fs",
-		"shaders/shadow_init.vs",
-		"shaders/simple_color.vs",
-		"shaders/simple_color.fs"
 	],
 	
 	images :
@@ -31,7 +23,8 @@ var Loader = {
   Loader.data = {};
   
   var completed = 0, 
-      pending = 0;
+      pending = 0,
+      finished = false;
 
   function progress_handler(url) {
     ++completed;
@@ -67,7 +60,6 @@ var Loader = {
     ++pending;
 	  var img = new Image();
 	  img.onload = function() {
-	    ++completed;
 		  Loader.data[url] = img;
 		  Loader.emitter.emit('image', url, img);
 		  progress_handler(url);
@@ -82,7 +74,6 @@ var Loader = {
     ++pending;
     var audio = new Audio();
     audio.onload = function() {
-      ++completed;
       Loader.data[url] = audio;
       Loader.emitter.emit('audio', url, audio);
       progress_handler(url);
@@ -99,14 +90,13 @@ var Loader = {
     for(i=0; i<Loader.text.length; ++i) {
       fetchText(Loader.text[i]);
     }
-    
     for(i=0; i<Loader.sounds.length; ++i) {
       fetchAudio(Loader.sounds[i]);
     }
-    
     for(i=0; i<Loader.images.length; ++i) {
       fetchImage(Loader.images[i]);
     }
+    finished = true;
   };
   
   //Called upon crashing
@@ -116,7 +106,7 @@ var Loader = {
   
   //Listens for a completed event in the loader
   Loader.listenFinished = function(listener) {    
-    if(completed >= pending) {
+    if(finished && completed >= pending) {
       setTimeout(listener, 10);
       return;
     }

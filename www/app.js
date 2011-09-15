@@ -73,20 +73,20 @@ App.setState = function(next_state, cb) {
 //Called to initialize the application
 App.init = function() {
 
-  //Start loading data in the background
-  Loader.init();
-  Loader.emitter.on('error', function(url) {
-    App.crash("Missing url: " + missing_url);
-    return;
-  });
-
-
   //Start renderer
   Render.init(function(err) {
     if(err) {
       App.setState(NoWebGLState);
       return;
     }
+    
+    //Start loading data in the background
+    Loader.init();
+    Loader.emitter.on('error', function(url) {
+      App.crash("Missing url: " + missing_url);
+      return;
+    });
+    
     //Connect to network
     Network.init(function(err) {
       if(err) {
