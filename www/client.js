@@ -15,6 +15,7 @@ function Entity(instance, state) {
   }
 
   this.state        = state;
+  this.type         = null;
   this.emitter      = new EventEmitter();
   this.instance     = instance;
 };
@@ -55,8 +56,8 @@ function Instance() {
 Instance.prototype.init = function() {
   this.tickInterval = setInterval(this.tick, 100);
   this.running = true;
-  for(var id in components) {
-    components[id].registerInstance(this);
+  for(var id in Components) {
+    Components[id].registerInstance(this);
   }
 }
 
@@ -99,11 +100,12 @@ Instance.prototype.createEntity = function(state) {
   var entity = new Entity(this, state);
   this.entities[state._id] = entity;
   
-  var type = state.type;
-  if(type) {
-    var template = entity_templates[type];
-    for(var i=0; i<template.length; ++i) {
-      template[i].registerEntity(entity);
+  var type_name = state.type;
+  if(type_name) {
+    var type = EntityTypes[type_name];
+    entity.type = type;
+    for(var i=0; i<type.components.length; ++i) {
+      Components[type.components[i]].registerEntity(entity);
     }
   }
   

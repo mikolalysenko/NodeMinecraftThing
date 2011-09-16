@@ -19,31 +19,31 @@ function Rules(game_dir) {
   
   this.db           = null;
   this.gateway      = null;
+  
+  this.components   = {};
+  this.entityTypes  = {};
 };
 
 
-
-
-
-//Initialize the rules object
+//Parses out game data and binds variables for client
 Rules.prototype.init = function(server, cb) {
   
   var rules             = this,
       game_dir          = this.game_dir,
       game_module       = this.game_module,
       components        = game_module.components,
-      entity_templates  = game_module.entity_templates,
-      server_components = {},
+      entityTypes       = game_module.entityTypes,
       client_components = {},
+      server_components = {},
       client_file       = 
-        '"use strict";\nvar components, entity_templates; (function() { ' + 
+        '"use strict";\nvar Components, EntityTypes; (function() { ' + 
           fs.readFileSync(path.join(__dirname, 'fake_require.js'), 'utf-8'),
       client_mtime      = fs.statSync(path.join(this.game_dir, 'index.js')).mtime;
       
   //First initialize the components
-  function loadComponents(cb) {
+  function loadComponents() {
     
-    client_file += 'components={';
+    client_file += 'Components={';
     for(var i=0; i<components.length; ++i) {
       var component = components[i],
           component_path = path.join(game_dir, component.path);
@@ -63,96 +63,76 @@ Rules.prototype.init = function(server, cb) {
         }
       }
     }
-    client_file += '};';
+    client_file += '};\n';
     
     //Store in rules object
     rules.components = server_components;
-    cb(null);
-  }
-  
-  
-  //Next, initialize entity templates
-  function loadTemplates(cb) {
-  
-    client_file += 'entity_templates={';
-  
-    var templates = {};
-    for(var i=0; i<entity_templates.length; ++i) {
-      var template    = entity_templates[i],
-          server_list = [];
-      
-      if(template.client) {
-        client_file += '"' + template.name + '":[';
-      }
-      
-      for(var j=0; j<template.components.length; ++j) {
-        var cname = template.components[j];
-        
-        if(cname in server_components) {
-          server_list.push(server_components[cname]);
-        }
-        if(template.client && (cname in client_components)) {
-          client_file += 'components["' + cname + '"],'
-        }
-      }
-      
-      if(template.client) {
-        client_file += '],';
-      }
-      
-      //Create component list
-      templates[template.name] = server_list;
-      
-      //Done
-      cb(null);
-    }
-  
-    //Store in entity template
-    rules.entity_templates = templates;
   }
 
-  //Execute  
-  loadComponents(function(err0) {
-    loadTemplates(function(err1) {
-    
-      client_file += '}})();\n';
-      
-      //Add sprites and animations
-      client_file += fs.readFileSync(path.join(game_dir, '/sprites/index.js'), 'utf-8');
-      var sprite_mtime = fs.statSync(path.join(game_dir, '/sprites/index.js')).mtime;
-      if(sprite_mtime > client_mtime) {
-        client_mtime = sprite_mtime;
+  function makeClientType(template) {
+    return template;
+  }
+  
+  function makeServerType(template) {
+    return template;
+  }
+  
+  //Next, initialize entity templates
+  function loadTypes() {
+  
+    client_file += 'EntityTypes={\n';
+    for(var i=0; i<entityTypes.length; ++i) {
+      var template    = entityTypes[i];
+      if(template.client) {
+        client_file += '"' + template.name + '":' + JSON.stringify(makeClientType(template)) + ',\n';
       }
+      if(template.server) {
+        rules.entityTypes[template.name] = makeServerType(template);
+      }
+    }
+    client_file += '};\n';
+  }
+
+  loadComponents();
+  loadTypes();
+    
+  client_file += '})();\n';
       
-      util.log("Generated client component file = \n" + client_file);
-      util.log("Last modified: " + client_mtime);
+  //Add sprites and animations
+  client_file += fs.readFileSync(path.join(game_dir, '/sprites/index.js'), 'utf-8');
+  var sprite_mtime = fs.statSync(path.join(game_dir, '/sprites/index.js')).mtime;
+  if(sprite_mtime > client_mtime) {
+    client_mtime = sprite_mtime;
+  }
       
-      //Mount files  
-      function createMountData(filename, filetype) {
-        return { 
-          src: fs.readFileSync(filename),
-          type: filetype,
-          modified: fs.statSync(filename).mtime,
-        };
-      };
+  util.log("Generated client component file = \n" + client_file);
+  util.log("Last modified: " + client_mtime);
       
-      mount(server, {
-        '/components.js'    : { 
-          src:client_file, 
-          modified:client_mtime, 
-          type:'text/javascript'
-        },
-        '/patcher.js' : createMountData(
-            path.join(__dirname, '/patcher.js'),  'text/javascript'),
-        '/spritesheet.png' : createMountData(
-            path.join(game_dir, '/sprites/spritesheet.png'), 'image/png'),
-        '/linalg.js' : createMountData(
-            path.join(__dirname, '/linalg.js'), 'text/javascript'),
-      });      
-      
-      cb(err0 || err1);
-    });
-  });
+  //Mount files  
+  function createMountData(filename, filetype) {
+    return { 
+      src: fs.readFileSync(filename),
+      type: filetype,
+      modified: fs.statSync(filename).mtime,
+    };
+  };
+  
+  mount(server, {
+    '/components.js'    : { 
+      src:client_file, 
+      modified:client_mtime, 
+      type:'text/javascript'
+    },
+    '/patcher.js' : createMountData(
+        path.join(__dirname, '/patcher.js'),  'text/javascript'),
+    '/spritesheet.png' : createMountData(
+        path.join(game_dir, '/sprites/spritesheet.png'), 'image/png'),
+    '/linalg.js' : createMountData(
+        path.join(__dirname, '/linalg.js'), 'text/javascript'),
+  });      
+   
+  //Callback
+  cb(null);
 }
 
 //Attaches this game rules object to a given gateway
@@ -183,20 +163,23 @@ Rules.prototype.registerInstance = function(instance) {
 //Registers an entity
 Rules.prototype.registerEntity = function(entity) {
 
-  var type = entity.state['type'];
-  if(!type) {
-    util.log("Warning!  Entity with missing type: " + JSON.stringify(entity.state));
+  var type_name = entity.state['type'];
+  if(!type_name) {
+    util.log("Warning!  Entity with missing type_name: " + JSON.stringify(entity.state));
     return;
   }
   
-  var template = this.entity_templates[type];
-  if( !template ) {
-    util.log("Warning!  Unkown entity type: " + type);
+  //Look up type
+  var type = this.entityTypes[type_name];
+  if( !type ) {
+    util.log("Warning!  Unkown entity type: " + typeName);
     return;
   }
+  entity.type = type;
   
-  for(var i=0; i<template.length; ++i) {
-    template[i].registerEntity(entity);
+  //Register components
+  for(var i=0; i<type.components.length; ++i) {
+    this.components[type.components[i]].registerEntity(entity);
   }
 }
 

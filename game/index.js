@@ -13,8 +13,8 @@ exports.components = [
   },
 ];
 
-//Entity templates
-exports.entity_templates = [
+//Entity types
+exports.entityTypes = [
   { name        : 'player',
     components  : [ 'player' ],
     server      : true,

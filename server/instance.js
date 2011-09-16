@@ -22,15 +22,16 @@ function sink(err, result) {
 //----------------------------------------------------------------
 function Entity(instance, state) {
 
-  //State variables
+  //Public variables
   this.state      = state;       //A local cache of the database record representing this entity's state
                                  //This data is what gets written to both the DB and the client.
                                  // Put only dicts, arrays and pods in here, no fancy object types.
-
-  //Event handler
+  this.type       = null;          //Static entity type information
   this.emitter    = new EventEmitter();   //Event emitter for sending events
+  this.instance   = instance;    //A reference to the region instance this entity is in
 
-  //Server-side config                     
+
+  //Server-side only variables
   this.persistent = true;        //If set, entity gets stored to db.  This is done using copy-on-write semantics.
   this.net_replicated = true;    //If set, then the entity gets sent across the network
                                  // Useful for objects that are important for the client or have long lives.
@@ -39,9 +40,6 @@ function Entity(instance, state) {
   this.net_one_shot = false;     //If set, only replicate entity creation event.  Do not synchronize after creation.
                                  // Useful for projectiles and other shortly lived objects
   this.net_priority = 1.0;       //Replication priority
-
-  //Internal variables
-  this.instance   = instance;    //A reference to the region instance this entity is in
   this.last_state = {};          //Last state entity was in
   this.deleted    = false;       //When set, the entity has been marked for deletion.  This object reference is just a zombie
   this.dirty      = false;       //If set, the entity has pending writes and will be moved to DB at next sync point

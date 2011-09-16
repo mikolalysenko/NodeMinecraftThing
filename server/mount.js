@@ -9,6 +9,8 @@ exports.mount = function mount(server, cache) {
     util.log("Got request: " + req.url);
   
     if(req.url in cache) {
+      util.log("Serving: " + req.url);
+    
       var doc = cache[req.url];
       
       res.setHeader('content-type', doc.type);
