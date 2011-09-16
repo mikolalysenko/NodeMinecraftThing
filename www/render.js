@@ -405,9 +405,10 @@ void main(void) {\n\
 //Sprite frag shader
 'precision mediump float;\n\
 uniform sampler2D spritesheet;\n\
+uniform vec4 color;\n\
 varying vec2 tex_coord;\n\
 void main(void) {\n\
-	gl_FragColor = texture2D(spritesheet, tex_coord);\n\
+	gl_FragColor = texture2D(spritesheet, tex_coord) * color;\n\
 }',
 
   //Options
@@ -419,6 +420,7 @@ void main(void) {\n\
     uniforms      : { 'spritesheet'   : '1i', 
                       'sprite_rect'   : '4f',
                       'sprite_xform'  : 'Matrix3f',
+                      'color'         : '4f',
                       'position'      : '4f',
                     },
   });
@@ -490,6 +492,7 @@ void main(void) {\n\
         aspect    = checkDefault(options.aspect, rect[2]/rect[3]),
         theta     = checkDefault(options.rotation, 0),
         flip      = checkDefault(options.flip, false),
+        color     = checkDefault(options.color, [1,1,1,1]),
         hg_pos    = linalg.xform4(clip_matrix, [position[0], position[1], position[2], 1]);
     
     //Compute screen position
@@ -509,6 +512,9 @@ void main(void) {\n\
 
     //Set up sprite rectangle
     uniforms.sprite_rect.set(rect[0]/w, rect[1]/h, rect[2]/w, rect[3]/h);
+    
+    //Set color
+    uniforms.color.set(color[0], color[1], color[2], color[3]);
     
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
