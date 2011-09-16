@@ -80,7 +80,12 @@ Game.draw = function(time) {
   Game.input();
   
   //Draw stuff
-  Render.drawSprite();
+  Render.drawSprite([0,0,(-1 + Math.cos(time/5000.0)) * 50], {
+    rect:[0,0,32,64],
+    rotation:0,
+    center:[16,32],
+    scale:2,
+  });
 };
 
 })();

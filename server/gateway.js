@@ -1,7 +1,5 @@
 var util = require('util'),
     path = require('path'),
-    fs = require('fs'),
-    mount = require('./mount.js').mount,
     ObjectID = require('mongodb').ObjectID,
     DNode = require('dnode'),
     Instance = require('./instance.js').Instance;
@@ -232,20 +230,6 @@ exports.createGateway = function(server, db, rules, cb) {
   var gateway = new Gateway(db, rules);
   gateway.server.listen(server);
   
-  //Create list of files to mount
-  var patcher_path = path.join(__dirname, '/patcher.js');
-
-  //Mount files  
-  mount(server, {
-    '/patcher.js' : { 
-      src: fs.readFileSync(patcher_path),
-      type: 'text/javascript',
-      modified: fs.statSync(patcher_path).mtime,
-    },
-    '/components.js'    : rules.client_file,
-    '/spritesheet.png'  : rules.spritesheet_file,
-  });
-
   //Start all of the regions
   db.regions.find({ }, function(err, cursor) {
     if(err) {

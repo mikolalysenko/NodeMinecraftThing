@@ -40,7 +40,7 @@ var server = express.createServer();
 server.use(express.static(settings.wwwroot));
 
 
-rules.init(function(err) {
+rules.init(server, function(err) {
   if(err) {
     util.log("Error creating rules: " + err);
     return;

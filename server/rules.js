@@ -1,6 +1,7 @@
 var util = require('util'),
     path = require('path'),
-    fs   = require('fs');
+    fs   = require('fs'),
+    mount = require('./mount.js').mount;
 
 //----------------------------------------------------------------
 // The Rules object manages the interface between game logic
@@ -21,8 +22,11 @@ function Rules(game_dir) {
 };
 
 
+
+
+
 //Initialize the rules object
-Rules.prototype.init = function(cb) {
+Rules.prototype.init = function(server, cb) {
   
   var rules             = this,
       game_dir          = this.game_dir,
@@ -120,22 +124,32 @@ Rules.prototype.init = function(cb) {
         client_mtime = sprite_mtime;
       }
       
-      //Cook up client file
-      rules.client_file   = { 
-        src:client_file, 
-        modified:client_mtime, 
-        type:'text/javascript'
-      };
-      
-      //Make the sprite file
-      rules.spritesheet_file = {
-        src: fs.readFileSync(path.join(game_dir, '/sprites/spritesheet.png')),
-        modified: fs.statSync(path.join(game_dir, '/sprites/spritesheet.png')).mtime,
-        type: 'image/png',
-      };
-      
       util.log("Generated client component file = \n" + client_file);
       util.log("Last modified: " + client_mtime);
+      
+      //Mount files  
+      function createMountData(filename, filetype) {
+        return { 
+          src: fs.readFileSync(filename),
+          type: filetype,
+          modified: fs.statSync(filename).mtime,
+        };
+      };
+      
+      mount(server, {
+        '/components.js'    : { 
+          src:client_file, 
+          modified:client_mtime, 
+          type:'text/javascript'
+        },
+        '/patcher.js' : createMountData(
+            path.join(__dirname, '/patcher.js'),  'text/javascript'),
+        '/spritesheet.png' : createMountData(
+            path.join(game_dir, '/sprites/spritesheet.png'), 'image/png'),
+        '/linalg.js' : createMountData(
+            path.join(__dirname, '/linalg.js'), 'text/javascript'),
+      });      
+      
       cb(err0 || err1);
     });
   });

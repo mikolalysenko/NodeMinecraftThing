@@ -217,6 +217,7 @@ var Render = {
   Loader.emitter.on('image', function(url, img) {
 		var tex = gl.createTexture();
 		gl.bindTexture(gl.TEXTURE_2D, tex);
+    //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -243,7 +244,8 @@ var Render = {
 // Configuration
 //---------------------------------------------------
   var view_matrix = new Float32Array(16),
-      proj_matrix = new Float32Array(16);
+      proj_matrix = new Float32Array(16),
+      clip_matrix = new Float32Array(16);
   
   //Sets projection matrix to a perspective matrix
   Render.perspective = function(fov_y, aspect, z_near, z_far) {
@@ -257,6 +259,8 @@ var Render = {
     proj_matrix[10] = (z_far + z_near) / (z_near - z_far);
     proj_matrix[11] = (2.0 * z_far * z_near) / (z_near - z_far);
     proj_matrix[14] = -1;
+    
+    linalg.mmult4(view_matrix, proj_matrix, clip_matrix);
   };
 
   //Sets camera to look at a particular target
@@ -297,6 +301,8 @@ var Render = {
       }
       M[4*i+3] = x;
     }
+    
+    linalg.mmult4(view_matrix, proj_matrix, clip_matrix);
   };
 
 //---------------------------------------------------
@@ -338,10 +344,17 @@ var Render = {
 	  gl.clearColor(bg[0], bg[1], bg[2], bg[3]);
 	  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	  gl.enable(gl.DEPTH_TEST);
-	  gl.enable(gl.CULL_FACE);
+	  gl.disable(gl.CULL_FACE);
 	  gl.disable(gl.BLEND);
 	
 	  //Set up intermediate variables
+	  var i;
+	  for(i=0; i<16; ++i) {
+      view_matrix[i]    = 0.0;
+    }
+    for(i=0; i<4; ++i) {
+      view_matrix[5*i]  = 1.0;
+    }
 	  Render.perspective(Render.fov_y, Render.width / Render.height, Render.z_near, Render.z_far);
 	
 	  //Perform client side drawing
@@ -379,10 +392,14 @@ var Render = {
 
 //Sprite vertex shader
 'attribute vec2 vertex_position;\n\
+uniform vec4 sprite_rect;\n\
+uniform mat3 sprite_xform;\n\
+uniform vec4 position;\n\
 varying vec2 tex_coord;\n\
 void main(void) {\n\
-	gl_Position = vec4(vertex_position, 0, 1);\n\
-	tex_coord = vertex_position;\n\
+  vec3 sprite_position = sprite_xform * vec3(vertex_position, 1);\n\
+	gl_Position = position + vec4(sprite_position.xy/sprite_position.z, 0, 0);\n\
+	tex_coord = vertex_position * (sprite_rect.zw - sprite_rect.xy) + sprite_rect.xy;\n\
 }',
 		
 //Sprite frag shader
@@ -396,15 +413,21 @@ void main(void) {\n\
   //Options
   { explicit_frag : true, 
     explicit_vert : true,
+    
     attribs       : { 'vertex_position' : '2f', },
-    uniforms      : { 'spritesheet' : '1i', /* 'sprite_rect' : '4f' */ },
+    
+    uniforms      : { 'spritesheet'   : '1i', 
+                      'sprite_rect'   : '4f',
+                      'sprite_xform'  : 'Matrix3f',
+                      'position'      : '4f',
+                    },
   });
   
     //Create vertex buffer
     spritesheet.vertex_buffer = Render.genBuffer([
        0, 0,
-       1, 0,
        0, 1,
+       1, 0,
        1, 1,
     ]);
     
@@ -441,20 +464,51 @@ void main(void) {\n\
     state.using_sprites = true;
   };
 
+  function checkDefault(x, d) {
+    if(typeof(x) !== "undefined") {
+      return x;
+    }
+    return d;
+  }
+
 
   //Draws a sprite
-  Render.drawSprite = function(position, rect, options) {
+  Render.drawSprite = function(position, options) {
     beginSprites();
+    
+    if(!options) {
+      options = {};
+    }
     
     var shader    = spritesheet.shader,
         uniforms  = shader.uniforms,
         w         = spritesheet.width,
-        h         = spritesheet.height;
+        h         = spritesheet.height,
+        rect      = checkDefault(options.rect, [0,0,1,1]),
+        center    = checkDefault(options.center, [0, 0]),
+        scale     = checkDefault(options.scale, 1.0),
+        aspect    = checkDefault(options.aspect, rect[2]/rect[3]),
+        theta     = checkDefault(options.rotation, 0),
+        flip      = checkDefault(options.flip, false),
+        hg_pos    = linalg.xform4(clip_matrix, [position[0], position[1], position[2], 1]);
+    
+    //Compute screen position
+    uniforms.position.set(hg_pos[0], hg_pos[1], hg_pos[2], hg_pos[3]);
+    
+    //Compute sprite transformation
+    var xs = scale * aspect * (flip ? -1 : 1),
+        ys = scale,
+        cc = Math.cos(theta),
+        ss = Math.sqrt(1.0 - cc*cc),
+        xform = [ xs*cc, -ys*ss, 0.0,
+                 -xs*ss, -ys*cc, 0.0,
+                  0.0, 0.0, 1.0 ];
+    xform[6] = -(xform[0]*center[0]/rect[2] + xform[3]*center[1]/rect[3]);
+    xform[7] = -(xform[1]*center[0]/rect[2] + xform[4]*center[1]/rect[3]);
+    uniforms.sprite_xform.set(false, xform);
 
-    /*        
-    uniforms.position.set(position[0], position[1], position[2]);
+    //Set up sprite rectangle
     uniforms.sprite_rect.set(rect[0]/w, rect[1]/h, rect[2]/w, rect[3]/h);
-    */
     
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
