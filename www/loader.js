@@ -9,6 +9,7 @@ var Loader = {
 	images :
 	[
 	  "spritesheet.png",
+	  "voxels.png",
 	],
 
   sounds :

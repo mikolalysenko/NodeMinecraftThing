@@ -132,6 +132,8 @@ Rules.prototype.init = function(server, cb) {
         path.join(__dirname, '/patcher.js'),  'text/javascript'),
     '/spritesheet.png' : createMountData(
         path.join(game_dir, '/sprites/spritesheet.png'), 'image/png'),
+    '/voxels.png': createMountData(
+        path.join(game_dir, '/voxels/voxels.png'), 'image/png'),
     '/linalg.js' : createMountData(
         path.join(__dirname, '/linalg.js'), 'text/javascript'),
   });      

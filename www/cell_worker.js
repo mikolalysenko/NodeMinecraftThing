@@ -20,7 +20,7 @@ var emitter = new EventEmitter(),
     SCALE_Y     = CHUNK_Y/CELL_SIZE,
     SCALE_Z     = CHUNK_Z/CELL_SIZE,
     
-    console = { 
+    console = {
       log: function() {
         self.postMessage( ['log'].concat(Array.prototype.slice.call(arguments)) );
       }
@@ -32,6 +32,11 @@ var emitter = new EventEmitter(),
 //Checks if a voxel is transparent
 function transparent(value) {
   return value === 0;
+}
+
+//Recovers the texture coordinate for a voxel
+function texture(value, dir) {
+  return [0,1/256.0];
 }
 
 //Tangent space vectors for faces
@@ -48,27 +53,24 @@ function pushv(vv, a) {
   vv.push(a[0]);
   vv.push(a[1]);
   vv.push(a[2]);
+  vv.push(a[3]);
+  vv.push(a[4]);
 }
 
 //Constructs a mesh over the given region
 function buildMesh(lo, hi) {
 
-
-  console.log("Building mesh", lo, hi, JSON.stringify(voxel_set.chunks));
-
   var vertices  = new Array(6),
       p         = new Array(3),
-      q         = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
+      q         = [[0,0,0,0,0],
+                   [0,0,0,0,0],
+                   [0,0,0,0,0],
+                   [0,0,0,0,0]];
   for(var i=0; i<6; ++i) {
     vertices[i] = [];
   }
   
   function addFace(x, y, z, type, dir, step) {
-  
-    console.log(
-      "Adding face:", [x,y,z],
-      "dir:", dir,
-      "step:", step);
   
     //Compute center of face
     p[0] = x;
@@ -79,7 +81,9 @@ function buildMesh(lo, hi) {
     }
     
     //Compute quad vertices
-    var du = tangent[dir], dv = tangent[dir^1];
+    var du = tangent[dir], 
+        dv = tangent[dir^1],
+        tc = texture(type, dir);
     q[0][0] = p[0];
     q[1][0] = p[0] + step*dv[0];
     q[2][0] = p[0] + step*du[0];
@@ -90,6 +94,20 @@ function buildMesh(lo, hi) {
       q[2][i] = p[i] + du[i];
       q[3][i] = p[i] + du[i] + dv[i];
     }
+    
+    //Compute texture coordinates
+    for(i=0; i<2; ++i) {
+      q[0][i+3] = tc[i];
+      q[1][i+3] = tc[i];
+      q[2][i+3] = tc[i];
+      q[3][i+3] = tc[i];
+    }
+    var us = (dv[0] ? step : 1),
+        vs = (du[0] ? step : 1); 
+    q[1][3] += us;
+    q[2][4] += vs;
+    q[3][3] += us;
+    q[3][4] += vs;
     
     //Append vertices
     var vv = vertices[dir];
@@ -107,10 +125,6 @@ function buildMesh(lo, hi) {
     var center = vals[1 + 3 + 9];
     if(center === 0)
       return;
-      
-    console.log("Visiting: ", [x,y,z],
-      "window: ", vals,
-      "step: ", step);
   
     //-x
     if(transparent(vals[3+9])) {

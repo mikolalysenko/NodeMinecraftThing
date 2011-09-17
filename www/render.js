@@ -454,9 +454,8 @@ void main(void) {\n\
     attribs.vertex_position.pointer(spritesheet.vertex_buffer);
     
     gl.activeTexture(gl.TEXTURE0);
-    gl.enable(gl.TEXTURE_2D);
     gl.bindTexture(gl.TEXTURE_2D, spritesheet.texture);
-    shader.uniforms.spritesheet.set(gl.TEXTURE0);
+    shader.uniforms.spritesheet.set(0);
     
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.enable(gl.BLEND);
@@ -524,9 +523,11 @@ void main(void) {\n\
 //---------------------------------------------------
 
   var voxels = {
-      texture : null,
-      shader  : null,
-      VERTEX_SIZE : 3,
+      texture     : null,
+      shader      : null,
+      VERTEX_SIZE : 5,
+      tile_x      : 16,
+      tile_y      : 16,
     };
 
 //Callback for loading voxels    
@@ -534,15 +535,25 @@ Loader.listenFinished(function() {
 voxels.shader = Render.genShader(
 //Voxel vertex shader
 'attribute vec3 vertex_position;\n\
+attribute vec2 vertex_texture;\n\
 uniform mat4 clip_matrix;\n\
+varying vec2 texture_coord;\n\
+varying vec2 texture_tile;\n\
 void main(void) {\n\
-	gl_Position = clip_matrix * vec4(vertex_position, 1);\n\
+	gl_Position   = clip_matrix * vec4(vertex_position, 1);\n\
+	texture_coord = floor(vertex_texture);\n\
+	texture_tile  = fract(vertex_texture)*256.0;\n\
 }',
 		
 //Sprite frag shader
 'precision mediump float;\n\
+uniform sampler2D tile_sampler;\n\
+uniform vec2 tile_size;\n\
+varying vec2 texture_coord;\n\
+varying vec2 texture_tile;\n\
 void main(void) {\n\
-	gl_FragColor = vec4(1,1,1,1);\n\
+  vec2 tc = (fract(texture_coord) + texture_tile) * tile_size;\n\
+	gl_FragColor = texture2D(tile_sampler, tc) + vec4(0.1,0.1,0.1,1);\n\
 }',
 
 //Options
@@ -550,13 +561,21 @@ void main(void) {\n\
   explicit_vert : true,
   
   attribs       : { 'vertex_position' : '3f', 
+                    'vertex_texture'     : '2f',
                   },
   
   uniforms      : { 'clip_matrix'     : 'Matrix4f',
+                    'tile_sampler'    : '1i',
+                    'tile_size'       : '2f',
                   },
 });
   
-voxels.texture = textures['terrain.png'];
+voxels.texture = textures['voxels.png'];
+
+if(!voxels.texture) {
+  App.crash("Missing voxel tile texture: voxels.png");
+}
+
 });
 
   //Set up variables for voxels
@@ -566,9 +585,22 @@ voxels.texture = textures['terrain.png'];
     }
     
     //Set up voxel specific stuff here
+    var shader = voxels.shader,
+        uniforms = shader.uniforms,
+        attribs = shader.attribs;
+    
     gl.useProgram(voxels.shader);
-    voxels.shader.uniforms.clip_matrix.set(false, clip_matrix);
+    uniforms.clip_matrix.set(false, clip_matrix);
+    
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, voxels.texture.texture);
+    uniforms.tile_sampler.set(0);
 
+    uniforms.tile_size.set(
+      voxels.tile_x / voxels.texture.width,
+      voxels.tile_y / voxels.texture.height);
+    
+    gl.disable(gl.BLEND);
     
     render_state = 'voxels';
   };
@@ -603,8 +635,8 @@ voxels.texture = textures['terrain.png'];
     var shader    = voxels.shader,
         attribs   = shader.attribs;
 
-    gl.bindBuffer(this.vbuffer);
-    attribs.vertex_position.pointer(this.vbuffer);
+    attribs.vertex_position.pointer(this.vbuffer, 4*voxels.VERTEX_SIZE, 0);
+    attribs.vertex_texture.pointer( this.vbuffer, 4*voxels.VERTEX_SIZE, 4*3);
     
     //FIXME: Only draw visible sides of cube
     gl.drawArrays(gl.TRIANGLES, 0, this.ranges[6]);
