@@ -44,17 +44,21 @@ Chunk.prototype.isEmpty = function() {
 };
 
 Chunk.prototype.bsearch = function (lo, hi, y) {
+  //console.log(this.data, lo, hi, y);
   lo >>= 1;
   hi >>= 1;
   var m, x;
   while(lo+1 < hi) {
+  
     m = (lo + hi) >> 1;
     x = this.data[m<<1];
+    //console.log(lo, m, hi, x, y);
     if( x > y ) {
-      hi = m - 1;
+      hi = m;
     } else if( x < y ) {
       lo = m;
     } else {
+      //console.log("Here");
       return m<<1;
     }
   }
@@ -163,6 +167,14 @@ ChunkSet.prototype.set = function(x, y, z, v) {
       iy = y& CHUNK_MASK_Y,
       iz = z& CHUNK_MASK_Z;
 
+  /*
+  console.log("Setting: ",
+    "chunk:",[cx,cy,cz],
+    "offset:",[ix,iy,iz],
+    "v:",v,
+    "index:",flattenIndex(ix,iy,iz));
+  */
+  
   var key = hashCode(cx, cy, cz),
       chunk = this.chunks[key];
       
@@ -232,19 +244,28 @@ ChunkSet.prototype.rangeForeach = function(lo, hi, n, cb) {
     while(true) {
     
       //Initialize window
-      for(var l=0, m=0; l<itersize; ++l) {
-        vals[m++] = 10000;
+      for(var l=0, m=1; l<itersize; ++l, ++m) {
+        vals[m-1] = 10000;
         for(dx=0; dx<nmod-1; ++dx, ++m) {
           vals[m] = iterators[l].value();
+          /*
+          console.log("l:",l,
+            "m:",m,
+            "val:",vals[m],
+            "iter:",iterators[l]);
+          */
           iterators[l].move(1,0,0);
         }
       }
+      
+      //console.log("Initial window = ", vals);
+      
     
-      i=lo[0]+1;
-      while(i<hi[0]) {
+      i=lo[0]+n;
+      while(true) {
       
         //Compute next step size
-        step = hi[0] - i;
+        step = hi[0] - i + n;
         can_skip = true;
         
         for(l=0, m=0; l<itersize; ++l) {
@@ -269,8 +290,16 @@ ChunkSet.prototype.rangeForeach = function(lo, hi, n, cb) {
           }
         }
         
+        /*
+        console.log("Visiting",
+          "pos:",[i,j,k],
+          "window:",vals,
+          "step:",step,
+          "iterators:", iterators);
+        */
+        
         //Call function
-        var vi = i-1, vstep = step;
+        var vi = i-n, vstep = step;
         for(dx=0; dx<nmod-1; ++dx) {
         
           //Special case:  Window is constant
@@ -300,8 +329,9 @@ ChunkSet.prototype.rangeForeach = function(lo, hi, n, cb) {
         }
             
         //Check if this span is done
-        if(i + step >= hi[0])
+        if(vi + vstep >= hi[0]) {
           break;
+        }
           
         //Otherwise move iterators
         i += step;
@@ -436,7 +466,7 @@ ChunkIterator.prototype.move = function(dx, dy, dz) {
       this.data_pos = p0;
       return;
     }
-  
+    
     //Fallback:  Moved more than 1 range, so do a binary search
     this.data_pos = this.chunk.bsearch(p1, N, this.index);
   }
@@ -445,12 +475,12 @@ ChunkIterator.prototype.move = function(dx, dy, dz) {
   
     //Check if still in same range
     var i0 = this.chunk.data[this.data_pos];
-    if(this.index < i0) {
+    if(this.index >= i0) {
       return;
     }
     
     //Fallback: Do a binary search
-    this.data_pos = this.chunk.bsearch(0, this.data_pos, this.index);
+    this.data_pos = this.chunk.bsearch(0, this.data_pos, this.index);    
   }
 };
 
@@ -463,5 +493,7 @@ Voxels.CHUNK_SIZE = CHUNK_SIZE;
 Voxels.Chunk      = Chunk;
 Voxels.ChunkSet   = ChunkSet;
 Voxels.hashChunk  = hashCode;
+Voxels.flatten    = flattenIndex;
+
 
 })();

@@ -53,6 +53,9 @@ function pushv(vv, a) {
 //Constructs a mesh over the given region
 function buildMesh(lo, hi) {
 
+
+  console.log("Building mesh", lo, hi, JSON.stringify(voxel_set.chunks));
+
   var vertices  = new Array(6),
       p         = new Array(3),
       q         = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
@@ -62,23 +65,30 @@ function buildMesh(lo, hi) {
   
   function addFace(x, y, z, type, dir, step) {
   
+    console.log(
+      "Adding face:", [x,y,z],
+      "dir:", dir,
+      "step:", step);
+  
     //Compute center of face
     p[0] = x;
     p[1] = y;
     p[2] = z;
-    p[dir>>1] += 0.5 * (dir&1 ? 1.0 : -1.0);
+    if(dir&1) {
+      p[dir>>1] += 1;
+    }
     
     //Compute quad vertices
     var du = tangent[dir], dv = tangent[dir^1];
-    q[0][0] = p[0] - 0.5 * (du[0] + dv[0]);
-    q[1][0] = p[0] - 0.5 * du[0] + (step+0.5)*dv[0];
-    q[2][0] = p[0] + (step-0.5)*du[0] - 0.5 * dv[0];
-    q[3][0] = p[0] + (step-0.5)*(du[0] + dv[0]);    
+    q[0][0] = p[0];
+    q[1][0] = p[0] + step*dv[0];
+    q[2][0] = p[0] + step*du[0];
+    q[3][0] = p[0] + step*(du[0] + dv[0]);    
     for(var i=1; i<3; ++i) {
-      q[0][i] = p[i] - 0.5 * (du[i] + dv[i]);
-      q[1][i] = p[i] + 0.5 * (-du[i] + dv[i]);
-      q[2][i] = p[i] + 0.5 * (du[i] - dv[i]);
-      q[3][i] = p[i] + 0.5 * (du[i] + dv[i]);
+      q[0][i] = p[i];
+      q[1][i] = p[i] + dv[i];
+      q[2][i] = p[i] + du[i];
+      q[3][i] = p[i] + du[i] + dv[i];
     }
     
     //Append vertices
@@ -87,39 +97,43 @@ function buildMesh(lo, hi) {
     pushv(vv,q[1]);
     pushv(vv,q[2]);
     
-    pushv(vv,q[2]);
     pushv(vv,q[1]);
+    pushv(vv,q[2]);
     pushv(vv,q[3]);
   }
 
-  voxel_set.rangeForeach(lo, hi, 1, function(x, y, z, window, step) {
-  
-    var center = window[1 + 3 + 9];
-    if(center == 0)
+  voxel_set.rangeForeach(lo, hi, 1, function(x, y, z, vals, step) {
+    
+    var center = vals[1 + 3 + 9];
+    if(center === 0)
       return;
+      
+    console.log("Visiting: ", [x,y,z],
+      "window: ", vals,
+      "step: ", step);
   
     //-x
-    if(transparent(window[3+9])) {
+    if(transparent(vals[3+9])) {
       addFace(x,y,z,center,0,1);
     }
     //+x
-    if(transparent(window[2+3+9])) {
+    if(transparent(vals[2+3+9])) {
       addFace(x,y,z,center,1,1);
     }
     //-y
-    if(transparent(window[1+3])) {
+    if(transparent(vals[1+3])) {
       addFace(x,y,z,center,2,step);
     }
     //+y
-    if(transparent(window[1+3+18])) {
+    if(transparent(vals[1+3+18])) {
       addFace(x,y,z,center,3,step);
     }
     //-z
-    if(transparent(window[1+9])) {
+    if(transparent(vals[1+9])) {
       addFace(x,y,z,center,4,step);
     }
     //+z
-    if(transparent(window[1+6+9])) {
+    if(transparent(vals[1+6+9])) {
       addFace(x,y,z,center,5,step);
     }
   });

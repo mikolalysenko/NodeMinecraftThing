@@ -95,6 +95,39 @@ function assert_equals(arr0, arr1) {
   b.set(2, 0, 0, 1);
   assert_equals(b.data, [0,0,1,1,3,3,4,0]);
   
+  
+  console.log("Testing bsearch");
+  var c = new voxels.Chunk(2, 0, 0);
+  c.set(0, 0, 4, 1);
+  c.set(0, 1, 4, 1);
+  
+  assert_equals(c.bsearch(0, c.data.length, voxels.flatten(0,0,4)), 2);
+  
+  
+  var d = new voxels.Chunk(3,0,0);
+  d.set(0, 0, 6, 1);
+  assert_equals(d.data, [
+    0,0,
+    voxels.flatten(0,0,6),1,
+    voxels.flatten(0,0,6)+1,0]);
+  
+  d.set(0, 1, 6, 1);
+  assert_equals(d.data, [
+    0,0,
+    voxels.flatten(0,0,6),1,
+    voxels.flatten(0,0,6)+1,0,
+    voxels.flatten(0,1,6),1,
+    voxels.flatten(0,1,6)+1,0]);
+    
+  d.set(0, 0, 6, 1);
+  assert_equals(d.data, [
+    0,0,
+    voxels.flatten(0,0,6),1,
+    voxels.flatten(0,0,6)+1,0,
+    voxels.flatten(0,1,6),1,
+    voxels.flatten(0,1,6)+1,0]);
+  
+  console.log(d.data);
   console.log("Chunk passed");
   
 })();
@@ -106,54 +139,51 @@ function assert_equals(arr0, arr1) {
   
   var v = new voxels.ChunkSet();
   
-  v.set(0,0,0,1);
-  v.set(1,0,0,1);
-  v.set(2,0,0,1);
-  v.set(3,0,0,1);
-  v.set(4,0,0,1);
-  v.set(5,0,0,1);
+  v.set(0,0,-10,1);
+  v.set(0,1,-10,1);
+  v.set(0,0,-10,1);
   
-  a = 0;
-  function cb(i,j,k,wind,step) {
-    a += i+j+k;
-    //console.log("Visiting:",i,j,k,wind,step);
-  };
+  assert_equals(v.getChunk(0,0,-1).data,  [
+    0,0,
+    voxels.flatten(0,0,6),1,
+    voxels.flatten(0,0,6)+1,0,
+    voxels.flatten(0,1,6),1,
+    voxels.flatten(0,1,6)+1,0]);
   
-
-  function test_simple() {
-    a = 0;
-    w = [];
-    for(var i=0; i<256; ++i)
-    for(var j=0; j<256; ++j)
-    for(var k=0; k<256; ++k) {
-      for(var dx=-1; dx<=1; ++dx)
-      for(var dy=-1; dy<=1; ++dy)
-      for(var dz=-1; dz<=1; ++dz) {
-        cb(i+dx,j+dy,k+dz,w,1);
-      }
-    }
-  };
-
-
-  console.log(JSON.stringify(v.buildMesh([0,0,0],[16,16,16]) ));
-
-
-
-  for(var i=20; i<30; ++i)
-  for(var j=0; j<=6; ++j)
-  for(var k=0; k<=6; ++k) {
-    v.set(i,j,k,5);
-  }
-
-  
-  ///console.log(JSON.stringify(v));
   
   /*
-  for(i=0; i<1000; ++i)
-    v.rangeForeach([0,0,0], [32,32,32], 1, cb);
-  */
-  
+  var v = new voxels.ChunkSet();
 
+  v.set(0, 0, -10, 1);
+  
+  console.log(JSON.stringify(v));
+  
+  v.rangeForeach([0,0,-16],[16,16,0],1, function(x,y,z,vals,step) {
+  
+    if(vals[1+3+9]) {
+      console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+      console.log(x,y,z,vals,step);
+      console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    }
+    else {
+      //console.log(x,y,z,window[0],step);    
+    }
+  });
+
+  v.set(0, 1, -10, 1);
+
+  v.rangeForeach([0,0,-16],[16,16,0],1, function(x,y,z,vals,step) {
+  
+    if(vals[1+3+9]) {
+      console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+      console.log(x,y,z,vals,step);
+      console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    }
+    else {
+      //console.log(x,y,z,window[0],step);    
+    }
+  });
+  */
   
 })();
 

@@ -487,7 +487,7 @@ void main(void) {\n\
         rect      = checkDefault(options.rect, [0,0,1,1]),
         center    = checkDefault(options.center, [0, 0]),
         scale     = checkDefault(options.scale, 1.0),
-        aspect    = checkDefault(options.aspect, rect[2]/rect[3]),
+        aspect    = checkDefault(options.aspect, (rect[2]-rect[0])/(rect[3]-rect[1])),
         theta     = checkDefault(options.rotation, 0),
         flip      = checkDefault(options.flip, false),
         color     = checkDefault(options.color, [1,1,1,1]),
