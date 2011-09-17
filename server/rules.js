@@ -20,6 +20,9 @@ function Rules(game_dir) {
   this.db           = null;
   this.gateway      = null;
   
+  //Voxel data
+  this.voxel_types  = this.game_module.voxel_types;
+  
   this.components   = {};
   this.entityTypes  = {};
 };
@@ -123,6 +126,8 @@ Rules.prototype.init = function(server, cb) {
       modified:client_mtime, 
       type:'text/javascript'
     },
+    '/voxels.js' : createMountData(
+        path.join(__dirname, '/voxels.js'), 'text/javascript'),
     '/patcher.js' : createMountData(
         path.join(__dirname, '/patcher.js'),  'text/javascript'),
     '/spritesheet.png' : createMountData(

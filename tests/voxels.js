@@ -107,17 +107,53 @@ function assert_equals(arr0, arr1) {
   var v = new voxels.ChunkSet();
   
   v.set(0,0,0,1);
+  v.set(1,0,0,1);
+  v.set(2,0,0,1);
+  v.set(3,0,0,1);
+  v.set(4,0,0,1);
+  v.set(5,0,0,1);
+  
+  a = 0;
+  function cb(i,j,k,wind,step) {
+    a += i+j+k;
+    //console.log("Visiting:",i,j,k,wind,step);
+  };
   
 
-  function test() {
-    v.rangeForeach([0,0,0], [16,16,16], 1, 
-      function(x, y, z, vals, step) {
-        console.log("Visiting: ",x,y,z,vals, step);
-      });
+  function test_simple() {
+    a = 0;
+    w = [];
+    for(var i=0; i<256; ++i)
+    for(var j=0; j<256; ++j)
+    for(var k=0; k<256; ++k) {
+      for(var dx=-1; dx<=1; ++dx)
+      for(var dy=-1; dy<=1; ++dy)
+      for(var dz=-1; dz<=1; ++dz) {
+        cb(i+dx,j+dy,k+dz,w,1);
+      }
+    }
+  };
+
+
+  console.log(JSON.stringify(v.buildMesh([0,0,0],[16,16,16]) ));
+
+
+
+  for(var i=20; i<30; ++i)
+  for(var j=0; j<=6; ++j)
+  for(var k=0; k<=6; ++k) {
+    v.set(i,j,k,5);
   }
-  
-  for(var i=0; i<10; ++i)
-    test();
 
+  
+  ///console.log(JSON.stringify(v));
+  
+  /*
+  for(i=0; i<1000; ++i)
+    v.rangeForeach([0,0,0], [32,32,32], 1, cb);
+  */
+  
+
+  
 })();
 
