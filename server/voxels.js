@@ -21,7 +21,7 @@ function flattenIndex(i, j, k) {
 };
 
 function expand(x) {
-  x &= 0x3FF;
+  x &= 0xFF;
   x  = (x | (x<<8)) & 251719695;
   x  = (x | (x<<4)) & 3272356035;
   x  = (x | (x<<2)) & 1227133513
@@ -122,7 +122,6 @@ Chunk.prototype.set = function(i, j, k, v) {
 //Keeps track of voxel data
 ChunkSet = function() {
   this.chunks       = {};
-  this.dirty_chunks = {};
 };
 
 ChunkSet.prototype.setChunk = function(cx,cy,cz,data) {
@@ -136,25 +135,24 @@ ChunkSet.prototype.setChunk = function(cx,cy,cz,data) {
     chunk = new Chunk(cx,cy,cz,data);
     this.chunks[key] = chunk;
   }
-  this.dirty_chunks[key] = chunk;
 };
 
 ChunkSet.prototype.getChunk = function(cx,cy,cz) {
   return this.chunks[hashCode(cx,cy,cz)];
 };
 
+ChunkSet.prototype.isPointMapped = function(x,y,z) {
+  var cx = x>>CHUNK_SHIFT_X,
+      cy = y>>CHUNK_SHIFT_Y,
+      cz = z>>CHUNK_SHIFT_Z;
+  return !!this.chunks[hashCode(cx,cy,cz)];
+};
+
 ChunkSet.prototype.removeChunk = function(cx,cy,cz) {
   var key = hashCode(cx,cy,cz);
   if(key in this.chunks) {
     delete this.chunks[key];
-    this.dirty_chunks[key] = null;
   }
-};
-
-ChunkSet.prototype.modifiedChunks = function() {
-  var dirty = this.dirty_chunks;
-  this.dirt_chunks = {};
-  return dirty;
 };
 
 ChunkSet.prototype.set = function(x, y, z, v) {
@@ -172,19 +170,18 @@ ChunkSet.prototype.set = function(x, y, z, v) {
     if(chunk.set(ix, iy, iz, v)) {
       if(chunk.isEmpty()) {
         delete this.chunks[key];
-        this.dirty_chunks[key] = null;
       }
-      else {
-        this.dirty_chunks[key] = chunk;
-      }
+      return true;
     }
+    return false;
   }
   else if(v !== 0) {
     chunk = new Chunk(cx, cy, cz);
     chunk.set(ix, iy, iz, v);
     this.chunks[key]       = chunk;
-    this.dirty_chunks[key] = chunk;
+    return true;
   }
+  return false;
 };
 
 ChunkSet.prototype.get = function(x, y, z) {
@@ -457,103 +454,6 @@ ChunkIterator.prototype.move = function(dx, dy, dz) {
   }
 };
 
-var tangent = [
-  [0, 1, 0],
-  [0, 0, 1],
-  [1, 0, 0],
-  [0, 0, 1],
-  [0, 1, 0],
-  [1, 0, 0]];
-  
-function pushv(vv, a) {
-  vv.push(a[0]);
-  vv.push(a[1]);
-  vv.push(a[2]);
-}
-
-function transparent(voxel) {
-  return voxel === 0;
-}
-
-ChunkSet.prototype.buildMesh = function(lo, hi) {
-
-  console.log("here");
-  
-  var vertices  = new Array(6),
-      p         = new Array(3);
-      q         = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
-  for(var i=0; i<6; ++i) {
-    vertices[i] = [];
-  }
-  
-  function addFace(x, y, z, type, dir, step) {
-  
-    //Compute center of face
-    p[0] = x;
-    p[1] = y;
-    p[2] = z;
-    p[dir>>1] += 0.5 * (dir&1 ? 1.0 : -1.0);
-    
-    //Compute quad vertices
-    var du = tangent[dir], dv = tangent[dir^1];
-    q[0][0] = p[0] - 0.5 * (du[0] + dv[0]);
-    q[1][0] = p[0] - 0.5 * du[0] + (step+0.5)*dv[0];
-    q[2][0] = p[0] + (step-0.5)*du[0] - 0.5 * dv[0];
-    q[3][0] = p[0] + (step-0.5)*(du[0] + dv[0]);    
-    for(var i=1; i<3; ++i) {
-      q[0][i] = p[i] - 0.5 * (du[i] + dv[i]);
-      q[1][i] = p[i] + 0.5 * (-du[i] + dv[i]);
-      q[2][i] = p[i] + 0.5 * (du[i] - dv[i]);
-      q[3][i] = p[i] + 0.5 * (du[i] + dv[i]);
-    }
-    
-    //Append vertices
-    var vv = vertices[dir];
-    pushv(vv,q[0]);
-    pushv(vv,q[1]);
-    pushv(vv,q[2]);
-    
-    pushv(vv,q[2]);
-    pushv(vv,q[1]);
-    pushv(vv,q[3]);
-  }
-
-  this.rangeForeach(lo, hi, 1, function(x, y, z, window, step) {
-  
-    var center = window[1 + 3 + 9];
-    if(center == 0)
-      return;
-  
-    //-x
-    if(transparent(window[3+9])) {
-      addFace(x,y,z,center,0,1);
-    }
-    //+x
-    if(transparent(window[2+3+9])) {
-      addFace(x,y,z,center,1,1);
-    }
-    //-y
-    if(transparent(window[1+3])) {
-      addFace(x,y,z,center,2,step);
-    }
-    //+y
-    if(transparent(window[1+3+18])) {
-      addFace(x,y,z,center,3,step);
-    }
-    //-z
-    if(transparent(window[1+9])) {
-      addFace(x,y,z,center,4,step);
-    }
-    //+z
-    if(transparent(window[1+6+9])) {
-      addFace(x,y,z,center,5,step);
-    }
-  });
-
-  return vertices;
-}
-
-
 
 //Declare public methods
 Voxels.CHUNK_X    = CHUNK_X;
@@ -562,5 +462,6 @@ Voxels.CHUNK_Z    = CHUNK_Z;
 Voxels.CHUNK_SIZE = CHUNK_SIZE;
 Voxels.Chunk      = Chunk;
 Voxels.ChunkSet   = ChunkSet;
+Voxels.hashChunk  = hashCode;
 
 })();
