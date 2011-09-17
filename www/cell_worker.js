@@ -22,33 +22,12 @@ var emitter = new EventEmitter(),
     
     console = { 
       log: function() {
-        postMessage( ['log'].concat(Array.prototype.slice.call(arguments, 0)) );
+        self.postMessage( ['log'].concat(Array.prototype.slice.call(arguments)) );
       }
     };
 
-//Web worker <-> EventEmitter bindings
-function post() { postMessage(Array.prototype.slice.call(arguments, 0)); }
-onmessage = function(args) { emitter.emit.apply(emitter, args); };
 
-//Marks a cell as dirty
-function markCell(cx, cy, cz) {
-  var key = Voxels.hashChunk(cx,cy,cz);
-  if(!(key in dirty_cells)) {
-    dirty_chunks[key] = [cx,cy,cz];
-  }
-}
-
-//Marks a whole chunk as dirty
-function markChunk(cx, cy, cz) {
-  var bx = cx * SCALE_X,
-      by = cy * SCALE_Y,
-      bz = cz * SCALE_Z;
-  for(var i=0; i<SCALE_X; ++i)
-  for(var j=0; j<SCALE_Y; ++j)
-  for(var k=0; k<SCALE_Z; ++k) {
-    markCell(bx+i, by+j, bz+k);
-  }
-}
+//------------------------------------------------------------------------------------
 
 //Checks if a voxel is transparent
 function transparent(value) {
@@ -75,7 +54,7 @@ function pushv(vv, a) {
 function buildMesh(lo, hi) {
 
   var vertices  = new Array(6),
-      p         = new Array(3);
+      p         = new Array(3),
       q         = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
   for(var i=0; i<6; ++i) {
     vertices[i] = [];
@@ -148,6 +127,31 @@ function buildMesh(lo, hi) {
   return vertices;
 };
 
+//------------------------------------------------------------------------------------
+
+//Web worker <-> EventEmitter bindings
+function post() { self.postMessage(Array.prototype.slice.call(arguments)); }
+self.onmessage = function(event) { emitter.emit.apply(emitter, event.data); };
+
+//Marks a cell as dirty
+function markCell(cx, cy, cz) {
+  var key = Voxels.hashChunk(cx,cy,cz);
+  if(!(key in dirty_cells)) {
+    dirty_cells[key] = [cx,cy,cz];
+  }
+}
+
+//Marks a whole chunk as dirty
+function markChunk(cx, cy, cz) {
+  var bx = cx * SCALE_X,
+      by = cy * SCALE_Y,
+      bz = cz * SCALE_Z;
+  for(var i=0; i<SCALE_X; ++i)
+  for(var j=0; j<SCALE_Y; ++j)
+  for(var k=0; k<SCALE_Z; ++k) {
+    markCell(bx+i, by+j, bz+k);
+  }
+}
 
 //Creates chunks from all the pending updates
 function makeCells() {
@@ -155,12 +159,12 @@ function makeCells() {
     var cell = dirty_cells[id],
         x = cell[0]<<CELL_SHIFT,
         y = cell[1]<<CELL_SHIFT,
-        z = cell[2]<<CELL_SHFIT;
+        z = cell[2]<<CELL_SHIFT;
     if(!voxel_set.isPointMapped(x,y,z)) {
-      post('remove_cell', cell);
+      post('removeCell', cell);
     }
     else {
-      post('update_cell', cell, buildMesh([x,y,z], [x+CELL_SIZE,y+CELL_SIZE,z+CELL_SIZE]));
+      post('updateCell', cell, buildMesh([x,y,z], [x+CELL_SIZE,y+CELL_SIZE,z+CELL_SIZE]));
     }
   }
   dirty_cells = {};
@@ -169,30 +173,42 @@ function makeCells() {
 
 //Bind events
 emitter.on('stop', function() {
-  clearInterval(makeChunks);
+  if(!voxel_set)
+    return;
+  clearInterval(worker_interval);
   dirty_cells = {};
   voxel_set = null;
+  worker_interval = null;
+  post('stopped');
+  close();
 });
 
-emitter.on('reset', function() {
+emitter.on('start', function() {
   voxel_set = new Voxels.ChunkSet();
-  post('resetComplete');
-  worker_interval = setInterval(makeChunks);
+  worker_interval = setInterval(makeCells);
   dirty_cells = {};
+  post('started');
+  console.log("Worker started!");
 });
 
-emitter.on('setBlock', function(x,y,z,v) {
+emitter.on('setVoxel', function(x,y,z,v) {
+  if(!voxel_set)
+    return;
   if(voxel_set.set(x,y,z,v)) {
     markCell(x>>CELL_SHIFT, y>>CELL_SHIFT, z>>CELL_SHIFT);
   }
 });
 
 emitter.on('setChunk', function(cx,cy,cz,data) {
+  if(!voxel_set)
+    return;
   voxel_set.setChunk(cx,cy,cz,data);
   markChunk(cx, cy, cz);
 });
 
 emitter.on('removeChunk', function(cx,cy,cz) {
+  if(!voxel_set)
+    return;
   voxel_set.removeChunk(cx,cy,cz);
   markChunk(cx, cy, cz);
 });

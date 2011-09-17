@@ -5,6 +5,7 @@ var ErrorState = {
 
 	init : function(cb) {
 		document.getElementById('errorPane').style.display = 'block';
+	  Game.deinit();
 		cb(null);
 	},
 

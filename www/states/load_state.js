@@ -14,7 +14,7 @@ var LoadState = {
     });
     
     Loader.listenFinished(function() {
-      App.setState(Game);
+      App.setState(GameState);
     });
     
     cb(null);

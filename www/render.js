@@ -310,9 +310,7 @@ var Render = {
 //---------------------------------------------------
 
   //Rendering state variables
-  var state = {
-      using_sprites : false,
-    },
+  var render_state = 'none',
     
     nextFrame = 
       window.requestAnimationFrame       || 
@@ -335,7 +333,7 @@ var Render = {
     }
   
     //Clear rendering state
-    state.using_sprites = false;
+    render_state = 'none';
   
     //Reset opengl state  
   	var bg = Render.background_color;  
@@ -443,7 +441,7 @@ void main(void) {\n\
 
   //Sets rendering context to draw from the sprite sheet
   function beginSprites() {
-    if(state.using_sprites) {
+    if(render_state === 'sprites') {
       return;
     }
     
@@ -463,7 +461,7 @@ void main(void) {\n\
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.enable(gl.BLEND);
     
-    state.using_sprites = true;
+    render_state = 'none';
   };
 
   function checkDefault(x, d) {
@@ -517,6 +515,111 @@ void main(void) {\n\
     uniforms.color.set(color[0], color[1], color[2], color[3]);
     
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  };
+
+
+
+//---------------------------------------------------
+// Voxel commands
+//---------------------------------------------------
+
+  var voxels = {
+      texture : null,
+      shader  : null,
+      VERTEX_SIZE : 3,
+    };
+
+//Callback for loading voxels    
+Loader.listenFinished(function() {
+voxels.shader = Render.genShader(
+//Voxel vertex shader
+'attribute vec3 vertex_position;\n\
+uniform mat4 clip_matrix;\n\
+void main(void) {\n\
+	gl_Position = clip_matrix * vec4(vertex_position, 1);\n\
+}',
+		
+//Sprite frag shader
+'precision mediump float;\n\
+void main(void) {\n\
+	gl_FragColor = vec4(1,1,1,1);\n\
+}',
+
+//Options
+{ explicit_frag : true, 
+  explicit_vert : true,
+  
+  attribs       : { 'vertex_position' : '3f', 
+                  },
+  
+  uniforms      : { 'clip_matrix'     : 'Matrix4f',
+                  },
+});
+  
+voxels.texture = textures['terrain.png'];
+});
+
+  //Set up variables for voxels
+  function beginVoxels() {
+    if(render_state == 'voxels') {
+      return;
+    }
+    
+    //Set up voxel specific stuff here
+    gl.useProgram(voxels.shader);
+    voxels.shader.uniforms.clip_matrix.set(false, clip_matrix);
+
+    
+    render_state = 'voxels';
+  };
+  
+  //Voxel cell object
+  function VoxelCell(cx, cy, cz) {
+    this.cx = cx;
+    this.cy = cy;
+    this.cz = cz;
+    this.ranges = new Array(7);
+    this.vbuffer = gl.createBuffer();
+  };
+  
+  //Updates vertices
+  VoxelCell.prototype.update = function(vertices) {
+    this.ranges[0] = 0;
+    for(var i=0; i<6; ++i) {
+      this.ranges[i+1] = this.ranges[i] + (vertices[i].length / voxels.VERTEX_SIZE);
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, 
+      new Float32Array([].concat(vertices[0], vertices[1], vertices[2], vertices[3], vertices[4], vertices[5])),
+      gl.DYNAMIC_DRAW);
+  };
+
+  //Draws a voxel cell
+  VoxelCell.prototype.draw = function() {
+    //FIXME: Cull out invisible cells
+    beginVoxels();
+
+    //Set up attributes and uniforms
+    var shader    = voxels.shader,
+        attribs   = shader.attribs;
+
+    gl.bindBuffer(this.vbuffer);
+    attribs.vertex_position.pointer(this.vbuffer);
+    
+    //FIXME: Only draw visible sides of cube
+    gl.drawArrays(gl.TRIANGLES, 0, this.ranges[6]);
+  };
+  
+  //Release voxel cell resources
+  VoxelCell.prototype.release = function() {
+    gl.deleteBuffer(this.vbuffer);
+  };
+  
+  //Creates a voxel cell
+  Render.createVoxelCell = function(cx, cy, cz, vertices) {
+    var cell = new VoxelCell(cx, cy, cz);
+    cell.update(vertices);
+    return cell;
   };
 
 })();

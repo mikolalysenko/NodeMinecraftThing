@@ -14,51 +14,37 @@ Game.drawPane
 Game.instance       = null;
 
 //Starts executing the game state
-Game.init = function(cb) {
+Game.init = function() {
 
   //Create instance
   Game.instance = new Client.Instance();
   Game.instance.init();
-  
-	//Initialize input
-	Input.init();
-
-  //Show game UI and resize it
-  document.getElementById('gamePane').style.display = 'block';
-  Render.resize();
-
-  //Bind necessary callbacks
-  window.onresize = Render.resize;
-  
+    
   //Start running the game
   Game.running 		     = true;
   Game.tick_interval 	 = setInterval(Game.tick, 50)
-  Render.bindDraw(Game.draw);
-
-  cb(null);  
+  
+  VoxelClient.init(function() {
+    console.log("VoxelClient thread started");
+  });
 };
 
 //Pauses/disables the game state
-Game.deinit = function(cb) {
-
-	document.getElementById('gamePane').style.display = 'none';
+Game.deinit = function() {
 
 	Game.running = false;
 	if(Game.tick_interval) {
 	  clearInterval(Game.tick_interval);
   }
-  Render.clearDraw();
-  	
-	window.onresize = null;
-	
-	Input.deinit();
-	
+  
 	if(Game.instance) {
   	Game.instance.deinit();
 	  delete Game.instance;
   }
-  
-  cb(null);
+
+  VoxelClient.deinit(function() {
+    console.log("VoxelClient thread stopped");
+  });
 };
 
 //Called when the game ticks
@@ -78,14 +64,18 @@ Game.draw = function(time) {
   
   //Process user input before drawing each frame
   Game.input();
+
+  //Draw all the voxels
+  VoxelClient.draw();
   
-  //Draw stuff
+  //Draw sprites
   Render.drawSprite([0,0,(-1 + Math.cos(time/5000.0)) * 50], {
-    rect:[0,0,32,64],
+    rect:((time / 100)&1 ? [64,0,96,64] : [96,0,128,64]),
     rotation:0,
     center:[16,32],
     scale:2,
   });
+  
 };
 
 })();
