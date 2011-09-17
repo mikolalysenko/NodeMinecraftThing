@@ -3,7 +3,13 @@
 Some general notes:
   
   *** All scripts should be run from the root source directory ***
-  *LINUX ONLY* (for now anyway)
+  
+  * Server is linux only
+
+  * Password is currently sent/stored in plaintext!  Use a throwaway password.
+    Eventually, will switch over to using openID for authentication.
+    **current system is only a temporary measure**
+
   
 Example first time start up:
 
@@ -82,6 +88,7 @@ TODO:
   Add opera test script
   Add more unit tests
   Get an actual hosting service :)
+  
 
 Contributors:
 
