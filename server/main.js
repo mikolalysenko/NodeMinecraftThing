@@ -21,7 +21,6 @@ var settings = {
   
 };
 
-
 //Parse out arguments from commandline
 var argv = require('optimist').argv;
 for(var i in argv) {
@@ -30,44 +29,37 @@ for(var i in argv) {
   }
 }
 
-//Create game rules
-var rules = new (require('./rules.js').Rules)(settings.game_dir);
-
-//Create http server & websocket server
+//Connect to database
 util.log("Starting server...");
-var express = require('express');
-var server = express.createServer();
-server.use(express.static(settings.wwwroot));
+require("./database.js").initializeDB(settings.db_name, settings.db_server, settings.db_port, function(db) {
 
+  //Create web server
+  var express = require('express');
+  var server = express.createServer();
+  server.use(express.static(settings.wwwroot));
 
-rules.init(server, function(err) {
-  if(err) {
-    util.log("Error creating rules: " + err);
-    return;
-  }
+  //Create game rules
+  var rules = new (require('./rules.js').Rules)(settings.game_dir, db);
+  rules.setVirtualMountPoints(server, function(err) {
+    if(err) {
+      util.log("Error mounting client files: " + err);
+      return;
+    }
 
-  //Connect to database
-  require("./database.js").initializeDB(settings.db_name, settings.db_server, settings.db_port, function(db) {
-
+    //Call back for starting the gateway server
     function startGame(err) {
       if(err) {
         util.log("Error initializing world: " + err);
         db.close();
         return;
       }
-
-      //Start the gateway server
       require("./gateway.js").createGateway(server, db, rules, function(err, gateway) {
         if(err) {
           util.log("Error creating gateway: " + err);
           db.close();
           return;
         }
-        
-        //Start http server
         server.listen(settings.web_port);
-
-        //Off to the races!
         util.log("Server initialized!"); 
       });
     };
@@ -80,3 +72,4 @@ rules.init(server, function(err) {
     }
   });
 });
+

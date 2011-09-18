@@ -1,6 +1,7 @@
 var util = require('util'),
     EventEmitter = require('events').EventEmitter,
-    patcher = require("./patcher.js");
+    patcher = require('./patcher.js'),
+    voxels = require('./voxels.js');
 
 // A function that just eats events (called when updating the database)
 function sink(err, result) {
@@ -110,7 +111,7 @@ Player.prototype.tick = function() {
 
 //Deletes an entity on the client
 Player.prototype.deleteEntity = function(entity) {
-  util.log("Client: " + this.state._id + ", deleting entity: " + entity.state._id);
+  util.log('Client: ' + this.state._id + ', deleting entity: ' + entity.state._id);
 
   var entity_id = entity.state._id;
   if(entity_id in this.cached_entities) {
@@ -130,7 +131,7 @@ Player.prototype.updateEntity = function(entity) {
 //Pushes updates to the player over the network
 Player.prototype.pushUpdates = function() {
 
-  if(this.client.state !== "game") {
+  if(this.client.state !== 'game') {
     return;
   }
   
@@ -183,6 +184,7 @@ function Instance(region, db, gateway, rules) {
   this.gateway    = gateway;
   this.rules      = rules;
   this.emitter    = new EventEmitter();
+  this.chunk_set  = new voxels.ChunkSet();
 }
 
 Instance.prototype.TICK_TIME    = 50;
@@ -486,7 +488,15 @@ Instance.prototype.deactivatePlayer = function(player_id, cb) {
       cb(err0 || err1);
     });
   });
-}
+};
+
+//Sets a voxel
+Instance.prototype.setVoxel = function(x, y, z, v) {
+};
+
+//Retrieves a voxel
+Instance.prototype.getVoxel = function(x,y,z) {
+};
 
 exports.Instance = Instance;
 

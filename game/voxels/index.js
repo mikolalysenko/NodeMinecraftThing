@@ -1,7 +1,9 @@
+//Voxel terrain texture
+exports.voxelTexture = "./voxels/voxels.png";
+
 //Texture order
 // -x, +x, -y, +y, -z, +z
-
-exports = [
+exports.voxelTypes = [
 
   { name:         'Air', 
     transparent:   true, 
@@ -11,6 +13,7 @@ exports = [
   { name:         'Stone', 
     transparent:   true, 
     textures:     [ [0,1], [0,1], [0,1], [0,1], [0,1], [0,1] ],
-  },
-  
+  },  
 ];
+
+

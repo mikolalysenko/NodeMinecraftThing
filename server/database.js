@@ -28,7 +28,11 @@ exports.initializeDB = function(db_name, db_server, db_port, next) {
       addCollection('players', function() { 
         db.players.ensureIndex([['player_name',1]], true, function() {
           addCollection('regions', function() {
-            next(db);
+            addCollection('chunks', function() {
+              db.chunks.ensureIndex([['region_id',1]], false, function() {
+                next(db);
+              });
+            });
           }); 
         });
       });
