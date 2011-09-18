@@ -36,8 +36,6 @@ var LoginState = { };
         
         //Start running the game
         Game.init();
-        
-        //Enter loading state
         App.setState(LoadState);
       });
       

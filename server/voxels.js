@@ -21,10 +21,11 @@ function flattenIndex(i, j, k) {
 };
 
 function expand(x) {
-  x &= 0xFF;
-  x  = (x | (x<<8)) & 251719695;
-  x  = (x | (x<<4)) & 3272356035;
-  x  = (x | (x<<2)) & 1227133513
+  x &= 0x3FF;
+  x  = (x | (x<<16)) & 4278190335;
+  x  = (x | (x<<8))  & 251719695;
+  x  = (x | (x<<4))  & 3272356035;
+  x  = (x | (x<<2))  & 1227133513;
   return x;
 };
 
@@ -84,7 +85,7 @@ Chunk.prototype.set = function(i, j, k, v) {
       interval_val   = this.data[m+1];
       
   if(v === interval_val) {
-    return false;
+    return interval_val;
   }
   if(y === interval_start) {
     if(interval_start + 1 == interval_end) {
@@ -92,21 +93,21 @@ Chunk.prototype.set = function(i, j, k, v) {
       
       if(m+3<this.data.length && this.data[m+3] == v) {        
         if(m > 0 && this.data[m-1] == v) {
-          this.data = this.data.slice(0, m).concat(this.data.slice(m+4));
+          this.data.splice(m,4);
         }
         else {
-          this.data = this.data.slice(0, m+2).concat(this.data.slice(m+4));
+          this.data.splice(m+2,2);
         }
       }
       else if(m > 0 && this.data[m-1] == v) {
-        this.data = this.data.slice(0, m).concat(this.data.slice(m+2));
+        this.data.splice(m,2);
       }
     }
     else if(m > 0 && this.data[m-1] == v) {
       ++this.data[m];
     }
     else {
-      this.data = this.data.slice(0, m).concat([y, v, y+1, interval_val], this.data.slice(m+2));
+      this.data.splice(m+1, 1, v, y+1, interval_val);
     }
   }
   else if(y === interval_end - 1) {
@@ -114,13 +115,13 @@ Chunk.prototype.set = function(i, j, k, v) {
       --this.data[m+2];
     }
     else {
-      this.data = this.data.slice(0, m+2).concat([y, v], this.data.slice(m+2));
+      this.data.splice(m+2, 0, y, v);
     }
   }
   else {
-    this.data = this.data.slice(0, m+2).concat([y, v, y+1, interval_val], this.data.slice(m+2));
+    this.data.splice(m+2, 0, y, v, y+1, interval_val);
   }
-  return true;
+  return interval_val;
 };
 
 //Keeps track of voxel data
@@ -179,21 +180,18 @@ ChunkSet.prototype.set = function(x, y, z, v) {
       chunk = this.chunks[key];
       
   if(chunk) {
-    if(chunk.set(ix, iy, iz, v)) {
-      if(chunk.isEmpty()) {
-        delete this.chunks[key];
-      }
-      return true;
+    var p = chunk.set(ix, iy, iz, v);
+    if(chunk.isEmpty()) {
+      delete this.chunks[key];
     }
-    return false;
+    return p;
   }
   else if(v !== 0) {
     chunk = new Chunk(cx, cy, cz);
     chunk.set(ix, iy, iz, v);
     this.chunks[key]       = chunk;
-    return true;
   }
-  return false;
+  return 0;
 };
 
 ChunkSet.prototype.get = function(x, y, z) {
@@ -486,14 +484,20 @@ ChunkIterator.prototype.move = function(dx, dy, dz) {
 
 
 //Declare public methods
-Voxels.CHUNK_X    = CHUNK_X;
-Voxels.CHUNK_Y    = CHUNK_Y;
-Voxels.CHUNK_Z    = CHUNK_Z;
-Voxels.CHUNK_SIZE = CHUNK_SIZE;
-Voxels.Chunk      = Chunk;
-Voxels.ChunkSet   = ChunkSet;
-Voxels.hashChunk  = hashCode;
-Voxels.flatten    = flattenIndex;
+Voxels.CHUNK_SHIFT_X  = CHUNK_SHIFT_X;
+Voxels.CHUNK_SHIFT_Y  = CHUNK_SHIFT_Y;
+Voxels.CHUNK_SHIFT_Z  = CHUNK_SHIFT_Z;
+Voxels.CHUNK_X        = CHUNK_X;
+Voxels.CHUNK_Y        = CHUNK_Y;
+Voxels.CHUNK_Z        = CHUNK_Z;
+Voxels.CHUNK_MASK_X   = CHUNK_MASK_X;
+Voxels.CHUNK_MASK_Y   = CHUNK_MASK_Y;
+Voxels.CHUNK_MASK_Z   = CHUNK_MASK_Z;
+Voxels.CHUNK_SIZE     = CHUNK_SIZE;
+Voxels.Chunk          = Chunk;
+Voxels.ChunkSet       = ChunkSet;
+Voxels.hashChunk      = hashCode;
+Voxels.flatten        = flattenIndex;
 
 
 })();

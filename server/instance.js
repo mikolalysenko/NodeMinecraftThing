@@ -71,15 +71,17 @@ Entity.prototype.checkModified = function() {
 //----------------------------------------------------------------
 // A player connection
 //----------------------------------------------------------------
-function Player(instance, client, player_rec, entity) {
+function Player(instance, client, player_rec, entity_rec) {
 
   //Player record  
   this.state     = player_rec;
-  this.entity    = entity;
+  this.entity    = null;
   this.emitter   = new EventEmitter();
   
   //RPC interface
+  this.net_state = 'loading';
   this.client    = client;
+  this.entity_rec = entity_rec;
   
   //Instance
   this.instance = instance;
@@ -91,18 +93,75 @@ function Player(instance, client, player_rec, entity) {
   this.cached_entities = {};
   this.pending_entity_updates = {};
   this.pending_entity_deletes = {};
+  
+  //Chunk replication
+  this.pending_writes = {};
 }
 
-Player.prototype.init = function(instance) {
+Player.prototype.init = function() {
   var player = this;
-  this.update_interval = setInterval(function() { player.pushUpdates(); }, 50);
+  this.net_state = 'loading';
   this.emitter.emit('init');
+  this.transmitChunks();
 }
 
 Player.prototype.deinit = function() {
   clearInterval(this.update_interval);
   this.emitter.emit('deinit');
   this.emitter.removeAllListeners();
+  this.net_state = 'leaving';
+}
+
+
+//Transmits chunks while the player is in the loading state
+Player.prototype.transmitChunks = function() {
+  if(this.net_state !== 'loading') {
+    clearInterval(this.loading_interval);
+    return;
+  }
+
+  var player = this,
+      instance = player.instance;
+  
+  function loadComplete() {
+    if(player.net_state !== 'loading') {
+      return;
+    }
+  
+    //Clear loading interval
+    clearInterval(player.loading_interval);
+    
+    //Start update interval
+    player.net_state = 'game';
+    player.update_interval = setInterval(function() { player.pushUpdates(); }, 50);
+
+    //Create player entity
+    player.entity = instance.createEntity(player.entity_rec);
+    delete player.entity_rec;
+
+    //Send load complete notification
+    player.client.rpc.notifyLoadComplete(player.entity_rec);
+
+    //Send a join event to all listeners
+    player.emitter.emit('join');
+    instance.emitter.emit('join');
+  };
+  
+  
+  //FIXME: This should probably send chunks in multiple parts
+  function executeTransmit() {
+    //Get a list of all the pending keys
+    var chunk_set = instance.chunk_set,
+        buffer = [];
+    for(var id in chunk_set.chunks) {
+      var chunk = chunk_set.chunks[id];
+      console.log(id);
+      buffer.push([chunk.x, chunk.y, chunk.z, chunk.data]);
+    }
+    player.client.rpc.updateChunks(buffer, loadComplete);
+  };
+
+  executeTransmit();
 }
 
 Player.prototype.tick = function() {
@@ -131,7 +190,9 @@ Player.prototype.updateEntity = function(entity) {
 //Pushes updates to the player over the network
 Player.prototype.pushUpdates = function() {
 
-  if(this.client.state !== 'game') {
+  if(this.client.state !== 'game' ||
+     this.net_state !== 'game') {
+    clearInterval(this.update_interval);
     return;
   }
   
@@ -185,10 +246,39 @@ function Instance(region, db, gateway, rules) {
   this.rules      = rules;
   this.emitter    = new EventEmitter();
   this.chunk_set  = new voxels.ChunkSet();
+  this.dirty_chunks = {};
 }
 
 Instance.prototype.TICK_TIME    = 50;
 Instance.prototype.SYNC_TIME    = 60 * 1000;
+
+
+
+
+//Sets a voxel
+Instance.prototype.setVoxel = function(x, y, z, v) {
+
+  if(this.chunk_set.set(x,y,z,v)) {
+  
+    var cx = x >> voxels.CHUNK_SHIFT_X,
+        cy = y >> voxels.CHUNK_SHIFT_Y,
+        cz = z >> voxels.CHUNK_SHIFT_Z,
+        key = voxels.hashChunk(cx,cy,cz);
+
+    if(!this.dirty_chunks[key]) {
+      this.dirty_chunks[key] = [cx, cy, cz];
+    }
+    
+    //TODO: Send command to all clients
+  }
+};
+
+//Retrieves a voxel
+Instance.prototype.getVoxel = function(x,y,z) {
+  return this.chunk_set.get(x,y,z);
+};
+
+
 
 //Start the instance server
 Instance.prototype.start = function(cb) {  
@@ -205,53 +295,228 @@ Instance.prototype.start = function(cb) {
   var db    = this.db,
       inst  = this;
 
-  //Thaw out all the objects
-  db.entities.find({ region_id: inst.region._id }, function(err, cursor) {
-    //Check for database error
-    if(err) {
-      cb(err);
-      return;
+  //Start running
+  function startupGame() {
+    inst.running = true;
+  
+    //Initialize all the entities
+    for(var id in inst.entities) {
+      inst.entities[id].init();
+      inst.updateEntity(inst.entities[id]);
     }
-        
-    //Iterate over result set
-    cursor.each(function(err, entity) {
-      if(err !== null) {
+  
+    //Set up interval counters
+    inst.tick_interval = setInterval( function() { inst.tick(); }, inst.TICK_TIME);
+    inst.sync_interval = setInterval( function() { inst.sync(); }, inst.SYNC_TIME);
+    
+    //Send events to game
+    inst.rules.registerInstance(inst);
+    if(inst.region.brand_new) {
+      inst.region.brand_new = false;
+      inst.emitter.emit('construct');
+    }
+    inst.emitter.emit('init');
+    
+    //Continue
+    cb(null);
+  };
+
+  //Thaws out all entities
+  function thawEntities() {
+    db.entities.find({ region_id: inst.region._id }, function(err, cursor) {
+      //Check for database error
+      if(err) {
         cb(err);
-      } else if(entity !== null) {
-        //Do not instantiate player entities until they actually connect
-        if(entity.type && entity.type == 'player') {
-          return;
-        }
-        inst.entities[entity._id] = inst.createEntity(entity);
-      } else {
-      
-        //Start running
-        inst.running = true;
-      
-        //Initialize all the entities
-        for(var id in inst.entities) {
-          inst.entities[id].init();
-          inst.updateEntity(inst.entities[id]);
-        }
-      
-        //Set up interval counters
-        inst.tick_interval = setInterval( function() { inst.tick(); }, inst.TICK_TIME);
-        inst.sync_interval = setInterval( function() { inst.sync(); }, inst.SYNC_TIME);
-        
-        //Send events to game
-        inst.rules.registerInstance(inst);
-        if(inst.region.brand_new) {
-          inst.region.brand_new = false;
-          inst.emitter.emit('construct');
-        }
-        inst.emitter.emit('init');
-        
-        //Continue
-        cb(null);
-      }      
+        return;
+      }
+          
+      //Iterate over result set
+      cursor.each(function(err, entity) {
+        if(err !== null) {
+          cb(err);
+        } else if(entity !== null) {
+          //Do not instantiate player entities until they actually connect
+          if(entity.type && entity.type == 'player') {
+            return;
+          }
+          inst.entities[entity._id] = inst.createEntity(entity);
+        } else {
+          startupGame();
+        }      
+      });
     });
-  });
+  };
+
+  //Load up all the chunks
+  function loadChunks() {
+    db.chunks.find({ region_id: inst.region._id }, function(err, cursor) {
+      if(err) {
+        cb(err);
+        return;
+      }
+      
+      cursor.each(function(err, chunk) {
+        if(err !== null) {
+          cb(err);
+        } else if(chunk !== null) {
+          inst.chunk_set.updateChunk(chunk.x, chunk.y, chunk.z, chunk.data);
+        } else {
+          thawEntities();
+        }
+      });
+    });
+  };
+  
+  
+  //Start the server
+  loadChunks();
 }
+
+//Called whenever an entity's state changes
+Instance.prototype.updateEntity = function(entity) {
+  if(!entity || entity.deleted) {
+    return;
+  }
+  
+  var persistent = entity.persistent && (!entity.dirty),
+      replicated = entity.net_replicated,
+      need_check = persistent || replicated; 
+  
+  //Check if the entity was modified
+  if( !(need_check && entity.checkModified()) ) {
+    return;
+  }
+  
+  //If the entity is not dirty
+  if(persistent) {
+    entity.dirty = true;
+    this.dirty_entities.push(entity);
+  }
+  
+  //Mark entity in each player
+  if(replicated) {
+    for(var player_id in this.players) {
+      this.players[player_id].updateEntity(entity);
+    }
+    
+    //If entity is one-shot, only replicate it once
+    if(entity.net_one_shot) {
+      entity.net_replicated = false;
+    }
+  }
+}
+
+//Synchronize with the database
+Instance.prototype.sync = function() {
+
+  //Apply entity updates
+  var e;
+  for(var i=0; i<this.dirty_entities.length; ++i) {
+    e = this.dirty_entities[i];
+    util.log("Syncing: " + JSON.stringify(e.state));
+    if(!e.deleted) {
+      this.db.entities.save(e.state, sink);
+      e.dirty = false;
+    }
+  }
+  this.dirty_entities.length = 0;
+
+  //Apply entity deletes
+  for(var i=0; i<this.deleted_entities.length; ++i) {
+    this.db.entities.remove({'_id': this.deleted_entities[i]}, sink);
+  }
+  this.deleted_entities.length = 0;
+  
+  //Synchronize all players
+  for(var pl in this.players) {
+    this.db.players.update(pl.state, sink);
+  }
+  
+  //Synchronize region
+  this.db.regions.update(this.region, sink);
+}
+
+
+//Called when a player enters the instance
+Instance.prototype.activatePlayer = function(client, player_rec, entity_rec, cb) {
+  
+  if((player_rec.entity_id in this.entities) ||
+     (player_rec._id in this.players) ) {
+    cb("Player already in instance");
+    return;
+  }
+  
+  //Set client instance
+  client.instance = this;
+  
+  //Add to player list
+  var player = new Player(this, client, player_rec, entity_rec);
+  this.players[player_rec._id] = player;
+    
+  //Initialize player
+  this.rules.registerPlayer(player);
+  player.init();
+    
+  //Send initial copy of game state to player
+  for(var id in this.entities) {
+    var entity = this.entities[id];
+    if( entity.net_replicated || entity.net_one_shot ) {
+      player.updateEntity(entity);
+    }
+  }
+  
+  //Done
+  cb(null);
+}
+
+//Called when a player leaves the instance
+Instance.prototype.deactivatePlayer = function(player_id, cb) {
+  
+  //Remove from player list
+  var player = this.players[player_id];
+  if(!player) {
+    cb("Player does not exist");
+    return;
+  }
+   
+  //Deinit player entity
+  if(player.entity) {
+    this.emitter.emit('depart', player);
+    var entity_id = player.entity.state._id;
+    
+    //Remove player from dirty entity list
+    for(var i=0; i<this.dirty_entities.length; ++i) {
+      if(this.dirty_entities[i] == entity_id) {
+        this.dirty_entities[i] = this.dirty_entities[this.dirty_entities.length-1];
+        this.dirty_entities.length = this.dirty_entities.length -1;
+      }
+    }
+    
+    //Remove from entity list
+    delete this.entities[entity_id];
+    
+    //Remove entity from all players
+    for(var pl in this.players) {
+      this.players[pl].deleteEntity(player.entity);
+    }
+  }
+ 
+  //Deinitialie player
+  player.deinit();
+  delete this.players[player_id];
+    
+  //Save entity changes to database, and continue
+  this.db.players.update(player.state, function(err0, doc0) {
+    if(player.entity) {
+      this.db.entities.update(player.entity.state, function(err1, doc1) {
+        cb(err0 || err1);
+      });
+    }
+    else {
+      cb(err0);
+    }
+  });
+};
 
 //Tick all the entities in the game world
 Instance.prototype.tick = function() {
@@ -345,158 +610,6 @@ Instance.prototype.destroyEntity = function(entity) {
     }
   }
 }
-
-//Called whenever an entity's state changes
-Instance.prototype.updateEntity = function(entity) {
-  if(!entity || entity.deleted) {
-    return;
-  }
-  
-  var persistent = entity.persistent && (!entity.dirty),
-      replicated = entity.net_replicated,
-      need_check = persistent || replicated; 
-  
-  //Check if the entity was modified
-  if( !(need_check && entity.checkModified()) ) {
-    return;
-  }
-  
-  //If the entity is not dirty
-  if(persistent) {
-    entity.dirty = true;
-    this.dirty_entities.push(entity);
-  }
-  
-  //Mark entity in each player
-  if(replicated) {
-    for(var player_id in this.players) {
-      this.players[player_id].updateEntity(entity);
-    }
-    
-    //If entity is one-shot, only replicate it once
-    if(entity.net_one_shot) {
-      entity.net_replicated = false;
-    }
-  }
-}
-
-//Synchronize with the database
-Instance.prototype.sync = function() {
-
-  //Apply entity updates
-  var e;
-  for(var i=0; i<this.dirty_entities.length; ++i) {
-    e = this.dirty_entities[i];
-    util.log("Syncing: " + JSON.stringify(e.state));
-    if(!e.deleted) {
-      this.db.entities.save(e.state, sink);
-      e.dirty = false;
-    }
-  }
-  this.dirty_entities.length = 0;
-
-  //Apply entity deletes
-  for(var i=0; i<this.deleted_entities.length; ++i) {
-    this.db.entities.remove({'_id': this.deleted_entities[i]}, sink);
-  }
-  this.deleted_entities.length = 0;
-  
-  //Synchronize all players
-  for(var pl in this.players) {
-    this.db.players.update(pl.state, sink);
-  }
-  
-  //Synchronize region
-  this.db.regions.update(this.region, sink);
-}
-
-
-//Called when a player enters the instance
-Instance.prototype.activatePlayer = function(client, player_rec, entity_rec, cb) {
-  
-  if((player_rec.entity_id in this.entities) ||
-     (player_rec._id in this.players) ) {
-    cb("Player already in instance");
-    return;
-  }
-  
-  //Set client instance
-  client.instance = this;
-  
-  //Create the player entity
-  var player_entity = this.createEntity(entity_rec);
-  
-  //Add to player list
-  var player = new Player(this, client, player_rec, player_entity);
-  this.players[player_rec._id] = player;
-  
-  //Initialize player
-  this.rules.registerPlayer(player);
-  player.init();
-  
-  //Send a join event to all listeners
-  this.emitter.emit('join', player);
-    
-  //Send initial copy of game state to player
-  for(var id in this.entities) {
-    var entity = this.entities[id];
-    if( entity.net_replicated || entity.net_one_shot ) {
-      player.updateEntity(entity);
-    }
-  }
-  
-  //Done
-  cb(null);
-}
-
-//Called when a player leaves the instance
-Instance.prototype.deactivatePlayer = function(player_id, cb) {
-  
-  //Remove from player list
-  var player = this.players[player_id];
-  if(!player) {
-    cb("Player does not exist");
-    return;
-  }
-  
-  this.emitter.emit('depart', player);
-  
-  player.deinit();
-  delete this.players[player_id];
-  
-  var entity_id = player.entity.state._id;
-  
-  //Remove player from dirty entity list
-  for(var i=0; i<this.dirty_entities.length; ++i) {
-    if(this.dirty_entities[i] == entity_id) {
-      this.dirty_entities[i] = this.dirty_entities[this.dirty_entities.length-1];
-      this.dirty_entities.length = this.dirty_entities.length -1;
-    }
-  }
-  
-  //Remove from entity list
-  delete this.entities[entity_id];
-  
-  //Remove entity from all players
-  for(var pl in this.players) {
-    this.players[pl].deleteEntity(player.entity);
-  }
-  
-  //Save entity changes to database, and continue
-  this.db.players.update(player.state, function(err0, doc0) {
-    this.db.entities.update(player.entity.state, function(err1, doc1) {
-      cb(err0 || err1);
-    });
-  });
-};
-
-//Sets a voxel
-Instance.prototype.setVoxel = function(x, y, z, v) {
-};
-
-//Retrieves a voxel
-Instance.prototype.getVoxel = function(x,y,z) {
-};
 
 exports.Instance = Instance;
 

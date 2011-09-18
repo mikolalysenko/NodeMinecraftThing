@@ -14,7 +14,7 @@ Game.drawPane
 Game.instance       = null;
 
 //Starts executing the game state
-Game.init = function() {
+Game.init = function(cb) {
 
   //Create instance
   Game.instance = new Client.Instance();
@@ -26,6 +26,9 @@ Game.init = function() {
   
   VoxelClient.init(function() {
     console.log("VoxelClient thread started");
+    if(cb) {
+      cb();
+    }
   });
 };
 

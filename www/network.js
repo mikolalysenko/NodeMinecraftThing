@@ -12,6 +12,12 @@ Network.connection  = null;
 
 //Local call backs from the server
 var local_interface = {
+
+
+  //Called when state is fully initialized
+  notifyLoadComplete : function(player_entity) {
+    console.log("Load completed");
+  },
   
   //Updates an entity locally
   updateEntities : function(patches) {
@@ -31,8 +37,24 @@ var local_interface = {
     }
   },
   
-  //Displays a chat message
-  chat : function(mesg) {
+  //Updates a bunch of voxels
+  setVoxels : function(updates) {
+    for(var i=0; i<updates.length; i+=4) {
+      VoxelClient.setVoxelAuthoritative(
+        updates[i],
+        updates[i+1],
+        updates[i+2],
+        updates[i+3]);
+    }
+  },
+  
+  //Updates a chunk
+  updateChunks : function(updates, cb) {
+    console.log(updates);
+    for(var i=0; i<updates.length; ++i) {
+      VoxelClient.updateChunk(updates[i][0], updates[i][1], updates[i][2], updates[i][3]);
+    }
+    cb();
   },
   
 };

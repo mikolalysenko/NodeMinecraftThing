@@ -6,7 +6,8 @@ var VoxelClient = { };
 var cells = {},
     worker = null,
     voxel_set = null,
-    emitter = new EventEmitter();
+    emitter = new EventEmitter(),
+    local_writes = {};
   
 //Posts a message to the worker
 function post() {
@@ -83,6 +84,7 @@ VoxelClient.deinit = function(cb) {
     cb(null);
   });
   post('stop');
+  buffered_updates = [];
 };
 
 //Draws all the voxels
@@ -92,12 +94,52 @@ VoxelClient.draw = function() {
   }
 };
 
-//Called when a voxel gets updated
+//Called when a voxel gets updated locally
 VoxelClient.setVoxel = function(x, y, z, v) {
-  if(voxel_set.set(x,y,z,v)) {
+  var p = voxel_set.set(x,y,z,v);
+  if(p !== v) {
+  
+    //Mark local write in case it must be rolled back later
+    var key = voxels.hashChunk(x,y,z),
+        local = localWrites[key];
+    if(local && local[4] === v) {
+      delete localWrites[key];
+    }
+    else {
+      localWrites[key] = [5, x, y, z, p];
+    }
+    
     post('setVoxel', x, y, z, v);
   }
 };
+
+//Called when a server confirms that a voxel has been set
+VoxelClient.setVoxelAuthoritative = function(x, y, z, v) {
+
+  //Remove local writes
+  var key = voxels.hashChunk(x,y,z);
+  delete localWrites[key];
+  
+  //Check if there was a correction
+  if(voxel_set.set(x,y,z,v) !== v) {
+    post('setVoxel', x, y, z, v);
+  }
+};
+
+//Iterate on local writes, roll back any bad changes
+VoxelClient.checkLocalWrites = function() {
+  for(var id in localWrites) {
+    var local = localWrites[id];
+    
+    //Check if timer has ticked too long, if so then roll back local write
+    if(--local[0] <= 0) {
+      voxel_set.set(local[1], local[2], local[3], local[4]);
+      post('setVoxel', local[1], local[2], local[3], local[4]);
+      delete localWrites[id];
+    }
+  }
+};
+
 
 //Called when a chunk gets updated
 VoxelClient.updateChunk = function(cx, cy, cz, data) {

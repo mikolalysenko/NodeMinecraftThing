@@ -222,7 +222,7 @@ emitter.on('start', function() {
 emitter.on('setVoxel', function(x,y,z,v) {
   if(!voxel_set)
     return;
-  if(voxel_set.set(x,y,z,v)) {
+  if(voxel_set.set(x,y,z,v) !== v) {
     markCell(x>>CELL_SHIFT, y>>CELL_SHIFT, z>>CELL_SHIFT);
   }
 });
