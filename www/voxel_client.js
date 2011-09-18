@@ -8,7 +8,15 @@ var cells = {},
     voxel_set = null,
     emitter = new EventEmitter(),
     local_writes = {};
-  
+
+
+//A local write (stored client side)
+function LocalWrite(counter, prev) {
+  this.counter  = counter;
+  this.prev     = prev;
+};
+
+
 //Posts a message to the worker
 function post() {
   worker.postMessage(Array.prototype.slice.call(arguments));
@@ -45,6 +53,8 @@ VoxelClient.init = function(cb) {
     cb("Client does not support web workers");
     return;
   }
+  
+  console.log("Starting voxel worker");
 
   //Clear out local data
   cells = {};
@@ -100,13 +110,13 @@ VoxelClient.setVoxel = function(x, y, z, v) {
   if(p !== v) {
   
     //Mark local write in case it must be rolled back later
-    var key = voxels.hashChunk(x,y,z),
-        local = localWrites[key];
-    if(local && local[4] === v) {
-      delete localWrites[key];
+    var key   = voxels.hashChunk(x,y,z),
+        local = local_writes[key];
+    if(local && local.prev === v) {
+      delete local_writes[key];
     }
     else {
-      localWrites[key] = [5, x, y, z, p];
+      local_writes[key] = new LocalWrite(5, p);
     }
     
     post('setVoxel', x, y, z, v);
@@ -117,8 +127,10 @@ VoxelClient.setVoxel = function(x, y, z, v) {
 VoxelClient.setVoxelAuthoritative = function(x, y, z, v) {
 
   //Remove local writes
-  var key = voxels.hashChunk(x,y,z);
-  delete localWrites[key];
+  var key = Voxels.hashChunk(x,y,z);
+  if(key in local_writes) {
+    delete local_writes[key];
+  }
   
   //Check if there was a correction
   if(voxel_set.set(x,y,z,v) !== v) {
@@ -128,14 +140,17 @@ VoxelClient.setVoxelAuthoritative = function(x, y, z, v) {
 
 //Iterate on local writes, roll back any bad changes
 VoxelClient.checkLocalWrites = function() {
-  for(var id in localWrites) {
-    var local = localWrites[id];
+  for(var id in local_writes) {
+    var local = local_writes[id];
     
-    //Check if timer has ticked too long, if so then roll back local write
-    if(--local[0] <= 0) {
-      voxel_set.set(local[1], local[2], local[3], local[4]);
-      post('setVoxel', local[1], local[2], local[3], local[4]);
-      delete localWrites[id];
+    if(--local.counter <= 0) {
+      var k = parseInt(id),
+          x = Voxels.unhash(k),
+          y = Voxels.unhash(k>>1),
+          z = Voxels.unhash(k>>2);
+      voxel_set.set(x, y, z, local.prev);
+      post('setVoxel', x, y, z, local.prev);
+      delete local_writes[id];
     }
   }
 };
@@ -143,7 +158,7 @@ VoxelClient.checkLocalWrites = function() {
 
 //Called when a chunk gets updated
 VoxelClient.updateChunk = function(cx, cy, cz, data) {
-  voxel_set.updateChunk(cx,cy,cz,data);
+  voxel_set.setChunk(cx,cy,cz,data);
   post('updateChunk', cx, cy, cz, data);
 };
 

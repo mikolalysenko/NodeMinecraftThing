@@ -29,15 +29,33 @@ function expand(x) {
   return x;
 };
 
+//Hash is actually invertible over domain (+/- 2^10)^3
+function unhash(x) {
+  x &= 1227133513;
+  x = (x | (x>>2)) & 3272356035;
+  x = (x | (x>>4)) & 251719695;
+  x = (x | (x>>8)) & 4278190335;
+  x = (x | (x>>16)) & 0x3FF;
+  return (x<<22)>>22;
+  
+}
+
 function hashCode(i,j,k) {
   return expand(i)+(expand(j)<<1)+(expand(k)<<2);
 };
 
-function Chunk(x, y, z) {
+
+
+function Chunk(x, y, z, data) {
   this.x = x;
   this.y = y;
   this.z = z;
-  this.data = [0, 0];
+  if(data) {
+    this.data = data;
+  }
+  else {
+    this.data = [0,0];
+  }
 };
 
 Chunk.prototype.isEmpty = function() {
@@ -129,6 +147,10 @@ ChunkSet = function() {
   this.chunks       = {};
 };
 
+ChunkSet.prototype.insertChunk = function(chunk) {
+  this.chunks[hashCode(chunk.x, chunk.y, chunk.z)] = chunk;
+}
+
 ChunkSet.prototype.setChunk = function(cx,cy,cz,data) {
   var key = hashCode(cx,cy,cz),
       chunk = this.chunks[key];
@@ -168,14 +190,6 @@ ChunkSet.prototype.set = function(x, y, z, v) {
       iy = y& CHUNK_MASK_Y,
       iz = z& CHUNK_MASK_Z;
 
-  /*
-  console.log("Setting: ",
-    "chunk:",[cx,cy,cz],
-    "offset:",[ix,iy,iz],
-    "v:",v,
-    "index:",flattenIndex(ix,iy,iz));
-  */
-  
   var key = hashCode(cx, cy, cz),
       chunk = this.chunks[key];
       
@@ -498,6 +512,7 @@ Voxels.Chunk          = Chunk;
 Voxels.ChunkSet       = ChunkSet;
 Voxels.hashChunk      = hashCode;
 Voxels.flatten        = flattenIndex;
+Voxels.unhash         = unhash;
 
 
 })();

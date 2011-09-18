@@ -21,6 +21,7 @@ var local_interface = {
   
   //Updates an entity locally
   updateEntities : function(patches) {
+    console.log("Updating entities: ", patches);
     if(Game.instance) {
       for(var i=0; i<patches.length; ++i) {
         Game.instance.updateEntity(patches[i]);
@@ -30,6 +31,7 @@ var local_interface = {
   
   //Deletes an entity
   deleteEntities : function(deletions) {
+    console.log("Deleting entities: ", deletions);
     if(Game.instance) {
       for(var i=0; i<deletions.length; ++i) {
         Game.instance.destroyEntity(deletions[i]);
@@ -39,20 +41,25 @@ var local_interface = {
   
   //Updates a bunch of voxels
   setVoxels : function(updates) {
-    for(var i=0; i<updates.length; i+=4) {
-      VoxelClient.setVoxelAuthoritative(
-        updates[i],
-        updates[i+1],
-        updates[i+2],
-        updates[i+3]);
+    console.log("Setting voxels: ", updates);
+    for(var i=0; i<updates.length; i+=2) {
+      var k = parseInt(updates[i]),
+          x = Voxels.unhash(k),
+          y = Voxels.unhash(k>>1),
+          z = Voxels.unhash(k>>2);
+      VoxelClient.setVoxelAuthoritative(x, y, z, updates[i+1]);
     }
   },
   
   //Updates a chunk
   updateChunks : function(updates, cb) {
-    console.log(updates);
-    for(var i=0; i<updates.length; ++i) {
-      VoxelClient.updateChunk(updates[i][0], updates[i][1], updates[i][2], updates[i][3]);
+    console.log("Updating chunks:", updates);
+    for(var i=0; i<updates.length; i+=2) {
+      var k = parseInt(updates[i]),
+          x = Voxels.unhash(k),
+          y = Voxels.unhash(k>>1),
+          z = Voxels.unhash(k>>2);
+      VoxelClient.updateChunk(x, y, z, updates[i+1]);
     }
     cb();
   },

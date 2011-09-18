@@ -150,18 +150,25 @@ Player.prototype.transmitChunks = function() {
   
   //FIXME: This should probably send chunks in multiple parts
   function executeTransmit() {
-    //Get a list of all the pending keys
+    if(player.net_state !== 'loading') {
+      return;
+    }
     var chunk_set = instance.chunk_set,
         buffer = [];
     for(var id in chunk_set.chunks) {
-      var chunk = chunk_set.chunks[id];
-      console.log(id);
-      buffer.push([chunk.x, chunk.y, chunk.z, chunk.data]);
+      buffer.push(parseInt(id))
+      buffer.push(chunk_set.chunks[id].data);
     }
     player.client.rpc.updateChunks(buffer, loadComplete);
   };
 
-  executeTransmit();
+  setTimeout(executeTransmit, 10);
+}
+
+
+Player.prototype.notifyWrite = function(key, val) {
+  console.log("Notifying write: ", key, val);
+  this.pending_writes[key] = val;
 }
 
 Player.prototype.tick = function() {
@@ -230,7 +237,20 @@ Player.prototype.pushUpdates = function() {
     this.client.rpc.deleteEntities(removals);
     this.pending_entity_deletes = {};
   }
+  
+  //Send chunk updates to client
+  var buf = [];
+  for(var id in this.pending_writes) {
+    buf.push(parseInt(id));
+    buf.push(this.pending_writes[id]);
+  }
+  this.pending_writes = {};
+  if(buf.length > 0) {
+    this.client.rpc.setVoxels(buf);
+  }
 }
+
+
 
 //----------------------------------------------------------------
 // An Instance is a process that simulates a region in the game.
@@ -258,18 +278,32 @@ Instance.prototype.SYNC_TIME    = 60 * 1000;
 //Sets a voxel
 Instance.prototype.setVoxel = function(x, y, z, v) {
 
-  if(this.chunk_set.set(x,y,z,v)) {
-  
-    var cx = x >> voxels.CHUNK_SHIFT_X,
-        cy = y >> voxels.CHUNK_SHIFT_Y,
-        cz = z >> voxels.CHUNK_SHIFT_Z,
-        key = voxels.hashChunk(cx,cy,cz);
+  var cx = x >> voxels.CHUNK_SHIFT_X,
+      cy = y >> voxels.CHUNK_SHIFT_Y,
+      cz = z >> voxels.CHUNK_SHIFT_Z,
+      key = voxels.hashChunk(cx,cy,cz),
+      id = null;
+      
+  //Retrieve _id value for database update
+  var chunk = this.chunk_set.chunks[key];
+  if(chunk && '_id' in chunk) {
+    id = chunk._id;
+  }
 
+  if(this.chunk_set.set(x,y,z,v) !== v) {
+  
+    console.log("Setting voxel:", x, y, z, v);
+  
+    //Mark chunk as dirty
     if(!this.dirty_chunks[key]) {
-      this.dirty_chunks[key] = [cx, cy, cz];
+      this.dirty_chunks[key] = id;
     }
     
-    //TODO: Send command to all clients
+    //Send command to all clients
+    var vkey = voxels.hashChunk(x,y,z);
+    for(var id in this.players) {
+      this.players[id].notifyWrite(vkey, v);
+    }
   }
 };
 
@@ -359,7 +393,7 @@ Instance.prototype.start = function(cb) {
         if(err !== null) {
           cb(err);
         } else if(chunk !== null) {
-          inst.chunk_set.updateChunk(chunk.x, chunk.y, chunk.z, chunk.data);
+          inst.chunk_set.insertChunk(chunk);
         } else {
           thawEntities();
         }
@@ -434,6 +468,22 @@ Instance.prototype.sync = function() {
   
   //Synchronize region
   this.db.regions.update(this.region, sink);
+  
+  //Synchronize all chunks
+  for(var k in this.dirty_chunks) {
+    var chunk = this.chunk_set.chunks[k];
+    if(chunk) {
+      chunk.region_id = this.region._id;
+      this.db.chunks.save(chunk, sink);
+    }
+    else {
+      var id = this.dirty_chunks[k];
+      if(id) {
+        this.db.chunks.remove({'_id':id}, sink);
+      }
+    }
+  }
+  this.dirty_chunks = {};
 }
 
 

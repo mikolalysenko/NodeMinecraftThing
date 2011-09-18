@@ -16,6 +16,8 @@ Game.instance       = null;
 //Starts executing the game state
 Game.init = function(cb) {
 
+  console.log("Starting game");
+
   //Create instance
   Game.instance = new Client.Instance();
   Game.instance.init();

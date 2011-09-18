@@ -26,6 +26,11 @@ var next_session_id = 0;
 function ClientInterface(gateway) {
   return DNode(function(rpc_interface, connection) {
 
+    //FIXME:
+    //FIXME:  Validate client RPC interface here
+    //FIXME:
+
+
     //Add self to the client list on the server    
     var client = new ClientConnection(next_session_id++, rpc_interface, connection);
     gateway.clientConnect(client);
@@ -63,9 +68,12 @@ function ClientInterface(gateway) {
         });
     };
     
-    this.chat = function(mesg) {
-      gateway.chat(client, mesg);
+    //DEBUG: Temporary function for placing a block
+    this.setVoxel = function(x, y, z, v) {
+      console.log("HERE!",x,y,z,v);
+      client.instance.setVoxel(x,y,z,v);
     };
+    
   });
 }
 

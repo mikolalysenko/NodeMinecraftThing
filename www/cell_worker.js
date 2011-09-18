@@ -227,7 +227,7 @@ emitter.on('setVoxel', function(x,y,z,v) {
   }
 });
 
-emitter.on('setChunk', function(cx,cy,cz,data) {
+emitter.on('updateChunk', function(cx,cy,cz,data) {
   if(!voxel_set)
     return;
   voxel_set.setChunk(cx,cy,cz,data);

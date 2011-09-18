@@ -7,7 +7,12 @@ var instance  = inst,
     emitter   = inst.emitter;
 
 emitter.on('construct', function() {
-  //Create initial entities, chunks, etc. here
+  
+  for(var i=-30; i<=30; ++i)
+  for(var j=-30; j<=30; ++j) {
+    instance.setVoxel(i, -5, j, 1);
+  }
+  
 });
 
 
