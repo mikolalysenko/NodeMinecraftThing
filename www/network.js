@@ -15,7 +15,8 @@ var local_interface = {
 
 
   //Called when state is fully initialized
-  notifyLoadComplete : function(player_entity) {
+  notifyLoadComplete : function(key_bindings) {
+    Input.keyBindings = key_bindings;
     console.log("Load completed");
   },
   
@@ -62,6 +63,13 @@ var local_interface = {
       VoxelClient.updateChunk(x, y, z, updates[i+1]);
     }
     cb();
+  },
+
+  //Logs an html string  
+  logHTML : function(html_str) {
+    if(Game.instance) {
+      Game.instance.logHTML(html_str);
+    }
   },
   
 };

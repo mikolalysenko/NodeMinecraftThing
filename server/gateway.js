@@ -23,13 +23,30 @@ function ClientConnection(session_id, rpc, conn) {
 //Session id counter (this is not exposed, just used internally)
 var next_session_id = 0;
 
+
+function validateInterface(rpc, methods) {
+  //FIXME:
+  //FIXME:  Validate client RPC interface here
+  //FIXME:
+
+  return true;
+}
+
 function ClientInterface(gateway) {
   return DNode(function(rpc_interface, connection) {
 
-    //FIXME:
-    //FIXME:  Validate client RPC interface here
-    //FIXME:
-
+    //Reject bad RPC interface
+    if(!validateInterface(rpc_interface, [
+        'notifyLoadComplete',
+        'updateEntities',
+        'deleteEntities',
+        'setVoxels',
+        'updateChunks',
+        'logHTML' ])) {
+      
+        connection.close();
+        return;
+     }
 
     //Add self to the client list on the server    
     var client = new ClientConnection(next_session_id++, rpc_interface, connection);
@@ -42,6 +59,15 @@ function ClientInterface(gateway) {
     
     //Define the RPC interface
     this.joinGame = function(player_name, player_password, options, cb) {
+    
+      if(typeof(player_name) != "string" ||
+         typeof(player_password) != "string" ||
+         typeof(options) != "object" ||
+         typeof(cb) != "function") {
+       
+        console.log("Got bad join request from client");
+        return;  
+      }
     
       if(client.state != "prelogin") {
         util.log("Got spam join event, discarding.  Session id = " + client.session_id + ", name = " + player_name);
@@ -70,7 +96,6 @@ function ClientInterface(gateway) {
     
     //DEBUG: Temporary function for placing a block
     this.setVoxel = function(x, y, z, v) {
-      console.log("HERE!",x,y,z,v);
       client.instance.setVoxel(x,y,z,v);
     };
     

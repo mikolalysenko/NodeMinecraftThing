@@ -24,9 +24,12 @@ function Rules(game_dir, db) {
   this.game_dir     = game_dir
   this.game_module  = require(path.join(game_dir, 'index.js'));
   
+  
+  
   this.db           = db;
   this.gateway      = null;
-  
+
+  this.server_logic   = this.game_module.logicInfo.server;  
   this.components     = {};
   this.entity_types   = this.game_module.entityInfo.entityTypes;
   this.voxel_types    = this.game_module.voxelInfo.voxelTypes;
@@ -92,7 +95,7 @@ Rules.prototype.initializeWorld = function(db, cb) {
 Rules.prototype.createPlayer = function(player_name, password, options, cb) {
   
   //Create player
-  var data = this.game_module.createPlayer(player_name, options),
+  var data = this.game_module.playerInfo.createPlayer(player_name, options),
       player_rec  = data[0],
       entity_rec  = data[1],
       region_name = data[2];
@@ -132,13 +135,15 @@ Rules.prototype.setVirtualMountPoints = function(server, cb) {
       component_info    = game_module.componentInfo,
       entity_info       = game_module.entityInfo,
       voxel_info        = game_module.voxelInfo,
-      sprite_info       = game_module.spriteInfo;
+      sprite_info       = game_module.spriteInfo,
+      player_info       = game_module.playerInfo,
+      logic_info        = game_module.logicInfo;
       
       
   //Writes the header for the client file
   function clientHeader() {
     return  '"use strict";\n' +
-            'var Components, EntityTypes, VoxelInfo, SpriteInfo;\n' +
+            'var Components, EntityTypes, VoxelInfo, SpriteInfo, PlayerInfo, LogicInfo;\n' +
             '(function() { ' + 
             fs.readFileSync(path.join(__dirname, 'fake_require.js'), 'utf-8');
   };
@@ -195,6 +200,30 @@ Rules.prototype.setVirtualMountPoints = function(server, cb) {
   function clientSpriteInfo() {
     return "";
   };
+  
+  //Client input info
+  function clientPlayerInfo() {
+    var result = "PlayerInfo = {\n";
+    result += "Buttons:" + JSON.stringify(player_info.buttons) + ",\n";
+    
+    result += "InputHandler:(function(){var exports={}; (function(){\n" +
+      fs.readFileSync(path.join(game_dir, player_info.inputHandler)) +
+      "})(); return exports; })(),";
+    
+    return result + "};\n";
+  };
+  
+  //Client Logic files
+  function clientLogicInfo() {
+    var result = "LogicInfo = {";
+    
+    result += "ClientHooks:(function(){var exports={};(function(){";
+    result += fs.readFileSync(path.join(game_dir, logic_info.clientPath));
+    result += "})();return exports; })(),"
+    
+    return result + "};;"
+  }
+  
 
   //Construct the client file
   var client_mtime = fs.statSync(path.join(this.game_dir, 'index.js')).mtime,
@@ -204,11 +233,12 @@ Rules.prototype.setVirtualMountPoints = function(server, cb) {
   client_file += clientEntityInfo();
   client_file += clientVoxelInfo();
   client_file += clientSpriteInfo();
+  client_file += clientPlayerInfo();
+  client_file += clientLogicInfo();
   client_file += clientFooter();
         
   util.log("Generated client file = \n" + client_file);
   util.log("Last modified: " + client_mtime);
-  
   
   
   //Mount files  
@@ -222,7 +252,7 @@ Rules.prototype.setVirtualMountPoints = function(server, cb) {
   mount(server, {
     '/game_client.js'    : { 
       src:client_file, 
-      modified:client_mtime, 
+      modified:new Date(), 
       type:'text/javascript'
     },
     '/spritesheet.png' : createMountData(
@@ -271,7 +301,7 @@ Rules.prototype.registerInstance = function(instance) {
   }
 
   //Register with the game module
-  this.game_module.registerInstance(instance);
+  this.server_logic.registerInstance(instance);
 }
 
 //Registers an entity
@@ -296,11 +326,11 @@ Rules.prototype.registerEntity = function(entity) {
   }
   
   //Register with game module
-  this.game_module.registerEntity(entity);
+  this.server_logic.registerEntity(entity);
 }
 
 //Registers a player upon connecting to the game
 Rules.prototype.registerPlayer = function(player) {
-  this.game_module.registerPlayer(player);
+  this.server_logic.registerPlayer(player);
 }
 

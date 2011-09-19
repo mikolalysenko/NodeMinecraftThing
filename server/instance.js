@@ -96,103 +96,11 @@ function Player(instance, client, player_rec, entity_rec) {
   
   //Chunk replication
   this.pending_writes = {};
-}
-
-Player.prototype.init = function() {
-  var player = this;
-  this.net_state = 'loading';
-  this.emitter.emit('init');
-  this.transmitChunks();
-}
-
-Player.prototype.deinit = function() {
-  clearInterval(this.update_interval);
-  this.emitter.emit('deinit');
-  this.emitter.removeAllListeners();
-  this.net_state = 'leaving';
-}
-
-
-//Transmits chunks while the player is in the loading state
-Player.prototype.transmitChunks = function() {
-  if(this.net_state !== 'loading') {
-    clearInterval(this.loading_interval);
-    return;
-  }
-
-  var player = this,
-      instance = player.instance;
   
-  function loadComplete() {
-    if(player.net_state !== 'loading') {
-      return;
-    }
-  
-    //Clear loading interval
-    clearInterval(player.loading_interval);
-    
-    //Start update interval
-    player.net_state = 'game';
-    player.update_interval = setInterval(function() { player.pushUpdates(); }, 50);
-
-    //Create player entity
-    player.entity = instance.createEntity(player.entity_rec);
-    delete player.entity_rec;
-
-    //Send load complete notification
-    player.client.rpc.notifyLoadComplete(player.entity_rec);
-
-    //Send a join event to all listeners
-    player.emitter.emit('join');
-    instance.emitter.emit('join');
-  };
-  
-  
-  //FIXME: This should probably send chunks in multiple parts
-  function executeTransmit() {
-    if(player.net_state !== 'loading') {
-      return;
-    }
-    var chunk_set = instance.chunk_set,
-        buffer = [];
-    for(var id in chunk_set.chunks) {
-      buffer.push(parseInt(id))
-      buffer.push(chunk_set.chunks[id].data);
-    }
-    player.client.rpc.updateChunks(buffer, loadComplete);
-  };
-
-  setTimeout(executeTransmit, 10);
+  //Pending html string stuff
+  this.html_log = "";
 }
 
-
-Player.prototype.notifyWrite = function(key, val) {
-  console.log("Notifying write: ", key, val);
-  this.pending_writes[key] = val;
-}
-
-Player.prototype.tick = function() {
-  this.emitter.emit('tick');
-}
-
-//Deletes an entity on the client
-Player.prototype.deleteEntity = function(entity) {
-  util.log('Client: ' + this.state._id + ', deleting entity: ' + entity.state._id);
-
-  var entity_id = entity.state._id;
-  if(entity_id in this.cached_entities) {
-    delete this.cached_entities[entity_id];
-  }
-  if(entity_id in this.pending_entity_updates) {
-    delete this.pending_entity_updates[entity_id];
-  }
-  this.pending_entity_deletes[entity_id] = true;
-}
-
-//Marks an entity for getting updated
-Player.prototype.updateEntity = function(entity) {
-  this.pending_entity_updates[entity.state._id] = entity.net_priority;
-}
 
 //Pushes updates to the player over the network
 Player.prototype.pushUpdates = function() {
@@ -248,7 +156,114 @@ Player.prototype.pushUpdates = function() {
   if(buf.length > 0) {
     this.client.rpc.setVoxels(buf);
   }
+  
+  //Send HTML updates to clients
+  if(this.html_log.length > 0) {
+    this.client.rpc.logHTML(html_log);
+    this.html_log = "";
+  }
+};
+
+Player.prototype.logHTML = function(html_str) {
+  this.html_log += html_str;
+};
+
+Player.prototype.init = function() {
+  var player = this;
+  this.net_state = 'loading';
+  this.emitter.emit('init');
+  this.transmitChunks();
 }
+
+Player.prototype.deinit = function() {
+  clearInterval(this.update_interval);
+  this.emitter.emit('deinit');
+  this.emitter.removeAllListeners();
+  this.net_state = 'leaving';
+}
+
+
+//Transmits chunks while the player is in the loading state
+Player.prototype.transmitChunks = function() {
+  if(this.net_state !== 'loading') {
+    clearInterval(this.loading_interval);
+    return;
+  }
+
+  var player = this,
+      instance = player.instance;
+  
+  function loadComplete() {
+    if(player.net_state !== 'loading') {
+      return;
+    }
+  
+    //Clear loading interval
+    clearInterval(player.loading_interval);
+    
+    //Start update interval
+    player.net_state = 'game';
+    player.update_interval = setInterval(function() { player.pushUpdates(); }, 50);
+
+    //Create player entity
+    player.entity = instance.createEntity(player.entity_rec);
+    delete player.entity_rec;
+
+    //Send load complete notification
+    player.client.rpc.notifyLoadComplete(player.state.key_bindings);
+
+    //Send a join event to all listeners
+    player.emitter.emit('join');
+    instance.emitter.emit('join');
+  };
+  
+  
+  //FIXME: This should probably send chunks in multiple parts
+  function executeTransmit() {
+    if(player.net_state !== 'loading') {
+      return;
+    }
+    var chunk_set = instance.chunk_set,
+        buffer = [];
+    for(var id in chunk_set.chunks) {
+      buffer.push(parseInt(id))
+      buffer.push(chunk_set.chunks[id].data);
+    }
+    player.client.rpc.updateChunks(buffer, loadComplete);
+  };
+
+  setTimeout(executeTransmit, 10);
+}
+
+
+Player.prototype.notifyWrite = function(key, val) {
+  console.log("Notifying write: ", key, val);
+  this.pending_writes[key] = val;
+}
+
+Player.prototype.tick = function() {
+  this.emitter.emit('tick');
+}
+
+//Deletes an entity on the client
+Player.prototype.deleteEntity = function(entity) {
+  util.log('Client: ' + this.state._id + ', deleting entity: ' + entity.state._id);
+
+  var entity_id = entity.state._id;
+  if(entity_id in this.cached_entities) {
+    delete this.cached_entities[entity_id];
+  }
+  if(entity_id in this.pending_entity_updates) {
+    delete this.pending_entity_updates[entity_id];
+  }
+  this.pending_entity_deletes[entity_id] = true;
+}
+
+//Marks an entity for getting updated
+Player.prototype.updateEntity = function(entity) {
+  this.pending_entity_updates[entity.state._id] = entity.net_priority;
+}
+
 
 
 
@@ -267,13 +282,27 @@ function Instance(region, db, gateway, rules) {
   this.emitter    = new EventEmitter();
   this.chunk_set  = new voxels.ChunkSet();
   this.dirty_chunks = {};
+  this.message_log  = "";
 }
 
 Instance.prototype.TICK_TIME    = 50;
 Instance.prototype.SYNC_TIME    = 60 * 1000;
 
+//Appends a text string to the message log
+Instance.prototype.logText = function(str) {
+  this.logHTML(str
+    .replace(/\&/g, '&amp;')
+    .replace(/\</g, '&lt;')
+    .replace(/\>/g, '&gt;')
+    .replace(/\n/g, '<br/>')
+    .replace(/\s/g, '&nbsp;'));
+};
 
-
+//Appends an HTML string to the instance
+Instance.prototype.logHTML = function(html_str) {
+  console.log("Logging:" + html_str);
+  this.message_log += html_ster;
+};
 
 //Sets a voxel
 Instance.prototype.setVoxel = function(x, y, z, v) {
@@ -290,9 +319,8 @@ Instance.prototype.setVoxel = function(x, y, z, v) {
     id = chunk._id;
   }
 
-  if(this.chunk_set.set(x,y,z,v) !== v) {
-  
-    console.log("Setting voxel:", x, y, z, v);
+  var p = this.chunk_set.set(x,y,z,v);
+  if(p !== v) {
   
     //Mark chunk as dirty
     if(!this.dirty_chunks[key]) {
@@ -305,14 +333,13 @@ Instance.prototype.setVoxel = function(x, y, z, v) {
       this.players[id].notifyWrite(vkey, v);
     }
   }
+  return p;
 };
 
 //Retrieves a voxel
 Instance.prototype.getVoxel = function(x,y,z) {
   return this.chunk_set.get(x,y,z);
 };
-
-
 
 //Start the instance server
 Instance.prototype.start = function(cb) {  
@@ -443,11 +470,12 @@ Instance.prototype.updateEntity = function(entity) {
 //Synchronize with the database
 Instance.prototype.sync = function() {
 
+  console.log("Synchronizing with database...");
+
   //Apply entity updates
   var e;
   for(var i=0; i<this.dirty_entities.length; ++i) {
     e = this.dirty_entities[i];
-    util.log("Syncing: " + JSON.stringify(e.state));
     if(!e.deleted) {
       this.db.entities.save(e.state, sink);
       e.dirty = false;

@@ -1,5 +1,12 @@
 var VoxelClient = { };
 
+//How writing voxels works:
+// Writes may be applied locally, but must be acked by the server before they persist.
+//
+// If a write is not acked, then after a certain amount of time it gets rolled back to the last
+// known acked state.
+//
+
 (function() {
 
 //Local variables
@@ -7,7 +14,8 @@ var cells = {},
     worker = null,
     voxel_set = null,
     emitter = new EventEmitter(),
-    local_writes = {};
+    local_writes = {},
+    local_write_interval = null;
 
 
 //A local write (stored client side)
@@ -16,6 +24,22 @@ function LocalWrite(counter, prev) {
   this.prev     = prev;
 };
 
+//Iterate on local writes, roll back any bad changes
+function checkLocalWrites() {
+  for(var id in local_writes) {
+    var local = local_writes[id];
+    
+    if(--local.counter <= 0) {
+      var k = parseInt(id),
+          x = Voxels.unhash(k),
+          y = Voxels.unhash(k>>1),
+          z = Voxels.unhash(k>>2);
+      voxel_set.set(x, y, z, local.prev);
+      post('setVoxel', x, y, z, local.prev);
+      delete local_writes[id];
+    }
+  }
+};
 
 //Posts a message to the worker
 function post() {
@@ -62,6 +86,10 @@ VoxelClient.init = function(cb) {
   //Allocate initial voxel set
   voxel_set = new Voxels.ChunkSet();
 
+  //Set up local write interval polling
+  local_writes = {};
+  local_write_interval = setInterval(checkLocalWrites, 250);
+
   //Start the web worker
   worker = new Worker("/cell_worker.js");
   worker.onmessage = function(event) {
@@ -84,6 +112,7 @@ VoxelClient.init = function(cb) {
     cb(null);
   });
   
+  
   post('start');
 };
 
@@ -95,6 +124,12 @@ VoxelClient.deinit = function(cb) {
   });
   post('stop');
   buffered_updates = [];
+  
+  //Stop polling for updates
+  if(local_write_interval) {
+    clearInterval(local_write_interval);
+    local_write_interval = null;
+  }
 };
 
 //Draws all the voxels
@@ -121,6 +156,7 @@ VoxelClient.setVoxel = function(x, y, z, v) {
     
     post('setVoxel', x, y, z, v);
   }
+  return p;
 };
 
 //Called when a server confirms that a voxel has been set
@@ -138,22 +174,6 @@ VoxelClient.setVoxelAuthoritative = function(x, y, z, v) {
   }
 };
 
-//Iterate on local writes, roll back any bad changes
-VoxelClient.checkLocalWrites = function() {
-  for(var id in local_writes) {
-    var local = local_writes[id];
-    
-    if(--local.counter <= 0) {
-      var k = parseInt(id),
-          x = Voxels.unhash(k),
-          y = Voxels.unhash(k>>1),
-          z = Voxels.unhash(k>>2);
-      voxel_set.set(x, y, z, local.prev);
-      post('setVoxel', x, y, z, local.prev);
-      delete local_writes[id];
-    }
-  }
-};
 
 
 //Called when a chunk gets updated

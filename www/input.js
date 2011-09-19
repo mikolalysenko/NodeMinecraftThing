@@ -3,43 +3,25 @@
 var Input = {
 
   //0 is for the mouse button
-  keyBindings : {
-    0  : "action",
-	  87 : "up",
-	  83 : "down",
-	  65 : "left",
-	  68 : "right",
-	  32 : "jump",
-	  67 : "crouch"
-  },
+  keyBindings : { },
 
   //Input state
   // > 0 means has been pressed for 
-  state : {
-	  "action" : 0,
-	  "up" : 0,
-	  "down" : 0,
-	  "left" : 0,
-	  "right" : 0,
-	  "jump" : 0,
-	  "crouch" : 0
-  },
-
-  //Mouse state (buffered two states back
-  mouse_state : [[0,0], [0,0]],
+  state : { },
 
   //Bind all the input handlers for the game
   init : function() {
 
     //Reset state
-	  for(var i in Input.state) {
-	    Input.state[i] = 0;
+    Input.state = {};
+    for(var i=0; i<PlayerInfo.Buttons.length; ++i) {
+	    Input.state[PlayerInfo.Buttons[i]] = 0;
 	  }
-	  Input.mouse_state = [[0,0], [0,0]]
+	  Input.state.mouse = [[0,0], [0,0]];
 
 	  window.onkeyup = function(event) {
 		  var ev = Input.keyBindings[event.keyCode];
-		  if(ev) {
+		  if(ev && ev in Input.state) {
 			  Input.state[ev] = 0;
 			  return false;
 		  }
@@ -48,7 +30,7 @@ var Input = {
 
 	  window.onkeydown = function(event) {
 		  var ev = Input.keyBindings[event.keyCode];
-		  if(ev) {
+		  if(ev && ev in Input.state) {
 		    if(Input.state[ev] <= 0) {
 			    Input.state[ev] = 1;
         }
@@ -71,15 +53,15 @@ var Input = {
 		      cx = w / 2,
 			    cy = h / 2;
 			    
-	    Input.mouse_state[1] = Input.mouse_state[0];
-	    Input.mouse_state[0] = [(event.x - cx) / w, (event.y - cy) / h];
+	    Input.state.mouse[1] = Input.state.mouse[0];
+	    Input.state.mouse[0] = [(event.x - cx) / w, (event.y - cy) / h];
 	    
 		  return false;
 	  };
 
 	  window.onmousedown = function(event) {
 		  var ev = Input.keyBindings[0];
-		  if(ev) {
+		  if(ev && ev in Input.state) {
 		    if(Input.state[ev] <= 0) {
 			    Input.state[ev] = 1;
         }
@@ -90,7 +72,7 @@ var Input = {
 
 	  window.onmouseup = function(event) {
 		  var ev = Input.keyBindings[0];
-		  if(ev) {
+		  if(ev && ev in Input.state) {
 			  Input.state[ev] = 0;
 			  return false;
 		  }
@@ -124,5 +106,5 @@ var Input = {
         Input.state[i]--;
       }
     }
-  }
+  },  
 };

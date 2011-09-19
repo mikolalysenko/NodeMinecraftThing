@@ -54,8 +54,8 @@ function Instance() {
 
 //Initialize instance
 Instance.prototype.init = function() {
-  this.tickInterval = setInterval(this.tick, 100);
   this.running = true;
+  LogicInfo.ClientHooks.registerInstance(this);
   for(var id in Components) {
     Components[id].registerInstance(this);
   }
@@ -73,8 +73,18 @@ Instance.prototype.deinit = function() {
   this.emitter.removeAllListeners();
 }
 
+//Adds a string to the chat/game log
+Instance.prototype.logString = function(str) {
+  console.log(str);
+};
+
+Instance.prototype.logHTML = function(html_str) {
+  console.log(html_str);
+};
+
 //Tick instance
 Instance.prototype.tick = function() {
+  this.emitter.emit('tick');
   for(var id in this.entities) {
     this.entities[id].tick();
   }
@@ -82,10 +92,22 @@ Instance.prototype.tick = function() {
 
 //Draw instance
 Instance.prototype.draw = function() {
+  this.emitter.emit('draw');
+  VoxelClient.draw();
   for(var id in this.entities) {
     this.entities[id].draw();
   }
-}
+};
+
+//Updates a voxel
+Instance.prototype.setVoxel = function(x, y, z, v) {
+  return VoxelClient.setVoxel(x,y,z,v);
+};
+
+//Retrieves a voxel value
+Instance.prototype.getVoxel = function(x,y,z) {
+  return VoxelClient.getVoxel(x,y,z);
+};
 
 //Looks up an entity in the database
 Instance.prototype.lookupEntity = function(id) {
@@ -109,7 +131,10 @@ Instance.prototype.createEntity = function(state) {
     }
   }
   
-  entity.init();  
+  entity.init();
+  LogicInfo.ClientHooks.registerEntity(entity);
+  this.emitter.emit('spawn', entity);
+  
   return entity;
 }
 
@@ -120,12 +145,13 @@ Instance.prototype.destroyEntity = function(entity) {
   }
 
   if(entity && entity.state._id in this.entities) {
+    this.emitter.emit('destroy', entity);
     entity.deinit();  
     delete this.entities[entity.state._id];
   }
 }
 
-//Called when an entity gets updated
+//Called when an entity gets updated remotely
 Instance.prototype.updateEntity = function(patch) {
 
   if(patch._id in this.entities) {

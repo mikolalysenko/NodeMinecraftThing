@@ -50,6 +50,8 @@ Game.deinit = function() {
   VoxelClient.deinit(function() {
     console.log("VoxelClient thread stopped");
   });
+  
+  console.log("Game stopped");
 };
 
 //Called when the game ticks
@@ -59,6 +61,7 @@ Game.tick = function() {
 
 //Process user input
 Game.input = function() {
+  PlayerInfo.InputHandler.handleInput(Input.state);
 };
 
 //Draw the game
@@ -70,10 +73,11 @@ Game.draw = function(time) {
   //Process user input before drawing each frame
   Game.input();
 
-  //Draw all the voxels
-  VoxelClient.draw();
+  //Draw the instance
+  Game.instance.draw();
   
-  //Draw sprites
+  
+  //Draw a test sprite
   Render.drawSprite([0,0,(-1 + Math.cos(time/5000.0)) * 50], {
     rect:((time / 100)&1 ? [64,0,96,64] : [96,0,128,64]),
     rotation:0,
