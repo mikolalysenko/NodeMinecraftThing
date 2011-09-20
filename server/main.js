@@ -87,7 +87,7 @@ function createServer() {
                 path.join(__dirname, './voxels.js'), 
                 path.join(__dirname, './linalg.js'), 
                 path.join(__dirname, './patcher.js'), 
-                path.join(settings.game_dir, './client.js') ],
+                { 'game-client' : path.join(settings.game_dir, './client.js') } ],
   };
   if(settings.debug) {
     options.watch = true;
