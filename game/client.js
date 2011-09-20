@@ -1,3 +1,5 @@
+exports = require('./common.js');
+
 //The sprite sheet for the game
 exports.spriteSheet = './sprites/spritesheet.png';
 
@@ -14,4 +16,10 @@ exports.anims = {
   'idle' :  ['derp_idle', 0],
   'walk' :  ['derp_walk0', 1.0/30.0, 'derp_walk1', 1.0/30.0],
 };
+
+//Client side function for handling input state
+exports.handleInput = function(input_state) {  
+};
+
+
 
