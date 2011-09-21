@@ -5,7 +5,10 @@
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
 
   <script src="/browserify.js"></script>
-  <script> require('./bootstrap.js').startClient(); </script>
+  <script>
+  //Create game engine
+  require('./engine.js').createEngine(require('./client.js')); 
+  </script>
   
 	<link rel=StyleSheet href="style.css" type="text/css">
 </head>

@@ -13,7 +13,6 @@ Network.connection  = null;
 //Local call backs from the server
 var local_interface = {
 
-
   //Called when state is fully initialized
   notifyLoadComplete : function(key_bindings) {
     Input.keyBindings = key_bindings;

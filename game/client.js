@@ -1,25 +1,20 @@
-exports = require('./common.js');
+exports.registerEngine = function(engine) {
+  
+  var framework   = engine.framework,
+      login_state = require('./client/login_state.js'),
+      error_state = require('./client/error_state.js');
 
-//The sprite sheet for the game
-exports.spriteSheet = './sprites/spritesheet.png';
+  //Set up custom error handler
+  engine.error_state = error_state;
 
-//x,y,width,height[,offset_x, offset_y]
-exports.sprites = {
-  'derp0':      [0,0,32,64],
-  'derp_idle':  [32,0,32,64],
-  'derp_walk0': [64,0,32,64],
-  'derp_walk1': [96,0,32,64],
+  //Select WebGL for rendering
+  engine.render = new framework.RenderGL(document.getElementById("gameCanvas"));
+
+  engine.loader.fetchImage('/img/voxels.png');
+  engine.loader.fetchImage('/img/spritesheet.png');
+  
+  engine.setState(login_state);
+
+  console.log("Registered game engine");
 };
-
-//Sprite animations
-exports.anims = {
-  'idle' :  ['derp_idle', 0],
-  'walk' :  ['derp_walk0', 1.0/30.0, 'derp_walk1', 1.0/30.0],
-};
-
-//Client side function for handling input state
-exports.handleInput = function(input_state) {  
-};
-
-
 

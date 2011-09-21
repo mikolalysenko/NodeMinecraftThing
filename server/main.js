@@ -83,11 +83,10 @@ function createServer() {
 
   //Mount client files
   var options = {
-    require: [  path.join(__dirname, '../client/bootstrap.js'), 
-                path.join(__dirname, './voxels.js'), 
-                path.join(__dirname, './linalg.js'), 
-                path.join(__dirname, './patcher.js'), 
-                { 'game-client' : path.join(settings.game_dir, './client.js') } ],
+    require: [  path.join(__dirname, '../client/engine.js'),
+                path.join(__dirname, '../common/linalg.js'), 
+                path.join(settings.game_dir, './client.js'),
+                'events' ],
   };
   if(settings.debug) {
     options.watch = true;
@@ -138,10 +137,7 @@ function startServer() {
 
     
   });
-}
-
-
-  
+} 
 
 
 startServer();
