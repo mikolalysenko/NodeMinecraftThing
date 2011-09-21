@@ -84,7 +84,6 @@ function createServer() {
   //Mount client files
   var options = {
     require: [  path.join(__dirname, '../client/engine.js'),
-                path.join(__dirname, '../common/linalg.js'), 
                 path.join(settings.game_dir, './client.js'),
                 'events' ],
   };
