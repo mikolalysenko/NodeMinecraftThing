@@ -44,8 +44,8 @@ function Gateway(db, server, sessions, game_module) {
     util.log("Client connected");
 
     //Don't register client until 
-    var client    = null,
-        user_id   = null;
+    var client      = null,
+        account_id  = null;
     
     //Bind any connection events
     connection.on('end', function() {
@@ -55,9 +55,16 @@ function Gateway(db, server, sessions, game_module) {
         return;
       }
       
-      //TODO: Notify exit event
+      //Log out of account
+      gateway.accounts.closeAccount(account_id, function(err) {
+        if(err) {
+          util.log(err);
+        }
+      });
       
-      delete gateway.clients[user_id];
+      //TODO: Handle exit event here
+      
+      delete gateway.clients[account_id];
       client = null;
     });
     
@@ -92,8 +99,18 @@ function Gateway(db, server, sessions, game_module) {
         
         //Otherwise register client
         client = new Client(account, rpc, connection);
-        gateway.clients[user_id] = client;
-        cb(null, account);
+        gateway.clients[account_id] = client;
+        account_id = account._id;
+        
+        //Retrieve players, send to client
+        gateway.accounts.listAllPlayers(account_id, function(err, players) {
+          if(err) {
+            cb(err, null, null);
+            connection.end();
+            return;
+          }
+          cb(null, account, players);
+        });
       });
     };
     
@@ -103,28 +120,40 @@ function Gateway(db, server, sessions, game_module) {
         typeof(player_name) != "string" ||
         typeof(options) != "object" ||
         typeof(cb) != "function" ) {
+        connection.end();
         return;
       }
       
-      gateway.accounts.createPlayer(user_id, player_name, options, function(err, player_rec) {
+      gateway.accounts.createPlayer(account_id, player_name, options, function(err, player_rec) {
         if(err || !player_rec) {
           cb(err, null);
           return;
         }
-        
         cb(null, player_rec);
       });
     };
     
-    //Joins the game
-    this.join = function(player_name, cb) {
+    this.deletePlayer = function(player_name, cb) {
       if(!player_name || !cb || !client ||
         typeof(player_name) != "string" ||
         typeof(cb) != "function") {
+        connection.end();
         return;
       }
       
-      gateway.accounts.getPlayer(user_id, player_name, function(err, player_rec) {
+      gateway.accounts.deletePlayer(account_id, player_name, cb);
+    };
+    
+    //Joins the game
+    this.joinGame = function(player_name, cb) {
+      if(!player_name || !cb || !client ||
+        typeof(player_name) != "string" ||
+        typeof(cb) != "function") {
+        connection.end();
+        return;
+      }
+      
+      gateway.accounts.getPlayer(account_id, player_name, function(err, player_rec) {
         if(err || !player_rec) {
           cb(err, null);
           return;

@@ -71,16 +71,22 @@ function initializeDB(next) {
       });
     }
     
-    addCollection('entities', function() {
-      addCollection('players', function() { 
-        db.players.ensureIndex([['player_name',1]], true, function() {
-          addCollection('regions', function() {
-            addCollection('chunks', function() {
-              db.chunks.ensureIndex([['region_id',1]], false, function() {
-                next(db);
+    addCollection('accounts', function() {
+      db.accounts.ensureIndex([['user_id', 1]], true, function() {
+        addCollection('entities', function() {
+          addCollection('players', function() { 
+            db.players.ensureIndex([['user_id', 1]], false, function() {
+              db.players.ensureIndex([['player_name',1]], true, function() {
+                addCollection('regions', function() {
+                  addCollection('chunks', function() {
+                    db.chunks.ensureIndex([['region_id',1]], false, function() {
+                      next(db);
+                    });
+                  });
+                }); 
               });
             });
-          }); 
+          });
         });
       });
     });

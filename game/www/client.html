@@ -16,13 +16,29 @@
 
 <div id="loginPane" style="display:none;" align=center>
   <div class=loginBubble>
-    Please enter a player name and password: <br/>
-    Name: <input type="text" id="loginName"> <br/>
-    Password: <input type="password" id="loginPassword"> <br/>
-    <input type="button" id="loginButton" value="Login/Create Account"> <br/>
-    <div id="loginError"></div>
+    Select your character:<br/>
+    <div id="playerList"></div>
+    <input type="button" id="loginButton" value="Login">
+    <input type="button" id="createButton" value="Create Character">
   </div>
 </div>
+
+<div id="createPane" style="display:none;" align=center>
+  <div class=loginBubble>
+    Name: <input id="playerName"><br/>
+    Class: 
+      <select id="playerClass">
+        <option value="pudlian">Pudlian</option>
+        <option value="cultist">Cultist</option>
+      </select><br/>
+    Favorite Color:
+      <select id="playerColor">
+        <option value="red">Red</option>
+      </select><br/>
+    <input type="button" id="finalizeCreate" value="Create Character">
+  </div>
+</div>
+
 
 <div id="progressPane" style="display:none;" align=center>
 Loading...

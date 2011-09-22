@@ -40,6 +40,7 @@ function Engine(game_module, session_id) {
   this.render       = null;
   this.input        = null;
   this.network      = null;
+  this.login        = null;
   
   //Pause/ticker
   this.tick_interval  = null;  
@@ -86,13 +87,10 @@ Engine.prototype.init = function() {
     //Set network connection
     engine.network = conn;
     
-    //Login to server using session id
-    engine.network.rpc.login(engine.session_id, function(err, account) {
-      if(err || !account) {
-        throw err;
-      }
-      engine.account = account;
-
+    //Set up login framework
+    engine.login = new (require('./login.js').LoginHandler)(engine);
+    engine.login.init(function() {
+    
       //Register game module
       engine.game_module.registerEngine(engine);
       
@@ -125,6 +123,7 @@ Engine.prototype.tick = function() {
 
 //Crash the engine
 Engine.prototype.crash = function(errMsg) {
+  this.error_state.postError(errMsg);
   this.setState(this.error_state);
   this.setActive(false);
   this.network.connection.end();

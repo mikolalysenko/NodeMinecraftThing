@@ -1,52 +1,40 @@
-var logging_in = false;
-
 exports.init = function(engine) {
-
-  var loginPane = document.getElementById('loginPane');
+  var loginPane = document.getElementById('loginPane'),
+      playerList = document.getElementById('playerList'),
+      loginButton = document.getElementById('loginButton'),
+      createButton = document.getElementById('createButton');
+      
   loginPane.style.display = 'block';
   
-  var loginButton   = document.getElementById('loginButton'),
-      loginName     = document.getElementById('loginName'),
-      loginPassword = document.getElementById('loginPassword'),
-      loginError    = document.getElementById('loginError');
-
-/*
-  loginButton.onclick = function() {
-
-    if(logging_in) {
-      loginError.innerHTML = "Processing...";
-      return;
-    }
-    logging_in = true;
   
-    var player_name = loginName.value,
-        password    = loginPassword.value;
-    
-    Network.rpc.joinGame(player_name, password, {}, function(err) {
-      logging_in = false;
-      
-      if(err) {
-        loginError.innerHTML = err;
-        return;
+  var players = engine.login.players;
+  playerList.innerHTML = '<form id=playerSelect>'
+  for(var i=0; i<players.length; ++i) {
+    playerList.innerHTML += '<input type=radio name=playerValue value="' + players[i].player_name + '">' + players[i].player_name + '<br/>'
+  }
+  playerList.innerHTML += '</form>'
+
+  loginButton.onclick = function() {
+    var playerValues = document.getElementsByName('playerValue');
+    for(var i=0; i<playerValues.length; ++i) {
+      if(playerValues[i].checked) {
+        engine.login.joinGame(playerValues[i].value, function() {
+        
+          //TODO: Join game
+          
+        });
+        break;
       }
-      
-      //Start running the game
-      Game.init();
-      App.setState(LoadState);
-    });
-    
-    loginPassword.value = "";
+    }
+  };  
+  
+  createButton.onclick = function() {
+    engine.setState(require('./create_state.js'));
   };
-*/
 }
 
 exports.deinit = function(engine) {
-  var loginPane = document.getElementById('loginPane'),
-      loginButton   = document.getElementById('loginButton'),
-      loginPassword = document.getElementById('loginPassword');
-  
+  var loginPane = document.getElementById('loginPane');
   loginPane.style.display = 'none';
-  loginButton.onclick = null;
-  loginPassword.value = "";
 }
 
