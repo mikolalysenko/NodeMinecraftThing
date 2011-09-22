@@ -17,14 +17,11 @@ var util = require('util'),
 //    3.  Connect instance callbacks to game logic.
 //
 //----------------------------------------------------------------
-function Rules(game_dir, db) {
+function Rules(game_module, db) {
 
   util.log("Loading game from: " + game_dir);
 
-  this.game_dir     = game_dir
-  this.game_module  = require(path.join(game_dir, 'index.js'));
-  
-  
+  this.game_module  = game_module;  
   
   this.db           = db;
   this.gateway      = null;

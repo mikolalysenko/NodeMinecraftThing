@@ -15,7 +15,6 @@ exports.openid_providers = {
 };
 
 
-
 //Add regions
 exports.regions = [
   require('./regions/starting_area.js'),

@@ -105,6 +105,8 @@ function attachOpenID(server, login) {
   //Add handler to server      
   server.use(function(req, res, next) {
   
+    console.log("here!");
+  
     var parsed_url = url.parse(req.url);
     
     if(parsed_url.pathname === '/authenticate') {
@@ -138,6 +140,7 @@ function attachOpenID(server, login) {
             res.end('Authentication failed');
           }
           else {
+          
             res.writeHead(302, {Location: auth_url});
             res.end();
           }
@@ -169,7 +172,10 @@ function attachOpenID(server, login) {
         });
       }
     }
-    else next();
+    else {
+      console.log("here!34", req.url);
+      next();
+    }
   });
 }
 
@@ -177,30 +183,24 @@ function attachOpenID(server, login) {
 //Create web server
 function createServer() {
 
-  var express     = require('express'),
-      server      = express.createServer(),
+  var connect     = require('connect'),
+      server      = connect.createServer(),
       client_html = fs.readFileSync(game_module.client_html, 'utf-8');
       
   //Parse out client document
   var token_loc     = client_html.indexOf(settings.session_token),
       client_start  = client_html.substr(0, token_loc),
       client_end    = client_html.substr(token_loc + settings.session_token.length);
-  
-  //Attach session handler
-  attachOpenID(server, function(res, user_id) {
-  
-    console.log("!!!!Here!!!");
-    res.writeHead(200);
-    res.write(client_start);
-    res.write(sessions.setToken(user_id));
-    res.end(client_end);
-  });
 
+  //Mount extra, non-browserify files
+  server.use(connect.static(path.join(settings.game_dir, './www/')));
+  
   //Mount client files
   var options = {
     require: [  path.join(__dirname, '../client/engine.js'),
                 path.join(settings.game_dir, './client.js'),
-                'events' ],
+                'events',
+                'dnode' ],
   };
   if(settings.debug) {
     options.watch = true;
@@ -211,23 +211,34 @@ function createServer() {
   }
   server.use(require('browserify')(options));
 
-  //Mount extra, non-browserify files
-  server.use(express.static(path.join(settings.game_dir, './www/')));
+  //Attach OpenID handler
+  attachOpenID(server, function(res, user_id) {
+    var now = (new Date()).toGMTString();
   
+    res.setHeader('content-type', 'text/html');
+    res.setHeader('last-modified', now);
+    res.setHeader('date', now);
+    res.statusCode = 200;
+  
+    res.write(client_start);
+    res.write(sessions.setToken(user_id));
+    res.end(client_end);
+  });
+
   return server;
 }
 
 //Starts the game
-function startGame(server, db, rules) {
-  require("./gateway.js").createGateway(server, db, rules, function(err, gateway) {
+function startGame(db, server) {
+  //Create gateway
+  require("./gateway.js").createGateway(db, server, sessions, game_module, function(err, gateway) {
     if(err) {
-      util.log("Error creating gateway: " + err);
-      db.close();
+      throw err;
       return;
     }
     server.listen(settings.web_port);
     util.log("Server initialized!"); 
-  });
+  });  
 }
 
 //Start the server
@@ -236,20 +247,8 @@ function startServer() {
   util.log("Starting server...");
   
   initializeDB(function(db) {
-    createServer().listen(settings.web_port);
-    
-      /*
-      var rules   = new (require('./rules.js').Rules)(settings.game_dir, db),
-      //Check if we need to initialize the world
-      if(settings.RESET) {
-        rules.initializeWorld(db, startGame);
-      } else {
-        startGame(null);
-      }  
-      server.listen(settings.web_port);    
-      */
-
-    
+    var server = createServer();
+    startGame(db, server);
   });
 } 
 
