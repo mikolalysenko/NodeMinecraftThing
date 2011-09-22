@@ -1,4 +1,4 @@
-
+var util = require('util');
 
 function AccountManager(db, game_module) {
   this.db = db;
@@ -66,32 +66,60 @@ AccountManager.prototype.listAllPlayers = function(account_id, cb) {
 }
 
 //Create player
-AccountManager.prototype.createPlayer = function(account_id, player_name, options, cb) {
+AccountManager.prototype.createPlayer = function(account, options, cb) {
 
-  //Check if player name exists already
-
-  var data = this.game_module.createPlayer(player_name, options),
-      player_rec  = data[0],
-      entity_rec  = data[1],
-      region_name = data[2];
-  
-  //Set player account
-  player_rec.account_id = account_id;
-  
-  //Get region id
-  var region_id = this.gateway.lookupRegion(region_name);
-  if(!region_id) {
-    cb("Player region is missing/instance server is offline");
+  if(!options.player_name ||
+    typeof(options.player_name) != 'string') {
+    cb("Missing player_name field", null);
     return;
   }
-  entity_rec.region_id = region_id;
   
-  //Add to database
-  var db = this.db;
-  db.entities.save(entity_rec, function(err0) {
-    player_rec.entity_id = entity_rec._id;
-    db.players.save(player_rec, function(err1) {
-      cb(err0 || err1, player_rec, entity_rec);
+  var db = this.db,
+      game_module = this.game_module;
+
+  //Check if player name exists already
+  db.players.findOne({'player_name':options.player_name}, function(err, player) {
+    if(err) {
+      cb(err, null);
+      return;
+    }
+    else if(player) {
+      cb("Player name already in use", null);
+      return;
+    }
+    
+    //Create the player
+    var player_rec, entity_rec, region_name;
+    try {
+      var data = game_module.createPlayer(account, options);
+      player_rec  = data[0];
+      entity_rec  = data[1];
+      region_name = data[2];
+    }
+    catch(err) {
+      cb(err, null);
+      return;
+    }
+        
+    //Set player account
+    player_rec.account_id = account._id;
+    
+    /*
+    //Get region id
+    var region_id = this.gateway.lookupRegion(region_name);
+    if(!region_id) {
+      cb("Player region is missing/instance server is offline");
+      return;
+    }
+    entity_rec.region_id = region_id;
+    */
+    
+    //Add to database
+    db.entities.save(entity_rec, function(err0) {
+      player_rec.entity_id = entity_rec._id;
+      db.players.save(player_rec, function(err1) {
+        cb(err0 || err1, player_rec);
+      });
     });
   });
 }
@@ -103,6 +131,22 @@ AccountManager.prototype.getPlayer = function(account_id, player_name, cb) {
 
 
 AccountManager.prototype.deletePlayer = function(account_id, player_name, cb) {
+  util.log("Deleting player: " + player_name + ", account_id: " + account_id);
+
+  var db = this.db;
+  db.players.findOne({'player_name':player_name, 'account_id':account_id}, function(err, player) {
+    if(err) {
+      cb(err);
+      return;
+    }
+    else if(!player) {
+      cb("Player does not exist");
+      return;
+    }
+    else {
+      db.players.remove({_id:player._id}, cb);
+    }
+  });
 }
 
 exports.AccountManager = AccountManager;

@@ -17,25 +17,29 @@
 <div id="loginPane" style="display:none;" align=center>
   <div class=loginBubble>
     Select your character:<br/>
-    <div id="playerList"></div>
+    <div id="loginPlayers"></div>
     <input type="button" id="loginButton" value="Login">
-    <input type="button" id="createButton" value="Create Character">
+    <input type="button" id="loginCreate" value="Create">
+    <input type="button" id="loginDelete" value="Delete">
   </div>
 </div>
 
 <div id="createPane" style="display:none;" align=center>
   <div class=loginBubble>
-    Name: <input id="playerName"><br/>
-    Class: 
-      <select id="playerClass">
-        <option value="pudlian">Pudlian</option>
-        <option value="cultist">Cultist</option>
-      </select><br/>
-    Favorite Color:
-      <select id="playerColor">
-        <option value="red">Red</option>
-      </select><br/>
-    <input type="button" id="finalizeCreate" value="Create Character">
+    <form id="createForm">
+      Name: <input id="playerName" name="player_name"><br/>
+      Class: 
+        <select id="playerClass" name="class">
+          <option value="pudlian">Pudlian</option>
+          <option value="cultist">Cultist</option>
+        </select><br/>
+      Favorite Color:
+        <select id="playerColor" name="color">
+          <option value="red">Red</option>
+        </select><br/>
+    </form>
+    <input type="button" id="createSubmit" value="Create Character"><br/>
+    <div id="createError"></div>
   </div>
 </div>
 

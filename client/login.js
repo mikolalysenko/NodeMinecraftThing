@@ -17,10 +17,10 @@ LoginHandler.prototype.init = function(cb) {
   });
 }
 
-LoginHandler.prototype.createPlayer = function(player_name, options, cb) {
+LoginHandler.prototype.createPlayer = function(options, cb) {
   var login = this,
       rpc   = this.engine.network.rpc;
-  rpc.createPlayer(player_name, options, function(err, player) {
+  rpc.createPlayer(options, function(err, player) {
     if(!err) {
       login.players.push(player);
     }
@@ -28,10 +28,10 @@ LoginHandler.prototype.createPlayer = function(player_name, options, cb) {
   });
 }
 
-LoginHandler.prototype.deletePlayer = function(player_name) {
+LoginHandler.prototype.deletePlayer = function(player_name, cb) {
   var login = this,
       rpc   = this.engine.network.rpc;
-  rpc.deletePlayer(player_name, options, function(err) {
+  rpc.deletePlayer(player_name, function(err) {
     if(!err) {
       for(var i=0; i<login.players.length; ++i) {
         if(login.players[i].player_name === player_name) {

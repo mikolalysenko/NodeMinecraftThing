@@ -111,8 +111,6 @@ function attachOpenID(server, login) {
   //Add handler to server      
   server.use(function(req, res, next) {
   
-    console.log("here!");
-  
     var parsed_url = url.parse(req.url);
     
     if(parsed_url.pathname === '/authenticate') {
@@ -179,7 +177,6 @@ function attachOpenID(server, login) {
       }
     }
     else {
-      console.log("here!34", req.url);
       next();
     }
   });

@@ -14,7 +14,6 @@ exports.openid_providers = {
   'temp': 'temp',
 };
 
-
 //Add regions
 exports.regions = [
   require('./regions/starting_area.js'),
@@ -22,15 +21,20 @@ exports.regions = [
 
 //Set up initial data for a player and their entity 
 // (called when a new player account is created)
-exports.createPlayer = function(player_name, options) {
+exports.createPlayer = function(account, options) {
+  
+  //Validate options
+  if(typeof(options.player_name) != "string") {
+    throw "Invalid parameters";
+  }
   
   var player_rec = {
-    'player_name' : player_name,
-    'key_bindings' : defaultBindings,
+    'player_name' : options.player_name,
+    'key_bindings' : common.defaultBindings,
   };
   
   var entity_rec = {
-    'player_name' : player_name,
+    'player_name' : options.player_name,
     'type'        : 'player',
   };
   

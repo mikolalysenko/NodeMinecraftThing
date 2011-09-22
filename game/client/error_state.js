@@ -1,20 +1,22 @@
 var nogl_state = false;
 
-exports.init = function() {
+exports.init = function(engine) {
   if(nogl_state) {
-    return;
+    document.getElementById('noGLPane').style.display = 'block';
   }
-	document.getElementById('errorPane').style.display = 'block';
+  else {
+  	document.getElementById('errorPane').style.display = 'block';
+  }
 }
 
-exports.deinit = function() {
+exports.deinit = function(engine) {
 	document.getElementById('errorPane').style.display = 'none';
   document.getElementById('noGLPane').style.display = 'none';
 }
 
 exports.postError = function(msg) {
 
-  if(msg.search(/webgl/i)) {
+  if(msg.search(/webgl/i) >= 0) {
     nogl_state = true;
   	document.getElementById('errorPane').style.display = 'none';
     document.getElementById('noGLPane').style.display = 'block';

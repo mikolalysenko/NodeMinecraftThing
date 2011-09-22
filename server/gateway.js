@@ -97,10 +97,14 @@ function Gateway(db, server, sessions, game_module) {
           return;
         }
         
+        util.log("Account connected: " + JSON.stringify(account));
+
+        
         //Otherwise register client
         client = new Client(account, rpc, connection);
         gateway.clients[account_id] = client;
         account_id = account._id;
+        
         
         //Retrieve players, send to client
         gateway.accounts.listAllPlayers(account_id, function(err, players) {
@@ -115,18 +119,20 @@ function Gateway(db, server, sessions, game_module) {
     };
     
     //Creates a player
-    this.createPlayer = function(player_name, options, cb) {
-      if(!player_name || !options || !cb || !client ||
-        typeof(player_name) != "string" ||
+    this.createPlayer = function(options, cb) {
+      if(!client ||
         typeof(options) != "object" ||
         typeof(cb) != "function" ) {
         connection.end();
         return;
       }
       
-      gateway.accounts.createPlayer(account_id, player_name, options, function(err, player_rec) {
+      util.log("Creating player: " + JSON.stringify(options));
+      
+      gateway.accounts.createPlayer(client.account, options, function(err, player_rec) {
         if(err || !player_rec) {
-          cb(err, null);
+          util.log(err);
+          cb("Can not create player -- " + err, null);
           return;
         }
         cb(null, player_rec);
@@ -134,7 +140,7 @@ function Gateway(db, server, sessions, game_module) {
     };
     
     this.deletePlayer = function(player_name, cb) {
-      if(!player_name || !cb || !client ||
+      if(!client ||
         typeof(player_name) != "string" ||
         typeof(cb) != "function") {
         connection.end();
@@ -146,7 +152,7 @@ function Gateway(db, server, sessions, game_module) {
     
     //Joins the game
     this.joinGame = function(player_name, cb) {
-      if(!player_name || !cb || !client ||
+      if(!client ||
         typeof(player_name) != "string" ||
         typeof(cb) != "function") {
         connection.end();
