@@ -1,5 +1,20 @@
+var path = require('path');
+
 //Import default exports from common.js
-exports = require('./common.js');
+var common = require('./common.js');
+
+//Path to client HTML
+exports.client_html = path.join(__dirname, 'www/client.html');
+
+//List of OpenID providers
+exports.openid_providers = {
+  'google': 'http://www.google.com/accounts/o8/id',
+  'facebook': 'http://facebook.anyopenid.com',
+  'twitter': 'http://twitter.anyopenid.com',
+  'temp': 'temp',
+};
+
+
 
 //Add regions
 exports.regions = [

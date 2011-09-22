@@ -37,7 +37,7 @@ RenderGL.prototype.init = function(engine) {
   this.engine = engine;
 
   try {
-	  this.gl = canvas.getContext("experimental-webgl");
+	  this.gl = this.canvas.getContext("experimental-webgl");
 	}
 	catch(err) {
 	  throw Error("WebGL not supported");

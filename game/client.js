@@ -1,3 +1,5 @@
+var common = require('./common.js');
+
 exports.registerEngine = function(engine) {
   
   var framework   = engine.framework,
@@ -8,7 +10,10 @@ exports.registerEngine = function(engine) {
   engine.error_state = error_state;
 
   //Select WebGL for rendering
-  engine.render = new framework.RenderGL(document.getElementById("gameCanvas"));
+  engine.render = new framework.RenderGL(document.getElementById("renderCanvas"));
+  
+  //Set input actions
+  engine.input.setButtons(common.buttons);
 
   engine.loader.fetchImage('/img/voxels.png');
   engine.loader.fetchImage('/img/spritesheet.png');

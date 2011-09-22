@@ -1,12 +1,18 @@
 var path = require('path'),
-    util = require('util');
+    url  = require('url'),
+    fs   = require('fs'),
+    util = require('util'),
+    querystring = require('querystring');
 
 //Default settings
 var settings = {
 
   //Web configuration
+  web_domain  : 'localhost',
   web_port    : 8080,
-  wwwroot     : path.join(__dirname, "../www"),
+  
+  //Session token name
+  session_token  : '$SESSION_TOKEN',
   
   //Database configuration
   db_name     : 'test',
@@ -31,6 +37,12 @@ for(var i in argv) {
     settings[i] = argv[i];
   }
 }
+
+//Game server module
+var game_module = require(path.join(settings.game_dir, '/server.js'));
+
+//Session handler
+var sessions = new (require('./session.js').SessionHandler)();
 
 
 //Connects to database, adds references for collections
@@ -75,11 +87,114 @@ function initializeDB(next) {
   });
 }
 
+
+//Attaches an open ID provider
+function attachOpenID(server, login) {
+
+  var openid = require('openid'),
+  
+      relying_party = new openid.RelyingParty(
+        'http://' + settings.web_domain + ':' + settings.web_port + '/verify',
+        null,
+        false,
+        false,
+        []),
+      
+      providers = game_module.openid_providers;
+
+  //Add handler to server      
+  server.use(function(req, res, next) {
+  
+    var parsed_url = url.parse(req.url);
+    
+    if(parsed_url.pathname === '/authenticate') {
+      var query         = querystring.parse(parsed_url.query),
+          provider_str  = query.provider;
+
+      if(!provider_str || !(provider_str in providers)) {
+        res.writeHead(200);
+        res.end('Invalid provider');
+        return;
+      }
+      
+      //Authenticate with provider
+      var provider = providers[provider_str];
+      
+      console.log("Logging in with provider: " + provider);
+      
+      if(provider == "temp") {
+      
+        console.log("Using temporary login");
+      
+        //Make a temporary account
+        res.writeHead(302, {Location: 'http://' + settings.web_domain + ':' + settings.web_port + '/verify?temp=1'});
+      }
+      else {
+      
+        //Otherwise, verify through OpenID
+        relying_party.authenticate(provider, false, function(error, auth_url) {
+          if(error || !auth_url) {
+            res.writeHead(200);
+            res.end('Authentication failed');
+          }
+          else {
+            res.writeHead(302, {Location: auth_url});
+            res.end();
+          }
+        });
+      }
+    }
+    else if(parsed_url.pathname === '/verify') {
+
+      console.log("Verifying");
+
+      var query         = querystring.parse(parsed_url.query),
+          temporary     = query.temp;
+          
+      if(temporary) {
+        
+        console.log("Joining with temporary account");
+      
+        //Create temporary account and add to game
+        login(res, "temporary");
+      }
+      else {
+        
+        relying_party.verifyAssertion(req, function(error, result) {
+        
+          console.log("Using persistent account: " + result.claimedIdentifier);
+          
+          //Log in to database, send response
+          login(res, result.claimedIdentifier);
+        });
+      }
+    }
+    else next();
+  });
+}
+
+
 //Create web server
 function createServer() {
 
-  var express = require('express'),
-      server = express.createServer();
+  var express     = require('express'),
+      server      = express.createServer(),
+      client_html = fs.readFileSync(game_module.client_html, 'utf-8');
+      
+  //Parse out client document
+  var token_loc     = client_html.indexOf(settings.session_token),
+      client_start  = client_html.substr(0, token_loc),
+      client_end    = client_html.substr(token_loc + settings.session_token.length);
+  
+  //Attach session handler
+  attachOpenID(server, function(res, user_id) {
+  
+    console.log("!!!!Here!!!");
+    res.writeHead(200);
+    res.write(client_start);
+    res.write(sessions.setToken(user_id));
+    res.end(client_end);
+  });
 
   //Mount client files
   var options = {
@@ -138,5 +253,9 @@ function startServer() {
   });
 } 
 
-
 startServer();
+
+if(settings.debug) {
+  var repl = require('repl');
+  repl.start('Admin> ');
+}

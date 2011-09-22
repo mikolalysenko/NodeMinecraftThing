@@ -34,6 +34,7 @@ function Engine(game_module) {
   //Basic subsystems
   this.loader       = null;
   this.render       = null;
+  this.input        = null;
   
   //Pause/ticker
   this.tick_interval  = null;  
@@ -55,7 +56,7 @@ Engine.prototype.setState = function(next_state) {
       engine.emitter.emit('init');
     }
     catch(err) {
-      engine.state = error_state;
+      engine.state = this.error_state;
       engine.error_state.postError("Error during state transition: " + err);
       engine.state.init();
     }
@@ -67,7 +68,8 @@ Engine.prototype.init = function(game_module) {
 
   //Initialize first subsystems
   this.loader = require('./loader.js');
-  this.setPaused(false);
+  this.input  = require('./input.js');
+  this.setActive(false);
 
   //Register game module
   game_module.registerEngine(this);
@@ -79,8 +81,9 @@ Engine.prototype.init = function(game_module) {
   this.loader.setInit();
 }
 
-//Pauses the engine
-Engine.prototype.setPaused = function(pause) {
+//Pauses/unpauses the engine
+Engine.prototype.setActive = function(pause) {
+  this.input.setActive(pause);
   if(pause) {
     if(this.tick_interval) {
       clearInterval(this.tick_interval);
@@ -98,7 +101,6 @@ Engine.prototype.tick = function() {
   this.emitter.emit('tick');
 }
 
-
 //Creates the engine (call this in the head part of the document)
 exports.createEngine = function(game_module) {
 
@@ -111,5 +113,7 @@ exports.createEngine = function(game_module) {
     engine.error_state.postError("Script error (" + url + ":" + lineno + ") -- " + errMsg);
     engine.setState(engine.error_state);
   };
+  
+  return engine;
 }
 
