@@ -1,8 +1,9 @@
 var util = require('util');
 
-function AccountManager(db, game_module) {
+function AccountManager(db, game_module, region_set) {
   this.db = db;
   this.game_module = game_module;
+  this.region_set = region_set;
 }
 
 AccountManager.prototype.getAccount = function(user_id, cb) {
@@ -75,7 +76,8 @@ AccountManager.prototype.createPlayer = function(account, options, cb) {
   }
   
   var db = this.db,
-      game_module = this.game_module;
+      game_module = this.game_module,
+      region_set = this.region_set;
 
   //Check if player name exists already
   db.players.findOne({'player_name':options.player_name}, function(err, player) {
@@ -104,15 +106,13 @@ AccountManager.prototype.createPlayer = function(account, options, cb) {
     //Set player account
     player_rec.account_id = account._id;
     
-    /*
     //Get region id
-    var region_id = this.gateway.lookupRegion(region_name);
+    var region_id = region_set.lookupRegionName(region_name);
     if(!region_id) {
       cb("Player region is missing/instance server is offline");
       return;
     }
     entity_rec.region_id = region_id;
-    */
     
     //Add to database
     db.entities.save(entity_rec, function(err0) {
@@ -126,7 +126,17 @@ AccountManager.prototype.createPlayer = function(account, options, cb) {
 
 
 AccountManager.prototype.getPlayer = function(account_id, player_name, cb) {
-  cb(null, {});
+  this.db.players.findOne({'player_name':player_name, 'account_id':account_id}, function(err, player) {
+    if(err) {
+      cb(err, null);
+    }
+    else if(!player) {
+      cb("Player not found", null);
+    }
+    else {
+      cb(null, player);
+    }  
+  });
 }
 
 

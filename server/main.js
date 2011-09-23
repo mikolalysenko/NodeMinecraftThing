@@ -126,11 +126,7 @@ function attachOpenID(server, login) {
       //Authenticate with provider
       var provider = providers[provider_str];
       
-      console.log("Logging in with provider: " + provider);
-      
       if(provider == "temp") {
-      
-        console.log("Using temporary login");
       
         //Make a temporary account
         res.writeHead(302, {Location: 'http://' + settings.web_domain + ':' + settings.web_port + '/verify?temp=1'});
@@ -153,15 +149,10 @@ function attachOpenID(server, login) {
     }
     else if(parsed_url.pathname === '/verify') {
 
-      console.log("Verifying");
-
       var query         = querystring.parse(parsed_url.query),
           temporary     = query.temp;
           
       if(temporary) {
-        
-        console.log("Joining with temporary account");
-      
         //Create temporary account and add to game
         login(res, "temporary");
       }
@@ -169,8 +160,6 @@ function attachOpenID(server, login) {
         
         relying_party.verifyAssertion(req, function(error, result) {
         
-          console.log("Using persistent account: " + result.claimedIdentifier);
-          
           //Log in to database, send response
           login(res, result.claimedIdentifier);
         });
@@ -197,6 +186,7 @@ function createServer() {
 
   //Mount extra, non-browserify files
   server.use(connect.static(path.join(settings.game_dir, './www/')));
+  server.use(connect.static(path.join(__dirname, '../client/www/')));
   
   //Mount client files
   var options = {
@@ -207,6 +197,9 @@ function createServer() {
   };
   if(settings.debug) {
     options.watch = true;
+    options.filter = function(src) {
+      return '"use strict;"\n' + src;
+    };
   }
   else {
     options.watch = false;
@@ -244,14 +237,71 @@ function startGame(db, server) {
   });  
 }
 
+//Resets the whole database
+function resetGame(db, cb) {
+  //Only reset if called for
+  if(!settings.RESET) {
+    cb();
+    return;
+  }
+
+  var createWorld = function() {
+  
+    //Create all the regions
+    var regions         = game_module.regions,
+        pending_regions = regions.length;
+    for(var i=0; i<regions.length; ++i) {
+    
+      //Unpack region for database serialization
+      var region = {
+        region_name : regions[i].region_name,
+        brand_new   : true,
+      };
+      
+      util.log("Creating region: " + JSON.stringify(region));
+      
+      //Save the region to the database
+      db.regions.save(region, function(err) {
+        if(err) {
+          throw err;
+        }
+        if(--pending_regions == 0) {
+          util.log("GAME DATABASE RESET");
+          cb();
+        }
+      });
+    }
+  };
+  
+  //Clear out database and create the world
+  util.log("CLEARING GAME DATABASE");
+  db.entities.remove({}, function(err0) {
+    db.regions.remove({}, function(err1) {
+      db.players.remove({}, function(err2) {
+        db.chunks.remove({}, function(err3) {
+          db.accounts.remove({}, function(err4) {
+            var err = err0 || err1 || err2 || err3 || err4;
+            if(err) {
+              throw err;
+            }
+            createWorld();
+          });
+        });
+      });
+    });
+  });
+}
+
 //Start the server
 function startServer() {
 
   util.log("Starting server...");
   
   initializeDB(function(db) {
-    var server = createServer();
-    startGame(db, server);
+    resetGame(db, function() {
+      var server = createServer();
+      startGame(db, server);
+    });
   });
 } 
 

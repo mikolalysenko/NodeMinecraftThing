@@ -10,7 +10,6 @@ var buttons     = [],
     
 exports.state     = state;
 exports.emitter   = emitter;
-exports.bindings  = bindings;
 
 //Initialization
 exports.init = function(engine) {
@@ -25,6 +24,14 @@ exports.init = function(engine) {
       }
     } 
   });
+}
+
+//Bind keys :P
+exports.bindKeys = function(kb) {
+  bindings = {};
+  for(var i in kb) {
+    bindings[parseInt(i)] = kb[i];
+  }
 }
 
 //Sets up keyboard buttons

@@ -8,18 +8,18 @@ exports.components = {
 };
 
 //Entity type data
-exports.entityTypes = {
+exports.entity_types = {
   'player': {
     components  : [ 'player' ],
   },
 };
 
 //Voxel terrain texture
-exports.voxelTexture = "./voxels/voxels.png";
+exports.voxel_texture = "./voxels/voxels.png";
 
 //Texture order
 // -x, +x, -y, +y, -z, +z
-exports.voxelTypes = [
+exports.voxel_types = [
 
   { name:         'Air', 
     transparent:   true, 
@@ -27,7 +27,7 @@ exports.voxelTypes = [
   },
   
   { name:         'Stone', 
-    transparent:   true, 
+    transparent:   false, 
     textures:     [ [0,1], [0,1], [0,1], [0,1], [0,1], [0,1] ],
   },  
 ];
@@ -45,7 +45,7 @@ exports.buttons = [
 
 //Default key bindings (in javascript keycodes)
 // 0 is the special keycode for left click
-exports.defaultBindings = {
+exports.default_bindings = {
   0  : "action",
   87 : "up",
   83 : "down",

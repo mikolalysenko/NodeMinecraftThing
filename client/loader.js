@@ -62,7 +62,7 @@ exports.fetchAudio = function(url) {
 
 exports.listenFinished = function(cb) {
   if(initialized && pending === completed) {
-    setTimeout(cb, 5);
+    setTimeout(cb, 0);
   }
   else {
     emitter.on('finished', cb);

@@ -1,22 +1,10 @@
-"use strict";
 
-//The preloader
-var GameState = {
+exports.init = function(engine) {
+  document.getElementById('gamePane').style.display = 'block';
+  console.log("IN GAME STATE");
+}
 
-  init : function(cb) {
-	  Input.init();
-    document.getElementById('gamePane').style.display = 'block';
-    Render.resize();
-    window.onresize = Render.resize;
-    Render.bindDraw(Game.draw);
-    cb(null);
-  },
+exports.deinit = function(cb) {
+  document.getElementById('gamePane').style.display = 'none';
+}
 
-  deinit : function(cb) {
-    document.getElementById('gamePane').style.display = 'none';
-    Render.clearDraw();
-    window.onresize = null;
-    Input.deinit();
-	  cb(null);
-  },
-};

@@ -1,7 +1,9 @@
-var path = require('path');
+var path = require('path'),
+    common = require('./common.js');
 
-//Import default exports from common.js
-var common = require('./common.js');
+exports.components    = common.components;
+exports.entity_types  = common.entity_types;
+exports.voxel_types   = common.voxel_types;
 
 //Path to client HTML
 exports.client_html = path.join(__dirname, 'www/client.html');
@@ -30,9 +32,8 @@ exports.createPlayer = function(account, options) {
   
   var player_rec = {
     'player_name' : options.player_name,
-    'key_bindings' : common.defaultBindings,
+    'key_bindings' : common.default_bindings,
   };
-  
   var entity_rec = {
     'player_name' : options.player_name,
     'type'        : 'player',
@@ -41,4 +42,11 @@ exports.createPlayer = function(account, options) {
   return [player_rec, entity_rec, 'Starting Area'];
 };
 
+exports.registerInstance = function(instance) {
+  common.registerInstance(instance);
+}
+
+exports.registerEntity = function(entity) {
+  common.registerEntity(entity);
+}
 

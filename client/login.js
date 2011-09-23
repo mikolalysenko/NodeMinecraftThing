@@ -13,7 +13,7 @@ LoginHandler.prototype.init = function(cb) {
     }
     login.account = account;
     login.players = players;
-    cb();
+    setTimeout(cb, 0);
   });
 }
 
@@ -24,7 +24,7 @@ LoginHandler.prototype.createPlayer = function(options, cb) {
     if(!err) {
       login.players.push(player);
     }
-    cb(err, player);
+    setTimeout(function() { cb(err, player); }, 0);
   });
 }
 
@@ -40,12 +40,20 @@ LoginHandler.prototype.deletePlayer = function(player_name, cb) {
         }
       }
     }
-    cb(err);
+    setTimeout(function() { cb(err); }, 0);
   });
 }
 
-LoginHandler.prototype.joinGame = function(player_name, cb) {
-  throw Error("Not yet implemented");
+LoginHandler.prototype.joinGame = function(player_name) {
+  var login = this,
+      rpc   = this.engine.network.rpc;
+  rpc.joinGame(player_name, function(err, player_rec) {
+    if(err) {
+      throw Error(err);
+    }
+    //Get out of stupid try catch block so that errors are actually debuggable
+    setTimeout(function() { login.engine.notifyJoin(player_rec); }, 0);
+  });
 }
 
 exports.LoginHandler = LoginHandler;

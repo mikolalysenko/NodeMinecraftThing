@@ -1,27 +1,48 @@
-"use strict";
+var loadingInterval = null;
 
-//The preloader
-var LoadState = {
 
-  init : function(cb) {
+//Just randomly move the progress bar to make the user think something is happening
+// (easier to implement than actual loading stats)
+function progressFunc() {
+  progressBar.innerHTML += '.';
+  loadingInterval = setTimeout(progressFunc, Math.random() * 2000 + 500);
+}
 
-    var progress = document.getElementById('progressPane');
-	  progress.style.display = 'block';
-	
-	  Loader.emitter.on('progress', function(url, completed, pending) {
-	    var pct = completed / pending * 100.0;
-      progress.innerHTML = "Loaded: " + url + "<br\/\>%" + pct + " Complete";
-    });
-    
-    Loader.listenFinished(function() {
-      App.setState(GameState);
-    });
-    
-    cb(null);
-  },
+exports.init = function(engine) {
 
-  deinit : function(cb) {
-	  document.getElementById('progressPane').style.display = 'none';
-	  cb(null);
-  },
-};
+  var progressPane = document.getElementById('progressPane'),
+      progressBar  = document.getElementById('progressBar');
+  progressPane.style.display = 'block';
+
+  progressBar.innerHTML = 'Loading';
+  progressFunc();
+  
+  var files_loaded    = false,
+      chunks_loaded   = false;
+  function checkLoaded() {
+    if(file_loaded && chunks_loaded) {
+      engine.setState(engine.game_module.states.game_state);
+    }
+  }
+  
+  engine.loader.listenFinished(function() {
+    files_loaded = true;
+    checkLoaded();
+  });
+  
+  engine.listenLoadComplete(function() {
+    chunks_loaded = true;
+    checkLoaded();
+  });
+}
+
+exports.deinit = function(engine) {
+  document.getElementById('progressPane').style.display = 'none';
+  
+  if(loadingInterval) {
+    clearTimeout(loadingInterval);
+    loadingInterval = null;
+  }
+  
+  cb(null);
+}

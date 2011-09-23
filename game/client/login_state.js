@@ -18,14 +18,8 @@ exports.init = function(engine) {
     var playerValues = document.getElementsByName('playerValue');
     for(var i=0; i<playerValues.length; ++i) {
       if(playerValues[i].checked) {
-        engine.login.joinGame(playerValues[i].value, function() {
-        
-        
-        
-        
-          //TODO: Join game
-          
-        });
+        //Will automatically switch to loading state due to change_instance event if login succeeds
+        engine.login.joinGame(playerValues[i].value);
         break;
       }
     }

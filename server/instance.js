@@ -1,7 +1,7 @@
 var util = require('util'),
     EventEmitter = require('events').EventEmitter,
-    patcher = require('./patcher.js'),
-    voxels = require('./voxels.js');
+    patcher = require('../client/patcher.js'),
+    voxels = require('../client/voxels.js');
 
 // A function that just eats events (called when updating the database)
 function sink(err, result) {
@@ -232,7 +232,7 @@ Player.prototype.transmitChunks = function() {
     player.client.rpc.updateChunks(buffer, loadComplete);
   };
 
-  setTimeout(executeTransmit, 10);
+  setTimeout(executeTransmit, 0);
 }
 
 
@@ -265,20 +265,17 @@ Player.prototype.updateEntity = function(entity) {
 }
 
 
-
-
 //----------------------------------------------------------------
 // An Instance is a process that simulates a region in the game.
 // It keeps a local copy of all entities within the region.
 //----------------------------------------------------------------
-function Instance(region, db, gateway, rules) {
+function Instance(region, db, region_set) {
   this.entities   = {};
   this.players    = {};
   this.region     = region;
   this.db         = db;
   this.running    = false;
-  this.gateway    = gateway;
-  this.rules      = rules;
+  this.region_set = region_set;
   this.emitter    = new EventEmitter();
   this.chunk_set  = new voxels.ChunkSet();
   this.dirty_chunks = {};
@@ -371,7 +368,6 @@ Instance.prototype.start = function(cb) {
     inst.sync_interval = setInterval( function() { inst.sync(); }, inst.SYNC_TIME);
     
     //Send events to game
-    inst.rules.registerInstance(inst);
     if(inst.region.brand_new) {
       inst.region.brand_new = false;
       inst.emitter.emit('construct');
@@ -532,7 +528,6 @@ Instance.prototype.activatePlayer = function(client, player_rec, entity_rec, cb)
   this.players[player_rec._id] = player;
     
   //Initialize player
-  this.rules.registerPlayer(player);
   player.init();
     
   //Send initial copy of game state to player
@@ -636,7 +631,7 @@ Instance.prototype.createEntity = function(state) {
   entity.state.region_id = this.region.region_id;
   
   //Add components to entity
-  this.rules.registerEntity(entity);
+  this.region_set.registerEntity(entity);
   
   //Initialize the entity if we are running
   if(this.running) {

@@ -1,12 +1,7 @@
-//Application framework files for client
-exports.Framework = {
-  linalg        : require('./linalg.js'),
-  RenderGL      : require('./rendergl.js').RenderGL,  
-  StandardPass  : require('./standard_pass.js').StandardPass,
-};
 
 //Event emitter module
-var EventEmitter = require('events').EventEmitter;
+var EventEmitter = require('events').EventEmitter,
+    Instance     = require('./instance.js').Instance;
 
 //The default state (doesn't do anything)
 var DefaultState = {
@@ -29,21 +24,26 @@ function Engine(game_module, session_id) {
   this.emitter      = new EventEmitter();
   this.error_state  = DefaultErrorState;
   this.game_module  = game_module;
-  this.framework    = exports.Framework;
+  this.framework    = require('./framework.js');
   
   //Session and account
   this.session_id   = session_id;
   this.account      = null;
+  this.player       = null;
   
   //Basic subsystems
   this.loader       = null;
   this.render       = null;
   this.input        = null;
+  this.voxels       = require('./voxel_db.js');
   this.network      = null;
   this.login        = null;
+  this.instance     = null;
+  
   
   //Pause/ticker
   this.tick_interval  = null;  
+  this.loaded_chunks  = false;
 }
 
 //Sets the application state
@@ -81,22 +81,23 @@ Engine.prototype.init = function() {
   
   //Connect to the server
   require('./network.js').connectToServer(engine, function(conn) {
-  
     console.log("Connected!");
-  
-    //Set network connection
     engine.network = conn;
     
-    //Set up login framework
-    engine.login = new (require('./login.js').LoginHandler)(engine);
-    engine.login.init(function() {
-    
-      //Register game module
-      engine.game_module.registerEngine(engine);
+    //Start voxel database
+    engine.voxels.init(this, function() {
       
-      //Initialize second set of modules 
-      engine.render.init(engine);
-      engine.loader.setInit();
+      //Set up login framework
+      engine.login = new (require('./login.js').LoginHandler)(engine);
+      engine.login.init(function() {
+      
+        //Register game module
+        engine.game_module.registerEngine(engine);
+        
+        //Initialize second set of modules 
+        engine.render.init(engine);
+        engine.loader.setInit();
+      });
     });
   });
 }
@@ -128,6 +129,54 @@ Engine.prototype.crash = function(errMsg) {
   this.setActive(false);
   this.network.connection.end();
 }
+
+
+Engine.prototype.notifyLoadComplete = function(cb) {
+  this.loaded_chunks = true;
+  this.emitter.emit('loaded');
+  cb();
+}
+
+Engine.prototype.changeInstance = function(region_info) {
+
+  //Set chunk state to unloaded
+  this.loaded_chunks = false;
+
+  //Create and restart
+  if(this.instance) {
+    this.instance.deinit();
+  }  
+  this.instance = new Instance(this);
+
+  //Clear out voxel data
+  this.voxels.reset();
+  this.instance.init();
+
+  this.emitter.emit('change_instance');
+}
+
+//Called upon joining an instance
+Engine.prototype.notifyJoin = function(player_rec) {
+
+  //Save player record
+  this.player = player_rec;
+
+  //Bind keys
+  this.input.bindKeys(player_rec.bindings);
+  
+  //Start loading the instance
+  this.changeInstance(null);
+}
+
+Engine.prototype.listenLoadComplete = function(cb) {
+  if(this.loaded_chunks) {
+    setTimeout(cb, 0);
+  }
+  else {
+    this.emitter.once('loaded', cb);
+  }
+}
+
 
 //Creates the engine (call this in the head part of the document)
 exports.createEngine = function(game_module, session_id) {

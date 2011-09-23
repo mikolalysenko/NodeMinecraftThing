@@ -1,11 +1,15 @@
 var dnode = require('dnode'),
     util  = require('util')
-    AccountManager = require('./accounts.js').AccountManager;
+    AccountManager = require('./accounts.js').AccountManager,
+    RegionSet = require('./regions.js').RegionSet;
+
+function sink(err) { if(err) util.log(err); }
     
 //--------------------------------------------------------------
 // A client connection record
 //--------------------------------------------------------------
 function Client(account, rpc, connection) {
+  this.state      = 'login';
   this.account    = account;
   this.rpc        = rpc;
   this.connection = connection;
@@ -21,7 +25,8 @@ function Gateway(db, server, sessions, game_module) {
   this.server       = server;
   this.sessions     = sessions;
   this.game_module  = game_module;
-  this.accounts     = new AccountManager(db, game_module);
+  this.region_set   = new RegionSet(db, game_module);
+  this.accounts     = new AccountManager(db, game_module, this.region_set);
   
   //Clients and instances
   this.clients      = {};
@@ -56,13 +61,12 @@ function Gateway(db, server, sessions, game_module) {
       }
       
       //Log out of account
-      gateway.accounts.closeAccount(account_id, function(err) {
-        if(err) {
-          util.log(err);
-        }
-      });
+      gateway.accounts.closeAccount(account_id, sink);
       
       //TODO: Handle exit event here
+      if(client.state == 'game') {
+        gateway.region_set.removeClient(client, sink);
+      }
       
       delete gateway.clients[account_id];
       client = null;
@@ -76,7 +80,7 @@ function Gateway(db, server, sessions, game_module) {
     
     //Player login event
     this.login = function(session_id, cb) {
-      if(!session_id || !cb ||
+      if( client ||
           typeof(session_id) != "string" ||
           typeof(cb) != "function" ) {
         connection.end();
@@ -120,7 +124,7 @@ function Gateway(db, server, sessions, game_module) {
     
     //Creates a player
     this.createPlayer = function(options, cb) {
-      if(!client ||
+      if(!client || client.state != 'login' ||
         typeof(options) != "object" ||
         typeof(cb) != "function" ) {
         connection.end();
@@ -140,7 +144,7 @@ function Gateway(db, server, sessions, game_module) {
     };
     
     this.deletePlayer = function(player_name, cb) {
-      if(!client ||
+      if(!client || client.state != 'login' ||
         typeof(player_name) != "string" ||
         typeof(cb) != "function") {
         connection.end();
@@ -152,7 +156,7 @@ function Gateway(db, server, sessions, game_module) {
     
     //Joins the game
     this.joinGame = function(player_name, cb) {
-      if(!client ||
+      if(!client || client.state != 'login' ||
         typeof(player_name) != "string" ||
         typeof(cb) != "function") {
         connection.end();
@@ -165,8 +169,16 @@ function Gateway(db, server, sessions, game_module) {
           return;
         }
         
-        //TODO: Add player to game
-        cb(null, player_rec);
+        gateway.region_set.addClient(player_rec, client, function(err) {
+          if(err) {
+            cb(err, null);
+            return;
+          }
+        
+          //Set client state to game
+          client.state = 'game';
+          cb(null, player_rec);
+        });
       });
     };
     
@@ -187,9 +199,13 @@ Gateway.prototype.addInstance = function(region) {
 // Gateway constructor
 //--------------------------------------------------------------
 exports.createGateway = function(db, server, sessions, game_module, cb) {
-
   var gateway = new Gateway(db, server, sessions, game_module);
-
-  cb(null, gateway);
+  gateway.region_set.init(function(err) {
+    if(err) {
+      cb(err, null);
+      return;
+    }
+    cb(null, gateway);
+  });
 }
 
