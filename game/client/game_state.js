@@ -1,10 +1,25 @@
 
 exports.init = function(engine) {
-  document.getElementById('gamePane').style.display = 'block';
-  console.log("IN GAME STATE");
+
+  var canvas = document.getElementById('renderCanvas'),
+      gamePane = document.getElementById('gamePane');
+  
+  window.onresize = function() {
+    gamePane.width  = window.innerWidth;
+		gamePane.height = window.innerHeight;
+		canvas.width    = window.innerWidth;
+		canvas.height   = window.innerHeight;
+  };
+          
+  gamePane.style.display = 'block';
+  window.onresize();
+  engine.render.setActive(true);
 }
 
 exports.deinit = function(cb) {
+
+  window.onresize = null;
+  engine.render.setActive(false);
   document.getElementById('gamePane').style.display = 'none';
 }
 

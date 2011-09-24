@@ -220,7 +220,6 @@ emitter.on('start', function() {
   worker_interval = setInterval(makeCells);
   dirty_cells = {};
   post('started');
-  console.log("Worker started!");
 });
 
 emitter.on('setVoxel', function(x,y,z,v) {

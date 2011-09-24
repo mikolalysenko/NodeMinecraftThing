@@ -1,6 +1,5 @@
 var linalg        = require('./linalg.js'),
-    EventEmitter  = require('events').EventEmitter,
-    StandardPass  = require('./standard_pass.js').StandardPass;
+    EventEmitter  = require('events').EventEmitter;
 
 //---------------------------------------------------
 // Game engine stuff
@@ -28,7 +27,7 @@ function RenderGL(canvas) {
   this.clip_matrix  = new Float32Array(16);
   
   //Rendering passes
-  this.passes       = [ new StandardPass() ];
+  this.passes       = [ ];
   this.activated    = false;
   this.loop_func    = null;
 }
@@ -54,7 +53,9 @@ RenderGL.prototype.init = function(engine) {
 }
 
 RenderGL.prototype.deinit = function() {
+  this.setActive(false);
   this.emitter.emit('deinit');
+  this.emitter.removeAllListeners();
 }
 
 //---------------------------------------------------
@@ -346,27 +347,26 @@ RenderGL.prototype.setActive = function(active) {
   //Set up loop function
   var render = this;
   this.loop_func = function(time) {
-  
-    if(!render.active) {
+    if(!render.activated) {
       return;
     }
     
-    this.emitter.emit('frame_begin');
+    render.emitter.emit('frame_begin');
     
     for(var i=0; i<render.passes.length; ++i) {
       var pass = render.passes[i];
-      pass.begin(time, this);
-      this.emitter.emit('pass_' + pass.name, time, this);
-      pass.end(this);
+      pass.begin(time, render);
+      render.emitter.emit('pass_' + pass.name, time, render, pass);
+      pass.end(render);
     }
     
-    this.emitter.emit('frame_end');
+    render.emitter.emit('frame_end');
     
     nextFrame(render.loop_func);
   };
   
   //Bootstrap the client
-  nextFrame(loop_func);
+  nextFrame(render.loop_func);
 };
 
 

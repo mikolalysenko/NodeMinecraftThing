@@ -6,7 +6,7 @@
 
   <script src="/browserify.js"></script>
   <script>
-  require('./engine.js').createEngine(require('./client.js'), '$SESSION_TOKEN'); 
+  var ENGINE = require('./engine.js').createEngine(require('./client.js'), '$SESSION_TOKEN'); 
   </script>
   
 	<link rel=StyleSheet href="style.css" type="text/css">

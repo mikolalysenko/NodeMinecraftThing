@@ -16,6 +16,20 @@ exports.deinit = function(engine) {
 
 exports.postError = function(msg) {
 
+  if(typeof(msg) != "string") {
+    try {
+      if(msg instanceof Error) {
+        msg = "Error: " + msg.message + " at " + msg.stack;
+      }
+      else {
+        msg = JSON.stringify(msg);
+      }
+    }
+    catch(err) {
+      msg = '' + msg;
+    }
+  }
+
   if(msg.search(/webgl/i) >= 0) {
     nogl_state = true;
   	document.getElementById('errorPane').style.display = 'none';

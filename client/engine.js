@@ -42,19 +42,19 @@ function Engine(game_module, session_id) {
   
   
   //Pause/ticker
+  this.tick_rate      = 30;
   this.tick_interval  = null;  
   this.loaded_chunks  = false;
 }
 
 //Sets the application state
 Engine.prototype.setState = function(next_state) {
-
   var engine = this;
   setTimeout(function() {
+    if(engine.state === engine.error_state) {
+      return;
+    }
     try {
-      if(engine.state === engine.error_state) {
-        return;
-      }
       engine.emitter.emit('deinit');
       engine.state.deinit(engine);
       engine.state = next_state;
@@ -62,11 +62,10 @@ Engine.prototype.setState = function(next_state) {
       engine.emitter.emit('init');
     }
     catch(err) {
-      engine.state = engine.error_state;
-      engine.error_state.postError("Error during state transition: " + err);
-      engine.state.init();
+      console.log("Died during set state");
+      engine.crash(err);
     }
-  }, 5);
+  }, 0);
 }
 
 //Initialize the engine
@@ -76,6 +75,7 @@ Engine.prototype.init = function() {
 
   //Initialize first subsystems
   engine.loader = require('./loader.js');
+  engine.loader.init(this);
   engine.input  = require('./input.js');
   engine.setActive(false);
   
@@ -85,59 +85,147 @@ Engine.prototype.init = function() {
     engine.network = conn;
     
     //Start voxel database
-    engine.voxels.init(this, function() {
+    engine.voxels.init(engine, function() {
       
       //Set up login framework
       engine.login = new (require('./login.js').LoginHandler)(engine);
       engine.login.init(function() {
       
         //Register game module
-        engine.game_module.registerEngine(engine);
+        try {
+          engine.game_module.registerEngine(engine);
+        }
+        catch(err) {
+          engine.crash(err);
+          return;
+        }
         
         //Initialize second set of modules 
         engine.render.init(engine);
-        engine.loader.setInit();
+        engine.loader.setReady();
       });
     });
   });
 }
 
 //Pauses/unpauses the engine
-Engine.prototype.setActive = function(pause) {
-  this.input.setActive(pause);
-  if(pause) {
+Engine.prototype.setActive = function(active) {
+  if(this.input) {
+    this.input.setActive(active);
+  }
+  if(!active) {
     if(this.tick_interval) {
       clearInterval(this.tick_interval);
+      this.tick_interval = null;
     }
   }
   else {
-    if(this.tick_interval) {
-      setInterval(this.tick_interval, function(){this.tick();});
+    if(!this.tick_interval) {
+      var engine = this;
+      this.tick_interval = setInterval(function(){engine.tick();}, this.tick_rate);
     }
   }
 }
 
 //Ticks the engine
 Engine.prototype.tick = function() {
-  this.emitter.emit('tick');
+  try {
+    this.emitter.emit('tick');
+  }
+  catch(err) {
+    this.crash(err);
+  }
 }
 
-//Crash the engine
+//SHUT. DOWN. EVERYTHING.
 Engine.prototype.crash = function(errMsg) {
+  try {
+    console.error(errMsg.stack);
+  }
+  catch(err) {
+    this.error_state.postError(err);
+  }
+
   this.error_state.postError(errMsg);
-  this.setState(this.error_state);
-  this.setActive(false);
-  this.network.connection.end();
+
+  //Shut down user code
+  try {
+    this.emitter.emit('crash');
+  }
+  catch(err) {
+    this.error_state.postError(err);
+  }
+  
+  //Shut down state
+  try {
+    if(this.state !== this.error_state) {
+      this.emitter.emit('deinit');
+      this.state.deinit(this);
+    }
+  }
+  catch(err) {
+    this.error_state.postError(err);
+  }
+    
+  //Shut down instance
+  try {
+    this.setActive(false);
+    if(this.instance) {
+      this.instance.deinit(this);
+      this.instance = null;
+    }
+  }
+  catch(err) {
+    this.error_state.postError(err);
+  }
+
+  //Shut down subsystems
+  try {
+    if(this.network) {
+      this.network.connection.end();
+      this.network = null;
+    }
+    if(this.loader) {
+      this.loader.deinit();
+      this.loader = null;
+    }
+    if(this.voxels) {
+      this.voxels.deinit();
+      this.voxels = null;
+    }
+    if(this.render) {
+      this.render.deinit();
+      this.render = null;
+    }
+  }
+  catch(err) {
+    this.error_state.postError(err);
+  }
+  
+  //Initialize error state
+  if(this.state !== this.error_state) {
+    this.state = this.error_state;
+    this.state.init(this);
+  }
+  
+  //Kill listeners
+  this.emitter.removeAllListeners();
+  
+  
 }
 
 
 Engine.prototype.notifyLoadComplete = function(cb) {
+  console.log("Chunk loading complete");
+
   this.loaded_chunks = true;
-  this.emitter.emit('loaded');
-  cb();
+  var engine = this;
+  setTimeout(function() { engine.emitter.emit('loaded'); }, 0);
 }
 
 Engine.prototype.changeInstance = function(region_info) {
+
+  console.log("Changing instances");
 
   //Set chunk state to unloaded
   this.loaded_chunks = false;
@@ -152,7 +240,9 @@ Engine.prototype.changeInstance = function(region_info) {
   this.voxels.reset();
   this.instance.init();
 
-  this.emitter.emit('change_instance');
+  //Called when changing instances
+  var engine = this;
+  setTimeout(function() { engine.emitter.emit('change_instance'); }, 0);
 }
 
 //Called upon joining an instance

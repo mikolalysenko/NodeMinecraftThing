@@ -20,18 +20,20 @@ exports.init = function(engine) {
   var files_loaded    = false,
       chunks_loaded   = false;
   function checkLoaded() {
-    if(file_loaded && chunks_loaded) {
+    if(files_loaded && chunks_loaded) {
       engine.setState(engine.game_module.states.game_state);
     }
   }
   
   engine.loader.listenFinished(function() {
     files_loaded = true;
+    console.log("Files loaded");
     checkLoaded();
   });
   
   engine.listenLoadComplete(function() {
     chunks_loaded = true;
+    console.log("Chunks loaded");
     checkLoaded();
   });
 }
@@ -43,6 +45,4 @@ exports.deinit = function(engine) {
     clearTimeout(loadingInterval);
     loadingInterval = null;
   }
-  
-  cb(null);
 }

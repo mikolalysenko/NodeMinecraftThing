@@ -13,6 +13,38 @@ exports.states = {
   game_state    : require('./client/game_state.js'),
 };
 
+
+function setupRender(engine) {
+
+  var framework = engine.framework;
+
+  //Select WebGL for rendering
+  engine.render = new framework.RenderGL(document.getElementById("renderCanvas"));
+  
+  //Set up rendering passes
+  engine.render.passes = [
+    new framework.StandardPass({
+      fov: Math.PI/8,
+      z_near: 0.1,
+      z_far: 1000.0,
+      background_color: [0.4, 0.3, 0.8, 1.0],
+    }),
+    new framework.VoxelPass(engine, '/img/voxels.png'),
+  ];
+  
+  //Set up per-frame rendering actions
+  var emitter = engine.render.emitter;
+  
+  emitter.on('pass_forward', function(time, render, pass) {
+    //TODO: Set camera here
+  });
+  
+  emitter.on('pass_voxels', function(time, render, pass) {
+    engine.voxels.draw(time, render, pass);
+  });
+}
+
+
 //Called at start up
 exports.registerEngine = function(engine) {
   
@@ -22,8 +54,7 @@ exports.registerEngine = function(engine) {
   //Set up custom error handler
   engine.error_state = exports.states.error_state;
 
-  //Select WebGL for rendering
-  engine.render = new framework.RenderGL(document.getElementById("renderCanvas"));
+  setupRender(engine);
   
   //Set input actions
   engine.input.setButtons(common.buttons);

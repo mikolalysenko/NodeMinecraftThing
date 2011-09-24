@@ -1,9 +1,3 @@
-var Voxels = {};
-if(typeof(exports) !== "undefined") {
-  Voxels = exports;
-}
-
-(function() {
 
 var CHUNK_SHIFT_X = 8,
     CHUNK_SHIFT_Y = 4,
@@ -498,21 +492,19 @@ ChunkIterator.prototype.move = function(dx, dy, dz) {
 
 
 //Declare public methods
-Voxels.CHUNK_SHIFT_X  = CHUNK_SHIFT_X;
-Voxels.CHUNK_SHIFT_Y  = CHUNK_SHIFT_Y;
-Voxels.CHUNK_SHIFT_Z  = CHUNK_SHIFT_Z;
-Voxels.CHUNK_X        = CHUNK_X;
-Voxels.CHUNK_Y        = CHUNK_Y;
-Voxels.CHUNK_Z        = CHUNK_Z;
-Voxels.CHUNK_MASK_X   = CHUNK_MASK_X;
-Voxels.CHUNK_MASK_Y   = CHUNK_MASK_Y;
-Voxels.CHUNK_MASK_Z   = CHUNK_MASK_Z;
-Voxels.CHUNK_SIZE     = CHUNK_SIZE;
-Voxels.Chunk          = Chunk;
-Voxels.ChunkSet       = ChunkSet;
-Voxels.hashChunk      = hashCode;
-Voxels.flatten        = flattenIndex;
-Voxels.unhash         = unhash;
+exports.CHUNK_SHIFT_X  = CHUNK_SHIFT_X;
+exports.CHUNK_SHIFT_Y  = CHUNK_SHIFT_Y;
+exports.CHUNK_SHIFT_Z  = CHUNK_SHIFT_Z;
+exports.CHUNK_X        = CHUNK_X;
+exports.CHUNK_Y        = CHUNK_Y;
+exports.CHUNK_Z        = CHUNK_Z;
+exports.CHUNK_MASK_X   = CHUNK_MASK_X;
+exports.CHUNK_MASK_Y   = CHUNK_MASK_Y;
+exports.CHUNK_MASK_Z   = CHUNK_MASK_Z;
+exports.CHUNK_SIZE     = CHUNK_SIZE;
+exports.Chunk          = Chunk;
+exports.ChunkSet       = ChunkSet;
+exports.hashChunk      = hashCode;
+exports.flatten        = flattenIndex;
+exports.unhash         = unhash;
 
-
-})();

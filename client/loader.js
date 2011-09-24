@@ -1,13 +1,20 @@
 var EventEmitter  = require('events').EventEmitter,
     emitter       = new EventEmitter(),
+    engine        = null,
     pending       = 0,
     completed     = 0,
     initialized   = false,
     data          = {};
     
+    
+exports.deinit = function() {
+  initialized = false;
+  emitter.removeAllListeners();
+}
+    
 emitter.on('file', function(url, file) {
   data[url] = file;
-  --completed;
+  ++completed;
   if(initialized && pending === completed) {
     emitter.emit('finished');
   }
@@ -61,18 +68,31 @@ exports.fetchAudio = function(url) {
 }
 
 exports.listenFinished = function(cb) {
+  function wrap() {
+    try {
+      cb();
+    }
+    catch(err) {
+      engine.crash(err);
+    }
+  };
+
   if(initialized && pending === completed) {
-    setTimeout(cb, 0);
+    setTimeout(wrap, 0);
   }
   else {
-    emitter.on('finished', cb);
+    emitter.on('finished', wrap);
   }
 }
 
-exports.setInit = function() {
+exports.setReady = function() {
   initialized = true;
   if(pending == completed) {
     emitter.on('finished');
   }
+}
+
+exports.init = function(engine_) {
+  engine = engine_
 }
 

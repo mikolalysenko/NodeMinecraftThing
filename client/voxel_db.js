@@ -1,6 +1,8 @@
 //Local variables
 var Voxels = require('./voxels.js'),
+    VoxelCell = require('./voxel_pass.js').VoxelCell,
     EventEmitter = require('events').EventEmitter,
+    engine = null,
     cells = {},
     worker = null,
     voxel_set = null,
@@ -40,7 +42,7 @@ function post() {
 
 //Special case for handling console.log
 emitter.on('log', function() {
-  console.log.apply(console, ['VoxelWorker:'].concat(Array.prototype.slice.call(arguments)));
+  //console.log.apply(console, ['VoxelWorker:'].concat(Array.prototype.slice.call(arguments)));
 }); 
 
 //Update a cell
@@ -49,8 +51,8 @@ emitter.on('updateCell', function(coord, vertices) {
   if(key in cells) {
     cells[key].update(vertices);
   }
-  else {
-    cells[key] = Render.createVoxelCell(coord[0], coord[1], coord[2], vertices);
+  else if(vertices.length > 0) {
+    cells[key] = new VoxelCell(engine.render, coord[0], coord[1], coord[2], vertices);
   }
 });
 
@@ -63,7 +65,9 @@ emitter.on('removeCell', function(coord) {
   }
 });
 
-exports.init = function(engine, cb) {
+exports.init = function(engine_, cb) {
+  
+  engine = engine_;
 
   if(!window.Worker) {
     cb("Client does not support web workers");
@@ -92,10 +96,10 @@ exports.init = function(engine, cb) {
   worker.onerror = function(error) {
     worker.terminate();
     if(typeof(error) == "object" && "message" in error) {
-      App.crash("VoxelWorker crashed: (" + error.filename + ":" + error.lineno + ") -- " + error.message );
+      throw Error("VoxelWorker crashed: (" + error.filename + ":" + error.lineno + ") -- " + error.message);
     }
     else {
-      App.crash("VoxelWorker crashed: " + JSON.stringify(error));
+      throw Error("VoxelWorker crashed: " + JSON.stringify(error));
     }
   };
   
@@ -109,6 +113,9 @@ exports.init = function(engine, cb) {
 
 //Clears the voxel set
 exports.reset = function() {
+  for(var id in cells) {
+    cells[id].release();
+  }
   cells = {};
   voxel_set.chunks = {};
   local_writes = {};
@@ -116,13 +123,18 @@ exports.reset = function() {
 }
 
 //Stops the voxel client/worker
-exports.deinit = function(cb) {
+exports.deinit = function() {
   voxel_set = null;
-  emitter.once('stopped', function() {
-    cb(null);
-  });
   post('stop');
-  buffered_updates = [];
+  
+  //Release all cells
+  for(var id in cells) {
+    cells[id].release();
+  }
+  cells = {};
+  
+  //Clear out local writes
+  local_writes = {};
   
   //Stop polling for updates
   if(local_write_interval) {
@@ -133,11 +145,16 @@ exports.deinit = function(cb) {
 
 
 //Draws all the voxels
-exports.draw = function() {
+exports.draw = function(time, render, pass) {
   for(var id in cells) {
-    cells[id].draw();
+    cells[id].draw(pass);
   }
 };
+
+//Retrieves a voxel
+exports.getVoxel = function(x,y,z) {
+  return voxel_set.get(x,y,z);
+}
 
 //Called when a voxel gets updated locally
 exports.setVoxel = function(x, y, z, v) {
@@ -173,8 +190,6 @@ exports.setVoxelAuthoritative = function(x, y, z, v) {
     post('setVoxel', x, y, z, v);
   }
 };
-
-
 
 //Called when a chunk gets updated
 exports.updateChunk = function(cx, cy, cz, data) {

@@ -13,6 +13,8 @@ function Client(account, rpc, connection) {
   this.account    = account;
   this.rpc        = rpc;
   this.connection = connection;
+  this.player     = null;
+  this.instance   = null;
 }
 
 //--------------------------------------------------------------
@@ -60,13 +62,15 @@ function Gateway(db, server, sessions, game_module) {
         return;
       }
       
-      //Log out of account
-      gateway.accounts.closeAccount(account_id, sink);
-      
       //TODO: Handle exit event here
+      
+      //Remove from server
       if(client.state == 'game') {
         gateway.region_set.removeClient(client, sink);
       }
+
+      //Log out of account
+      gateway.accounts.closeAccount(account_id, sink);
       
       delete gateway.clients[account_id];
       client = null;
@@ -169,7 +173,7 @@ function Gateway(db, server, sessions, game_module) {
           return;
         }
         
-        gateway.region_set.addClient(player_rec, client, function(err) {
+        gateway.region_set.addClient(client, player_rec, function(err) {
           if(err) {
             cb(err, null);
             return;

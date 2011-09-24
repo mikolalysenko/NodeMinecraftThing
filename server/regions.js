@@ -122,13 +122,45 @@ RegionSet.prototype.registerEntity = function(entity) {
 }
 
 //Called when a player joins the game
-RegionSet.prototype.addClient = function(player_rec, client, cb) {
-  cb(null);
+RegionSet.prototype.addClient = function(client, player_rec, cb) {
+
+  var db = this.db,
+      region_set = this;
+      
+  db.entities.findOne({_id:player_rec.entity_id}, function(err, entity_rec) {
+    if(err) {
+      cb(err);
+    }
+    else if(!entity_rec || !entity_rec.region_id) {
+      util.log("Orphaned player! " + JSON.stringify(player_rec));
+      cb("Player missing entity");
+    }
+    else {
+    
+      var instance = region_set.instances[entity_rec.region_id];
+      if(!instance) {
+        cb("Player missing region");
+        return;
+      }
+      
+      client.player = player_rec;
+      client.instance = instance;
+      cb(null);
+
+      instance.activatePlayer(client, player_rec, entity_rec, function(err) {
+        if(err) {
+          util.log("Player activation failed");
+          client.connection.end();
+          return;
+        }
+      });
+    }
+  });
 }
 
 //Called when a player leaves the game
 RegionSet.prototype.removeClient = function(client, cb) {
-  cb(null);
+  client.instance.deactivatePlayer(client.player._id, cb);
 }
 
 exports.RegionSet = RegionSet;

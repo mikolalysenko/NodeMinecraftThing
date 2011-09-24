@@ -11,7 +11,10 @@ exports.init = function(engine) {
   var players = engine.login.players;
   playerList.innerHTML = '';
   for(var i=0; i<players.length; ++i) {
-    playerList.innerHTML += '<input type=radio name=playerValue value="' + players[i].player_name + '">' + players[i].player_name + '<br/>'
+    playerList.innerHTML += 
+      '<input type=radio name=playerValue value="' + players[i].player_name + '"' +
+      (i == 0 ? ' checked="checked" ' : '') +
+      '>' + players[i].player_name + '<br/>'
   }
 
   loginButton.onclick = function() {

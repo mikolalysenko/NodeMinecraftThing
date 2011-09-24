@@ -185,11 +185,6 @@ Player.prototype.deinit = function() {
 
 //Transmits chunks while the player is in the loading state
 Player.prototype.transmitChunks = function() {
-  if(this.net_state !== 'loading') {
-    clearInterval(this.loading_interval);
-    return;
-  }
-
   var player = this,
       instance = player.instance;
   
@@ -198,8 +193,7 @@ Player.prototype.transmitChunks = function() {
       return;
     }
   
-    //Clear loading interval
-    clearInterval(player.loading_interval);
+    console.log("Player connected!");
     
     //Start update interval
     player.net_state = 'game';
@@ -229,6 +223,7 @@ Player.prototype.transmitChunks = function() {
       buffer.push(parseInt(id))
       buffer.push(chunk_set.chunks[id].data);
     }
+    console.log("Transmitting chunks....");
     player.client.rpc.updateChunks(buffer, loadComplete);
   };
 
