@@ -192,14 +192,29 @@ function makeCells() {
         x = cell[0]<<CELL_SHIFT,
         y = cell[1]<<CELL_SHIFT,
         z = cell[2]<<CELL_SHIFT;
-    /*
     if(!voxel_set.isCellMapped(x,y,z)) {
       post('removeCell', cell);
     }
     else {
-    */
-      post('updateCell', cell, buildMesh([x,y,z], [x+CELL_DIM,y+CELL_DIM,z+CELL_DIM]));
-    //}
+      
+      var vertices = buildMesh([x,y,z], [x+CELL_DIM,y+CELL_DIM,z+CELL_DIM]);
+      
+      //Check if vertex list is empty
+      var empty = true;
+      for(var i=0; i<6; ++i) {
+        if(vertices[i].length !== 0) {
+          empty = false;
+          break;
+        }
+      }
+      
+      if(empty) {
+        post('removeCell', cell);
+      }
+      else {
+        post('updateCell', cell, vertices);
+      }
+    }
   }
   dirty_cells = {};
 };

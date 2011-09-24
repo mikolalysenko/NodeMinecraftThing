@@ -48,16 +48,11 @@ emitter.on('log', function() {
 //Update a cell
 emitter.on('updateCell', function(coord, vertices) {
   var key = Voxels.hashChunk(coord[0], coord[1], coord[2]);
+  
   if(key in cells) {
-    if(vertices.length === 0) {
-      cells[key].release();
-      delete cells[key];  
-    }
-    else {
-      cells[key].update(vertices);
-    }
+    cells[key].update(vertices);
   }
-  else if(vertices.length > 0) {
+  else {
     var vc = new VoxelCell(engine.render, coord[0], coord[1], coord[2]);
     vc.update(vertices);
     cells[key] = vc;

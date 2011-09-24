@@ -84,13 +84,7 @@ Engine.prototype.init = function() {
       engine.login.init(function() {
       
         //Register game module
-        try {
-          engine.game_module.registerEngine(engine);
-        }
-        catch(err) {
-          engine.crash(err);
-          return;
-        }
+        engine.game_module.registerEngine(engine);
         
         //Initialize second set of modules 
         engine.render.init(engine);

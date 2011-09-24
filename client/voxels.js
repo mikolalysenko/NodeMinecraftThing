@@ -19,8 +19,6 @@ var CHUNK_SHIFT_X = 8,
     SCALE_X     = CHUNK_X/CELL_DIM,
     SCALE_Y     = CHUNK_Y/CELL_DIM,
     SCALE_Z     = CHUNK_Z/CELL_DIM;
-
-    
     
 function flattenIndex(i, j, k) {
   return i + CHUNK_X * (k + CHUNK_Z * j);
@@ -49,8 +47,6 @@ function unhash(x) {
 function hashCode(i,j,k) {
   return expand(i)+(expand(j)<<1)+(expand(k)<<2);
 };
-
-
 
 function Chunk(x, y, z, data) {
   this.x = x;
@@ -187,8 +183,8 @@ ChunkSet.prototype.isCellMapped = function(x,y,z) {
       cy = y>>CHUNK_SHIFT_Y,
       cz = z>>CHUNK_SHIFT_Z,
       key = hashCode(cx,cy,cz),
-      chunk = this.chunks[cx,cy,cz];
-
+      chunk = this.chunks[key];
+  
   if(!chunk) {
     return false;
   }
@@ -197,16 +193,17 @@ ChunkSet.prototype.isCellMapped = function(x,y,z) {
   var ix = x& CHUNK_MASK_X,
       iy = y& CHUNK_MASK_Y,
       iz = z& CHUNK_MASK_Z,
-      index = flattenIndex(ix, iy, iz),
+      l_index = flattenIndex(ix, iy, iz),
       n = chunk.data.length,
-      data_pos = chunk.bsearch(0, n, index);
-      
-  if(chunk.data[data_pos+1] !== 0) {
+      start_pos = chunk.bsearch(0, n, l_index);
+
+  if(chunk.data[start_pos+1]) {
     return true;
   }
-
-  var right = (data_pos + 2 < n ? chunk.data[data_pos+2] : CHUNK_SIZE);
-  return (index + CELL_VOLUME > right)
+  
+  var u_index = flattenIndex(ix+CELL_DIM,iy+CELL_DIM,iz+CELL_DIM),
+      end_pos = chunk.bsearch(start_pos, n, u_index);
+  return start_pos !== end_pos;
 };
 
 

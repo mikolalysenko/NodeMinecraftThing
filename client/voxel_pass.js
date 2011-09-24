@@ -1,3 +1,6 @@
+var Voxels = require('./voxels.js'),
+    CELL_DIM = Voxels.CELL_DIM;
+
 var VERTEX_SIZE = 5;
 
 var VERTEX_SHADER = 
@@ -103,8 +106,61 @@ VoxelCell.prototype.update = function(vertices) {
     gl.DYNAMIC_DRAW);
 };
 
+
+//Checks if a cell is contained in the frustum
+VoxelCell.prototype.frustum_test = function() {
+  var m  = this.render.clip_matrix,
+      cx = this.cx,
+      cy = this.cy,
+      cz = this.cz,
+      vx = (cx)*CELL_DIM,
+      vy = (cy)*CELL_DIM,
+      vz = (cz)*CELL_DIM,
+      qx, qy, qz,
+      dx, dy, dz,
+      in_p = 0, w, x, y, z;
+
+  for(dx=-1; dx<=CELL_DIM; dx+=CELL_DIM+1)
+  for(dy=-1; dy<=CELL_DIM; dy+=CELL_DIM+1)
+  for(dz=-1; dz<=CELL_DIM; dz+=CELL_DIM+1) {
+    qx = dx + vx;
+    qy = dy + vy;
+    qz = dz + vz;
+
+    w = qx*m[3] + qy*m[7] + qz*m[11] + m[15];
+    x = qx*m[0] + qy*m[4] + qz*m[8] + m[12];
+
+    if(x <= w) in_p |= 1;
+    if(in_p == 63) return true;
+    if(x >= -w) in_p |= 2;
+    if(in_p == 63) return true;
+
+    y = qx*m[1] + qy*m[5] + qz*m[9] + m[13];
+    if(y <= w) in_p |= 4;
+    if(in_p == 63) return true;
+    if(y >= -w) in_p |= 8;
+    if(in_p == 63) return true;
+
+    z = qx*m[2] + qy*m[6] + qz*m[10] + m[14];
+    if(z <= w) in_p |= 16;
+    if(in_p == 63) return true;
+    if(z >= 0) in_p |= 32;
+    if(in_p == 63) return true;
+  }
+
+  return false;
+}
+
+
+
+
 //Draws a voxel cell
 VoxelCell.prototype.draw = function(pass) {
+  
+  //Skip drawing if not in frustum
+  if(!this.frustum_test()) {
+    return;
+  }
   
   //Set up attributes and uniforms
   var shader    = pass.shader,

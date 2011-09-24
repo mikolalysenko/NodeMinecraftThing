@@ -30,6 +30,7 @@ function setupRender(engine) {
       background_color: [0.4, 0.3, 0.8, 1.0],
     }),
     new framework.VoxelPass(engine, '/img/voxels.png'),
+    new framework.SpritePass(engine, '/img/spritesheet.png'),
   ];
   
   //Set up per-frame rendering actions
@@ -41,6 +42,16 @@ function setupRender(engine) {
   
   emitter.on('pass_voxels', function(time, render, pass) {
     engine.voxels.draw(time, render, pass);
+  });
+  
+  emitter.on('pass_sprites', function(time, render, pass) {
+    //Draw a test sprite
+    pass.drawSprite([0,0,(-1 + Math.cos(time/5000.0)) * 50], {
+      rect:((time / 100)&1 ? [64,0,96,64] : [96,0,128,64]),
+      rotation:0,
+      center:[16,32],
+      scale:2,
+    });
   });
 }
 
