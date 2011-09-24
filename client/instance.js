@@ -11,6 +11,7 @@ function Entity(instance, state) {
   }
 
   this.state        = state;
+  this.net_state    = {};
   this.type         = null;
   this.emitter      = new EventEmitter();
   this.instance     = instance;
@@ -41,11 +42,41 @@ Entity.prototype.draw = function() {
 //----------------------------------------------------------------
 // Client side instance object
 //----------------------------------------------------------------
-function Instance(engine) {
+function Instance(engine, region) {
+  this.region       = region;
   this.entities     = {};
   this.running      = false;
   this.emitter      = new EventEmitter();
   this.engine       = engine;
+  this.server       = false;
+  this.client       = true;
+  this.pending_actions = {};
+  
+  //Stay a bit lagged behind server
+  this.region.tick_count -= 4;
+}
+
+//Adds a future action
+Instance.prototype.addFuture = function(tick, fn) {
+
+  if(this.region.tick_count >= tick) {
+    console.warn("Ahead of server!!!");
+    this.region.tick_count -= 4;
+  }
+  else if(this.region.tick_count <= tick - 10) {
+    console.warn("Client is lagging!!!!");
+    while(this.region.tick_count <= tick - 10) {
+      this.tick();
+    }
+  }
+
+  var actions = this.pending_actions[tick];
+  if(!actions) {
+    this.pending_actions[tick] = [fn];
+  }
+  else {
+    actions.push(fn);
+  }
 }
 
 //Initialize instance
@@ -86,11 +117,28 @@ Instance.prototype.logHTML = function(html_str) {
 
 //Tick instance
 Instance.prototype.tick = function() {
+
+  //Update instance
   this.emitter.emit('tick');
   for(var id in this.entities) {
+    var entity = this.entities[id];
     this.entities[id].tick();
   }
+
+  //Increment tick counter
+  var tc = ++this.region.tick_count;
+
+  //Execute any pending network updates
+  var actions = this.pending_actions[tc];
+  if(actions) {
+    for(var i=0; i<actions.length; ++i) {
+      var fn = actions[i];
+      fn();
+    }
+    delete this.pending_actions[tc];
+  }
 }
+
 
 //Updates a voxel
 Instance.prototype.setVoxel = function(x, y, z, v) {
@@ -146,14 +194,17 @@ Instance.prototype.destroyEntity = function(entity) {
 Instance.prototype.updateEntity = function(patch) {
 
   if(patch._id in this.entities) {
+    //If entity already exists, then incrementally patch
     var entity = this.entities[patch._id];
-    patcher.applyPatch(entity.state, patch);
+    patcher.applyPatch(entity.net_state, patch);
+    entity.state = patcher.clone(entity.net_state);
   }
   else {
     //Otherwise, bootstrap by applying patch to empty entity
     var nstate = {};
     patcher.applyPatch(nstate, patch);
-    this.createEntity(nstate);
+    var entity = this.createEntity(nstate);
+    entity.net_state = patcher.clone(nstate);
   }
 }
 

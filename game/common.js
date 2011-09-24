@@ -2,6 +2,9 @@
 // Game specific logic goes here (specializations for client and server go in respective files)
 //----------------------------------------------------------------
 
+//Game tick rate
+exports.tick_rate = 30;
+
 //Game components
 exports.components = {
   'player' : require('./components/player_component.js'),

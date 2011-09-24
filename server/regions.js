@@ -133,19 +133,20 @@ RegionSet.prototype.addClient = function(client, player_rec, cb) {
     }
     else if(!entity_rec || !entity_rec.region_id) {
       util.log("Orphaned player! " + JSON.stringify(player_rec));
-      cb("Player missing entity");
+      cb("Player missing entity", null);
     }
     else {
     
       var instance = region_set.instances[entity_rec.region_id];
       if(!instance) {
-        cb("Player missing region");
+        cb("Player missing region", null);
         return;
       }
       
+      //Tell client to get ready to load map
       client.player = player_rec;
       client.instance = instance;
-      cb(null);
+      cb(null, player_rec);
 
       instance.activatePlayer(client, player_rec, entity_rec, function(err) {
         if(err) {

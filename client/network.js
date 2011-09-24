@@ -6,39 +6,67 @@ function Connection(rpc, connection) {
   this.connection = connection;
 }
 
+
+
 exports.connectToServer = function(engine, cb) {
+
   dnode({
 
-    notifyLoadComplete : function() {
-      engine.notifyLoadComplete();
+    notifyLoadComplete : function(region_info) {
+      engine.notifyLoadComplete(region_info);
     },
   
-    setVoxels : function(updates) {
-      for(var i=0; i<updates.length; i+=2) {
-        var k = parseInt(updates[i]),
-            x = Voxels.unhash(k),
-            y = Voxels.unhash(k>>1),
-            z = Voxels.unhash(k>>2);
-        engine.voxels.setVoxelAuthoritative(x, y, z, updates[i+1]);
+    updateInstance : function(tick_count, updates, removals, voxels) {
+      var instance = engine.instance;
+
+      if(!instance) {
+        console.warn("Got an update packet before instance started!");
+        return;
       }
-    },
-    
-    updateEntities : function(patches) {
-      if(engine.instance) {
-        for(var i=0; i<patches.length; ++i) {
-          engine.instance.updateEntity(patches[i]);
+      
+      //Handle updates
+      if(updates.length > 0) {
+        engine.instance.addFuture(tick_count, function() {
+          for(var i=0; i<updates.length; ++i) {
+            instance.updateEntity(updates[i]);
+          }
+        });
+      }
+      
+      //Handles removals
+      if(removals.length > 0) {
+      
+        function handleRemoval(i) {
+          instance.addFuture(removals[i], function() {
+            instance.destroyEntity(removals[i+1]);
+          });
+        };
+        
+        for(var i=0; i<removals.length; i+=2) {
+          handleRemoval(i);
         }
       }
-    },
-    
-    deleteEntities : function(deletions) {
-      if(engine.instance) {
-        for(var i=0; i<deletions.length; ++i) {
-          engine.instance.destroyEntity(deletions[i]);
+      
+      //Handles voxels
+      if(voxels.length > 0) {
+      
+        function handleVoxel(i) {
+          instance.addFuture(voxels[i+2], function() {
+            var k = parseInt(voxels[i]),
+                x = Voxels.unhash(k),
+                y = Voxels.unhash(k>>1),
+                z = Voxels.unhash(k>>2);    
+            engine.voxels.setVoxelAuthoritative(x, y, z, voxels[i+1]);
+          });
+        };
+        
+        for(var i=0; i<voxels.length; i+=3) {
+          handleVoxel(i);
         }
       }
     },
 
+    //Called when some chunks get updated
     updateChunks : function(updates, cb) {
       for(var i=0; i<updates.length; i+=2) {
          var k = parseInt(updates[i]),
@@ -50,6 +78,7 @@ exports.connectToServer = function(engine, cb) {
       cb();
     },
     
+    //Logs a string to the terminal
     logHTML : function(html_str) {
       if(engine.instance) {
         engine.instance.logHTML(html_str);

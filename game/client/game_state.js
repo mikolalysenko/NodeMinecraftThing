@@ -13,7 +13,6 @@ exports.init = function(engine) {
           
   gamePane.style.display = 'block';
   window.onresize();
-  engine.render.setActive(true);
 }
 
 exports.deinit = function(engine) {

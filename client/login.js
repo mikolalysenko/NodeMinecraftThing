@@ -51,7 +51,7 @@ LoginHandler.prototype.joinGame = function(player_name) {
     if(err) {
       throw Error(err);
     }
-    login.engine.notifyJoin(player_rec);;
+    login.engine.notifyJoin(player_rec);
   });
 }
 

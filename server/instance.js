@@ -1,3 +1,5 @@
+"use strict";
+
 var util = require('util'),
     EventEmitter = require('events').EventEmitter,
     patcher = require('../client/patcher.js'),
@@ -113,7 +115,7 @@ Player.prototype.pushUpdates = function() {
   
   //Send update messages
   // FIXME: Prioritize updates
-  var buffer = [];
+  var update_buffer = [];
   for(var id in this.pending_entity_updates) {
     var entity = this.instance.lookupEntity(id);
     
@@ -125,36 +127,36 @@ Player.prototype.pushUpdates = function() {
       
       var patch = patcher.computePatch(known_entities[id], entity.state);
       patch._id = entity.state._id;
-      buffer.push(patch);
+      update_buffer.push(patch);
     }
     else {
-      buffer.push(entity.state);
+      update_buffer.push(entity.state);
     }
   }
-  if(buffer.length > 0) {
-    this.client.rpc.updateEntities(buffer);
-    this.pending_entity_updates = {};
-  }
+  this.pending_entity_updates = {};
   
   //Send delete messages
-  var removals = [];
-  for(var id in this.pending_entity_deletes) {
+  var removals = [], pending_removals = this.pending_entity_deletes;
+  for(var id in pending_removals) {
+    removals.push(pending_removals[id]);
     removals.push(id);
   }
-  if(removals.length > 0) {
-    this.client.rpc.deleteEntities(removals);
-    this.pending_entity_deletes = {};
-  }
+  this.pending_entity_deletes = {};
   
-  //Send chunk updates to client
-  var buf = [];
+  //Send voxel updates
+  var voxel_buf = [];
   for(var id in this.pending_writes) {
-    buf.push(parseInt(id));
-    buf.push(this.pending_writes[id]);
+    var w = this.pending_writes[id];
+    voxel_buf.push(parseInt(id));
+    voxel_buf.push(w[0]);
+    voxel_buf.push(w[1]);
   }
   this.pending_writes = {};
-  if(buf.length > 0) {
-    this.client.rpc.setVoxels(buf);
+  
+  
+  //Send updates to client if necessary
+  if(update_buffer.length > 0 || removals.length > 0 || voxel_buf.length > 0) {
+    this.client.rpc.updateInstance(this.instance.region.tick_count, update_buffer, removals, voxel_buf);
   }
   
   //Send HTML updates to clients
@@ -197,14 +199,13 @@ Player.prototype.transmitChunks = function() {
     
     //Start update interval
     player.net_state = 'game';
-    player.update_interval = setInterval(function() { player.pushUpdates(); }, 50);
+    player.update_interval = setInterval(function() { player.pushUpdates(); }, player.instance.game_module.net_rate);
 
     //Create player entity
     player.entity = instance.createEntity(player.entity_rec);
-    delete player.entity_rec;
 
     //Send load complete notification
-    player.client.rpc.notifyLoadComplete(player.state.key_bindings);
+    player.client.rpc.notifyLoadComplete(instance.region);
 
     //Send a join event to all listeners
     player.emitter.emit('join');
@@ -233,12 +234,9 @@ Player.prototype.transmitChunks = function() {
 
 Player.prototype.notifyWrite = function(key, val) {
   console.log("Notifying write: ", key, val);
-  this.pending_writes[key] = val;
+  this.pending_writes[key] = [val, this.instance.region.tick_count];
 }
 
-Player.prototype.tick = function() {
-  this.emitter.emit('tick');
-}
 
 //Deletes an entity on the client
 Player.prototype.deleteEntity = function(entity) {
@@ -251,7 +249,7 @@ Player.prototype.deleteEntity = function(entity) {
   if(entity_id in this.pending_entity_updates) {
     delete this.pending_entity_updates[entity_id];
   }
-  this.pending_entity_deletes[entity_id] = true;
+  this.pending_entity_deletes[entity_id] = this.instance.region.tick_count;
 }
 
 //Marks an entity for getting updated
@@ -268,6 +266,7 @@ function Instance(region, db, region_set) {
   this.entities   = {};
   this.players    = {};
   this.region     = region;
+  this.game_module = region_set.game_module
   this.db         = db;
   this.running    = false;
   this.region_set = region_set;
@@ -275,10 +274,9 @@ function Instance(region, db, region_set) {
   this.chunk_set  = new voxels.ChunkSet();
   this.dirty_chunks = {};
   this.message_log  = "";
+  this.server       = true;
+  this.client       = false;
 }
-
-Instance.prototype.TICK_TIME    = 50;
-Instance.prototype.SYNC_TIME    = 60 * 1000;
 
 //Appends a text string to the message log
 Instance.prototype.logText = function(str) {
@@ -359,12 +357,13 @@ Instance.prototype.start = function(cb) {
     }
   
     //Set up interval counters
-    inst.tick_interval = setInterval( function() { inst.tick(); }, inst.TICK_TIME);
-    inst.sync_interval = setInterval( function() { inst.sync(); }, inst.SYNC_TIME);
+    inst.tick_interval = setInterval( function() { inst.tick(); }, inst.game_module.tick_rate);
+    inst.sync_interval = setInterval( function() { inst.sync(); }, inst.game_module.sync_rate);
     
     //Send events to game
     if(inst.region.brand_new) {
       inst.region.brand_new = false;
+      inst.region.tick_count = 0;
       inst.emitter.emit('construct');
     }
     inst.emitter.emit('init');
@@ -592,11 +591,6 @@ Instance.prototype.tick = function() {
   //Send a tick event to the game world
   this.emitter.emit('tick');
   
-  //Tick all players
-  for(var pl in this.players) {
-    this.players[pl].tick();
-  }
-
   //Tick all the entities
   var id, ent;
   for(id in this.entities) {
@@ -610,6 +604,9 @@ Instance.prototype.tick = function() {
   for(id in this.entities) {
     this.updateEntity(this.entities[id]);
   }
+
+  //Increment region tick_count
+  ++this.region.tick_count;
 }
 
 //Creates an entity from the state

@@ -42,7 +42,7 @@ function Engine(game_module, session_id) {
   
   
   //Pause/ticker
-  this.tick_rate      = 30;
+  this.tick_rate      = game_module.tick_rate;
   this.tick_interval  = null;  
   this.loaded_chunks  = false;
 }
@@ -99,6 +99,9 @@ Engine.prototype.setActive = function(active) {
   if(this.input) {
     this.input.setActive(active);
   }
+  if(this.render) {
+    this.render.setActive(active);
+  }
   if(!active) {
     if(this.tick_interval) {
       clearInterval(this.tick_interval);
@@ -116,6 +119,9 @@ Engine.prototype.setActive = function(active) {
 //Ticks the engine
 Engine.prototype.tick = function() {
   this.emitter.emit('tick');
+  if(this.instance) {
+    this.instance.tick();
+  }
 }
 
 //SHUT. DOWN. EVERYTHING.
@@ -185,22 +191,29 @@ Engine.prototype.crash = function(errMsg) {
   
   //Kill listeners
   this.emitter.removeAllListeners();
-  
-  
 }
 
 
-Engine.prototype.notifyLoadComplete = function(cb) {
-  console.log("Chunk loading complete");
+Engine.prototype.notifyLoadComplete = function(region_info) {
+  console.log("Chunk loading complete, starting local simulation");
 
   this.loaded_chunks = true;
+
+  this.instance = new Instance(this, region_info);
+  this.instance.init();
+
   var engine = this;
   engine.emitter.emit('loaded');
+  
+  engine.setActive(true);
 }
 
-Engine.prototype.changeInstance = function(region_info) {
+Engine.prototype.changeInstance = function() {
 
   console.log("Changing instances");
+
+  //Deactivate engine
+  this.setActive(false);
 
   //Set chunk state to unloaded
   this.loaded_chunks = false;
@@ -208,16 +221,13 @@ Engine.prototype.changeInstance = function(region_info) {
   //Create and restart
   if(this.instance) {
     this.instance.deinit();
-  }  
-  this.instance = new Instance(this);
+  }
 
   //Clear out voxel data
   this.voxels.reset();
-  this.instance.init();
 
   //Called when changing instances
-  var engine = this;
-  engine.emitter.emit('change_instance');
+  this.emitter.emit('change_instance');
 }
 
 //Called upon joining an instance
@@ -230,7 +240,7 @@ Engine.prototype.notifyJoin = function(player_rec) {
   this.input.bindKeys(player_rec.bindings);
   
   //Start loading the instance
-  this.changeInstance(null);
+  this.changeInstance();
 }
 
 Engine.prototype.listenLoadComplete = function(cb) {
