@@ -139,12 +139,6 @@ Engine.prototype.tick = function() {
 
 //SHUT. DOWN. EVERYTHING.
 Engine.prototype.crash = function(errMsg) {
-  try {
-    console.error(errMsg.stack);
-  }
-  catch(err) {
-    this.error_state.postError(err);
-  }
 
   this.error_state.postError(errMsg);
 
