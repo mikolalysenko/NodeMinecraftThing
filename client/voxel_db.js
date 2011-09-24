@@ -49,10 +49,18 @@ emitter.on('log', function() {
 emitter.on('updateCell', function(coord, vertices) {
   var key = Voxels.hashChunk(coord[0], coord[1], coord[2]);
   if(key in cells) {
-    cells[key].update(vertices);
+    if(vertices.length === 0) {
+      cells[key].release();
+      delete cells[key];  
+    }
+    else {
+      cells[key].update(vertices);
+    }
   }
   else if(vertices.length > 0) {
-    cells[key] = new VoxelCell(engine.render, coord[0], coord[1], coord[2], vertices);
+    var vc = new VoxelCell(engine.render, coord[0], coord[1], coord[2]);
+    vc.update(vertices);
+    cells[key] = vc;
   }
 });
 
@@ -84,7 +92,7 @@ exports.init = function(engine_, cb) {
 
   //Set up local write interval polling
   local_writes = {};
-  local_write_interval = setInterval(checkLocalWrites, 250);
+  local_write_interval = setInterval(checkLocalWrites, 1000);
 
   //Start the web worker
   worker = new Worker("/cell_worker.js");
@@ -141,6 +149,13 @@ exports.deinit = function() {
     clearInterval(local_write_interval);
     local_write_interval = null;
   }
+  
+  //Kill worker
+  if(worker) {
+    worker.onmessage = null;
+    worker.terminate();
+    worker = null;
+  }
 };
 
 
@@ -162,7 +177,7 @@ exports.setVoxel = function(x, y, z, v) {
   if(p !== v) {
   
     //Mark local write in case it must be rolled back later
-    var key   = voxels.hashChunk(x,y,z),
+    var key   = Voxels.hashChunk(x,y,z),
         local = local_writes[key];
     if(local && local.prev === v) {
       delete local_writes[key];

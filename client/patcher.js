@@ -8,14 +8,6 @@
 // License: BSD
 //-------------------------------------------------------------
 
-//node.js interoperability
-if(typeof(exports) === "undefined") {
-  var patcher = {};
-}
-
-(function(){
-
-
 //-------------------------------------------------------------
 // Helper function, clones an object doing a deep copy
 //-------------------------------------------------------------
@@ -189,6 +181,4 @@ if(typeof(exports) === "undefined") {
   exports.computePatch = computePatch;
   exports.applyPatch   = applyPatch;
 }
-
-})();
 

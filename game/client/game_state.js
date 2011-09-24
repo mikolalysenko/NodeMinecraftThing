@@ -16,10 +16,10 @@ exports.init = function(engine) {
   engine.render.setActive(true);
 }
 
-exports.deinit = function(cb) {
-
+exports.deinit = function(engine) {
   window.onresize = null;
   engine.render.setActive(false);
   document.getElementById('gamePane').style.display = 'none';
+  document.getElementById('renderCanvas').style.display = 'none';
 }
 

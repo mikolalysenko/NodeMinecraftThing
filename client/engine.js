@@ -50,22 +50,14 @@ function Engine(game_module, session_id) {
 //Sets the application state
 Engine.prototype.setState = function(next_state) {
   var engine = this;
-  setTimeout(function() {
-    if(engine.state === engine.error_state) {
-      return;
-    }
-    try {
-      engine.emitter.emit('deinit');
-      engine.state.deinit(engine);
-      engine.state = next_state;
-      engine.state.init(engine);
-      engine.emitter.emit('init');
-    }
-    catch(err) {
-      console.log("Died during set state");
-      engine.crash(err);
-    }
-  }, 0);
+  if(engine.state === engine.error_state) {
+    return;
+  }
+  engine.emitter.emit('deinit');
+  engine.state.deinit(engine);
+  engine.state = next_state;
+  engine.state.init(engine);
+  engine.emitter.emit('init');
 }
 
 //Initialize the engine
@@ -129,12 +121,7 @@ Engine.prototype.setActive = function(active) {
 
 //Ticks the engine
 Engine.prototype.tick = function() {
-  try {
-    this.emitter.emit('tick');
-  }
-  catch(err) {
-    this.crash(err);
-  }
+  this.emitter.emit('tick');
 }
 
 //SHUT. DOWN. EVERYTHING.
@@ -214,7 +201,7 @@ Engine.prototype.notifyLoadComplete = function(cb) {
 
   this.loaded_chunks = true;
   var engine = this;
-  setTimeout(function() { engine.emitter.emit('loaded'); }, 0);
+  engine.emitter.emit('loaded');
 }
 
 Engine.prototype.changeInstance = function(region_info) {
@@ -236,7 +223,7 @@ Engine.prototype.changeInstance = function(region_info) {
 
   //Called when changing instances
   var engine = this;
-  setTimeout(function() { engine.emitter.emit('change_instance'); }, 0);
+  engine.emitter.emit('change_instance');
 }
 
 //Called upon joining an instance

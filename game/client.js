@@ -25,7 +25,7 @@ function setupRender(engine) {
   engine.render.passes = [
     new framework.StandardPass({
       fov: Math.PI/8,
-      z_near: 0.1,
+      z_near: 1.0,
       z_far: 1000.0,
       background_color: [0.4, 0.3, 0.8, 1.0],
     }),
@@ -66,10 +66,16 @@ exports.registerEngine = function(engine) {
 
   engine.loader.fetchImage('/img/voxels.png');
   engine.loader.fetchImage('/img/spritesheet.png');
-  
-  engine.setState(exports.states.login_state);
-  
+    
   console.log("Registered game engine");
+  
+  
+  //Post initialization code
+  setTimeout(function() {
+    console.log("Post-initialization");
+    engine.setState(exports.states.login_state);
+  }, 0);
+
 };
 
 exports.registerInstance = function(instance) {

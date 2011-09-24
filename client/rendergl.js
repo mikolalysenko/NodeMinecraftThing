@@ -270,7 +270,7 @@ RenderGL.prototype.perspective = function(fov_y, aspect, z_near, z_far) {
   proj_matrix[11] = (2.0 * z_far * z_near) / (z_near - z_far);
   proj_matrix[14] = -1;
   
-  linalg.mmult4(view_matrix, proj_matrix, clip_matrix);
+  linalg.mmult4(this.view_matrix, proj_matrix, this.clip_matrix);
 }
 
 //Sets camera to look at a particular target
@@ -312,7 +312,7 @@ RenderGL.prototype.lookAt = function(eye, center, up) {
     M[4*i+3] = x;
   }
   
-  linalg.mmult4(view_matrix, proj_matrix, clip_matrix);
+  linalg.mmult4(M, this.proj_matrix, this.clip_matrix);
 }
 
 

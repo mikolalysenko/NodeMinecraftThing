@@ -1,16 +1,6 @@
-"use strict";
-
 //This module is a terrible, thoughtlessly constructed mess.  On the other hand,
 // I also have better things to do in life than endlessly rewrite linear algebra
 // codes.  So it will do for now.
-
-var linalg = {};
-
-(function() {
-
-if(typeof(exports) === "undefined") {
-  var exports = linalg;
-}
 
 exports.cross = function(u, v) {
 	return [ 
@@ -206,7 +196,5 @@ exports.mtransp4 = function(M, res) {
 	}
 	return res;
 };
-
-})();
 
 

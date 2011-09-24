@@ -16,13 +16,13 @@ var emitter = new EventEmitter(),
     CHUNK_Y = Voxels.CHUNK_Y,
     CHUNK_Z = Voxels.CHUNK_Z,
     
-    CELL_SHIFT  = 4,
-    CELL_SIZE   = (1<<CELL_SHIFT),
-    CELL_MASK   = CELL_SIZE-1,
+    CELL_SHIFT = Voxels.CELL_SHIFT,
+    CELL_DIM   = Voxels.CELL_DIM,
+    CELL_MASK  = Voxels.CELL_MASK,
     
-    SCALE_X     = CHUNK_X/CELL_SIZE,
-    SCALE_Y     = CHUNK_Y/CELL_SIZE,
-    SCALE_Z     = CHUNK_Z/CELL_SIZE,
+    SCALE_X    = Voxels.SCALE_X,
+    SCALE_Y    = Voxels.SCALE_Y,
+    SCALE_Z    = Voxels.SCALE_Z,
     
     console = {
       log: function() {
@@ -192,12 +192,14 @@ function makeCells() {
         x = cell[0]<<CELL_SHIFT,
         y = cell[1]<<CELL_SHIFT,
         z = cell[2]<<CELL_SHIFT;
-    if(!voxel_set.isPointMapped(x,y,z)) {
+    /*
+    if(!voxel_set.isCellMapped(x,y,z)) {
       post('removeCell', cell);
     }
     else {
-      post('updateCell', cell, buildMesh([x,y,z], [x+CELL_SIZE,y+CELL_SIZE,z+CELL_SIZE]));
-    }
+    */
+      post('updateCell', cell, buildMesh([x,y,z], [x+CELL_DIM,y+CELL_DIM,z+CELL_DIM]));
+    //}
   }
   dirty_cells = {};
 };

@@ -8,7 +8,19 @@ var CHUNK_SHIFT_X = 8,
     CHUNK_MASK_X  = CHUNK_X - 1,
     CHUNK_MASK_Y  = CHUNK_Y - 1,
     CHUNK_MASK_Z  = CHUNK_Z - 1,
-    CHUNK_SIZE    = CHUNK_X * CHUNK_Y * CHUNK_Z;
+    CHUNK_SIZE    = CHUNK_X * CHUNK_Y * CHUNK_Z,
+    
+    CELL_SHIFT  = 4,
+    CELL_DIM    = (1<<CELL_SHIFT),
+    CELL_MASK   = CELL_DIM-1,
+    
+    CELL_VOLUME = CELL_DIM*CELL_DIM*CELL_DIM,
+    
+    SCALE_X     = CHUNK_X/CELL_DIM,
+    SCALE_Y     = CHUNK_Y/CELL_DIM,
+    SCALE_Z     = CHUNK_Z/CELL_DIM;
+
+    
     
 function flattenIndex(i, j, k) {
   return i + CHUNK_X * (k + CHUNK_Z * j);
@@ -168,6 +180,35 @@ ChunkSet.prototype.isPointMapped = function(x,y,z) {
       cz = z>>CHUNK_SHIFT_Z;
   return !!this.chunks[hashCode(cx,cy,cz)];
 };
+
+
+ChunkSet.prototype.isCellMapped = function(x,y,z) {
+  var cx = x>>CHUNK_SHIFT_X,
+      cy = y>>CHUNK_SHIFT_Y,
+      cz = z>>CHUNK_SHIFT_Z,
+      key = hashCode(cx,cy,cz),
+      chunk = this.chunks[cx,cy,cz];
+
+  if(!chunk) {
+    return false;
+  }
+  
+  //Look up position
+  var ix = x& CHUNK_MASK_X,
+      iy = y& CHUNK_MASK_Y,
+      iz = z& CHUNK_MASK_Z,
+      index = flattenIndex(ix, iy, iz),
+      n = chunk.data.length,
+      data_pos = chunk.bsearch(0, n, index);
+      
+  if(chunk.data[data_pos+1] !== 0) {
+    return true;
+  }
+
+  var right = (data_pos + 2 < n ? chunk.data[data_pos+2] : CHUNK_SIZE);
+  return (index + CELL_VOLUME > right)
+};
+
 
 ChunkSet.prototype.removeChunk = function(cx,cy,cz) {
   var key = hashCode(cx,cy,cz);
@@ -502,9 +543,20 @@ exports.CHUNK_MASK_X   = CHUNK_MASK_X;
 exports.CHUNK_MASK_Y   = CHUNK_MASK_Y;
 exports.CHUNK_MASK_Z   = CHUNK_MASK_Z;
 exports.CHUNK_SIZE     = CHUNK_SIZE;
+exports.CELL_SHIFT     = 4;
+exports.CELL_DIM       = (1<<CELL_SHIFT);
+exports.CELL_MASK      = CELL_DIM-1;
+exports.CELL_VOLUME    = CELL_DIM*CELL_DIM*CELL_DIM;
+exports.SCALE_X        = CHUNK_X/CELL_DIM;
+exports.SCALE_Y        = CHUNK_Y/CELL_DIM;
+exports.SCALE_Z        = CHUNK_Z/CELL_DIM;
 exports.Chunk          = Chunk;
 exports.ChunkSet       = ChunkSet;
 exports.hashChunk      = hashCode;
 exports.flatten        = flattenIndex;
 exports.unhash         = unhash;
+
+
+
+
 

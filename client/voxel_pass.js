@@ -20,13 +20,14 @@ varying vec2 texture_coord;\n\
 varying vec2 texture_tile;\n\
 void main(void) {\n\
   vec2 tc = (fract(texture_coord) + texture_tile) * tile_size;\n\
-	gl_FragColor = texture2D(tile_sampler, tc) + vec4(0.1,0.1,0.1,1);\n\
+	gl_FragColor = texture2D(tile_sampler, tc);\n\
 }';
 
 var prog = null;
 
 function VoxelPass(engine, texture) {
   this.engine = engine;
+  this.name = 'voxels';
   this.texture = null;
   this.shader = null;
   this.tile_x = 16;
@@ -71,6 +72,9 @@ VoxelPass.prototype.begin = function(time, render) {
   uniforms.tile_size.set(
     voxels.tile_x / voxels.texture.width,
     voxels.tile_y / voxels.texture.height);
+    
+  gl.disable(gl.BLEND);
+  gl.disable(gl.CULL_FACE);
 };
 
 VoxelPass.prototype.end = function(render) {
@@ -104,13 +108,14 @@ VoxelCell.prototype.draw = function(pass) {
   
   //Set up attributes and uniforms
   var shader    = pass.shader,
-      attribs   = shader.attribs;
+      attribs   = shader.attribs,
+      gl        = this.render.gl;
 
-  attribs.vertex_position.pointer(this.vbuffer, 4*voxels.VERTEX_SIZE, 0);
-  attribs.vertex_texture.pointer( this.vbuffer, 4*voxels.VERTEX_SIZE, 4*3);
+  attribs.vertex_position.pointer(this.vbuffer, 4*VERTEX_SIZE, 0);
+  attribs.vertex_texture.pointer(this.vbuffer, 4*VERTEX_SIZE, 4*3);
   
   //FIXME: Only draw visible sides of cube
-  this.render.gl.drawArrays(gl.TRIANGLES, 0, this.ranges[6]);
+  gl.drawArrays(gl.TRIANGLES, 0, this.ranges[6]);
 };
 
 //Release voxel cell resources

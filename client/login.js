@@ -51,8 +51,7 @@ LoginHandler.prototype.joinGame = function(player_name) {
     if(err) {
       throw Error(err);
     }
-    //Get out of stupid try catch block so that errors are actually debuggable
-    setTimeout(function() { login.engine.notifyJoin(player_rec); }, 0);
+    login.engine.notifyJoin(player_rec);;
   });
 }
 
