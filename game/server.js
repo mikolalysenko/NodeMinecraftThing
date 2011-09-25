@@ -42,6 +42,7 @@ exports.createPlayer = function(account, options) {
     'type'        : 'player',
     'position'    : [0,0,0],
     'velocity'    : [0,0,0],
+    'sprite_class': 'player',
   };
   
   return [player_rec, entity_rec, 'Starting Area'];

@@ -67,7 +67,7 @@ Instance.prototype.addFuture = function(tick, fn) {
   }
   else if(this.region.tick_count <= tick - 10) {
     console.warn("Client is lagging!");
-    while(this.region.tick_count <= tick - 8) {
+    while(this.region.tick_count <= tick - 10) {
       this.tick();
     }
   }
@@ -99,9 +99,6 @@ Instance.prototype.init = function() {
 Instance.prototype.deinit = function() {
   this.emitter.emit('deinit');
   this.running = false;
-  if(this.tickInterval) {
-    clearInterval(this.tickInterval);  
-  }
   for(var id in this.entities) {
     this.entities[id].deinit();
   }

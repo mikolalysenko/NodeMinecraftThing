@@ -121,7 +121,7 @@ Engine.prototype.setActive = function(active) {
   }
   if(!active) {
     if(this.tick_interval) {
-      clearInterval(this.tick_interval);
+      clearTimeout(this.tick_interval);
       this.tick_interval = null;
     }
     if(this.net_interval) {
@@ -133,7 +133,29 @@ Engine.prototype.setActive = function(active) {
     var engine = this;
     if(!this.tick_interval) {
       this.last_tick = Date.now();
-      this.tick_interval = setInterval(function(){engine.tick();}, this.game_module.tick_rate);
+      
+      //Can't trust web browser setInterval, not a realtime timer like node.js
+      function ticker() {
+        if(!engine.tick_interval) {
+          return;
+        }
+        
+        var dt;
+        while(true) {
+          engine.tick();
+          
+          engine.last_tick += engine.game_module.tick_rate;
+          dt = engine.last_tick - Date.now();
+          if(dt >= 0) {
+            break;
+          }
+        }
+        
+        engine.tick_interval = setTimeout(ticker, dt);
+      }
+      
+      engine.last_tick = Date.now();
+      this.tick_interval = setTimeout(ticker, 0);
     }
     if(!this.net_interval) {
       this.net_interval = setInterval(function(){
@@ -152,7 +174,6 @@ Engine.prototype.setActive = function(active) {
 //Ticks the engine
 Engine.prototype.tick = function() {
 
-  this.last_tick = Date.now();
 
   this.emitter.emit('tick');
   if(this.instance) {

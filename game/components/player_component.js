@@ -27,8 +27,11 @@ exports.registerEntity = function(entity) {
     //Apply input here
     entity.emitter.on('tick', function() {
       var buttons = engine.input.getState();
-      
-      entity.state.velocity = [0,0,0];
+
+      for(var i=0; i<3; ++i) {
+        entity.state.position[i] += entity.state.velocity[i];
+        entity.state.velocity[i] = 0;
+      }
       
       if(buttons['up'] > 0) {
         entity.state.velocity[2] -= 0.1;
@@ -43,8 +46,21 @@ exports.registerEntity = function(entity) {
         entity.state.velocity[0] -= 0.1;
       }
       
+      var vtotal = 0;
       for(var i=0; i<3; ++i) {
-        entity.state.position[i] += entity.state.velocity[i];
+        vtotal += Math.abs(entity.state.velocity[i]);
+      }
+      
+      //Play animation
+      if(vtotal > 0.01) {
+        if(entity.state.anim == 'idle') {
+          entity.emitter.emit('play_anim', 'walk');
+        }
+      }
+      else {
+        if(entity.state.anim != 'idle') {
+          entity.emitter.emit('play_anim', 'idle');
+        }
       }
       
     });

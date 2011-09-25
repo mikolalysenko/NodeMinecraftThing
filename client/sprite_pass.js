@@ -111,7 +111,7 @@ SpritePass.prototype.drawSprite = function(position, options) {
       rect      = checkDefault('rect', [0,0,1,1]),
       sp_w      = rect[2] - rect[0],
       sp_h      = rect[3] - rect[1],
-      center    = checkDefault('center', [0.5*sp_w, 0.5*sp_h]),
+      center    = checkDefault('center', [0.5*sp_w+rect[0], 0.5*sp_h+rect[1]]),
       scale     = checkDefault('scale', 1.0),
       aspect    = checkDefault('aspect', sp_w / sp_h),
       theta     = checkDefault('rotation', 0),
@@ -131,8 +131,8 @@ SpritePass.prototype.drawSprite = function(position, options) {
       xform = [ xs*cc, -ys*ss, 0.0,
                -xs*ss, -ys*cc, 0.0,
                 0.0, 0.0, 1.0 ];
-  xform[6] = -(xform[0]*center[0]/sp_w + xform[3]*center[1]/sp_h);
-  xform[7] = -(xform[1]*center[0]/sp_w + xform[4]*center[1]/sp_h);
+  xform[6] = -(xform[0]*(center[0]-rect[0])/sp_w + xform[3]*(center[1]-rect[1])/sp_h);
+  xform[7] = -(xform[1]*(center[0]-rect[0])/sp_w + xform[4]*(center[1]-rect[1])/sp_h);
   uniforms.sprite_xform.set(false, xform);
 
   //Set up sprite rectangle
