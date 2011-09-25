@@ -1,5 +1,5 @@
 //An example server-client use case for the data model
-var patcher = require("../server/patcher.js");
+var patcher = require("../client/patcher.js");
 
 //----------------------------------------------------
 //The server object

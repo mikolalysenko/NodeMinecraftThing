@@ -34,6 +34,64 @@ function clone(obj) {
   }
 }
 
+//Assigns an object to another object doing minimal extra copies
+function assign(target, src) {
+  var different = false;
+  
+  if(src instanceof Array) {
+    if(src.length !== target.length)  {
+      target.length = src.length;
+      different = true;
+    }
+  }
+  else {
+    for(var id in target) {
+      if(!(id in src)) {
+        different = true;
+        delete target[id];
+      }
+    }
+  }
+  
+  for(var id in src) {
+    var t_obj = target[id],
+        s_obj = src[id],
+        type  = typeof(s_obj);
+    if(typeof(t_obj) !== type) {
+      different = true;
+      target[id] = clone(s_obj);
+    }
+    else if(type === "object") {
+      if(s_obj === null) {
+        if(t_obj !== null) {
+          different = true;
+          target[id] = null;
+        }
+      }
+      else if(s_obj.equals !== undefined) {
+        if(!s_obj.equals(t_obj)) {
+          different = true;
+          target[id] = clone(s_obj);
+        }
+      }
+      else if(s_obj.constructor !== t_obj.constructor) {
+        different = true;
+        target[id] = clone(s_obj);
+      }
+      else if(assign(t_obj, s_obj)) {
+        different = true;
+      }
+    }
+    else if(t_obj !== s_obj) {
+      different = true;
+      target[id] = s_obj;
+    }
+  }
+  
+  return different;
+}
+
+
 //-------------------------------------------------------------
 // Computes a patch between a pair of json objects
 // Note that this assumes both prev and next are simple, acyclic
@@ -175,6 +233,7 @@ function applyPatch(obj, patch) {
 
 //Add methods to patcher
 exports.clone        = clone;
+exports.assign       = assign;
 exports.computePatch = computePatch;
 exports.applyPatch   = applyPatch;
 

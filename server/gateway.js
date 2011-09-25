@@ -62,8 +62,6 @@ function Gateway(db, server, sessions, game_module) {
         return;
       }
       
-      //TODO: Handle exit event here
-      
       //Remove from server
       if(client.state == 'game') {
         gateway.region_set.removeClient(client, sink);
@@ -74,6 +72,7 @@ function Gateway(db, server, sessions, game_module) {
       
       delete gateway.clients[account_id];
       client = null;
+      account_id = null;
     });
     
     //Reject bad RPC interface
@@ -186,6 +185,21 @@ function Gateway(db, server, sessions, game_module) {
       });
     };
     
+    
+    //Sends a player input packet
+    this.playerInput = function(packet) {
+    
+      if(!client || 
+          client.state != 'game' ||
+         !client.player ||
+         !client.instance ||
+         !packet ) {
+        return;
+      }
+      
+      client.instance.playerInput(client.player._id, packet);
+    };
+    
   });
   
   //Listen for connections on server
@@ -193,11 +207,6 @@ function Gateway(db, server, sessions, game_module) {
   
   util.log("Gateway listening");
 }
-
-//Adds an instance to the gateway
-Gateway.prototype.addInstance = function(region) {
-}
-
 
 //--------------------------------------------------------------
 // Gateway constructor

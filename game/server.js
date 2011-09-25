@@ -5,13 +5,8 @@ exports.components    = common.components;
 exports.entity_types  = common.entity_types;
 exports.voxel_types   = common.voxel_types;
 exports.tick_rate     = common.tick_rate;
-
-//Rate for synchronizing with the database
 exports.sync_rate     = 60*1000;
-
-//Rate for synchronizing with players
 exports.net_rate      = 50;
-
 
 //Path to client HTML
 exports.client_html = path.join(__dirname, 'www/client.html');
@@ -57,4 +52,3 @@ exports.registerInstance = function(instance) {
 exports.registerEntity = function(entity) {
   common.registerEntity(entity);
 }
-

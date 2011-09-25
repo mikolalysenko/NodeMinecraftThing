@@ -64,12 +64,6 @@ Entity.prototype.deinit = function() {
   this.emitter.removeAllListeners();
 }
 
-//Checks if an entity was modified
-Entity.prototype.checkModified = function() {
-  return !!patcher.computePatch(this.last_state, this.state, true);
-}
-
-
 //----------------------------------------------------------------
 // A player connection
 //----------------------------------------------------------------
@@ -98,9 +92,6 @@ function Player(instance, client, player_rec, entity_rec) {
   
   //Chunk replication
   this.pending_writes = {};
-  
-  //Pending html string stuff
-  this.html_log = "";
 }
 
 
@@ -158,16 +149,11 @@ Player.prototype.pushUpdates = function() {
   if(update_buffer.length > 0 || removals.length > 0 || voxel_buf.length > 0) {
     this.client.rpc.updateInstance(this.instance.region.tick_count, update_buffer, removals, voxel_buf);
   }
-  
-  //Send HTML updates to clients
-  if(this.html_log.length > 0) {
-    this.client.rpc.logHTML(html_log);
-    this.html_log = "";
-  }
 };
 
+//Just cat directly to player log
 Player.prototype.logHTML = function(html_str) {
-  this.html_log += html_str;
+  this.client.rpc.logHTM(html_str);
 };
 
 Player.prototype.init = function() {
@@ -195,7 +181,7 @@ Player.prototype.transmitChunks = function() {
       return;
     }
   
-    console.log("Player connected!");
+    util.log("Player connected!");
     
     //Start update interval
     player.net_state = 'game';
@@ -213,8 +199,22 @@ Player.prototype.transmitChunks = function() {
   };
   
   
+  //Kill client if they take too long to respond to the chunk transmission
+  // (max 1 minute)
+  var disconnect_interval = setTimeout(function() {
+    if(player.net_state === 'loading') {
+      player.client.connection.end();
+    }
+  }, 60*1000);
+  
+  
   //FIXME: This should probably send chunks in multiple parts
   function executeTransmit() {
+  
+    if(disconnect_interval) {
+      clearTimeout(disconnect_interval);
+      disconnect_interval = null;
+    }
     if(player.net_state !== 'loading') {
       return;
     }
@@ -224,7 +224,7 @@ Player.prototype.transmitChunks = function() {
       buffer.push(parseInt(id))
       buffer.push(chunk_set.chunks[id].data);
     }
-    console.log("Transmitting chunks....");
+    util.log("Transmitting chunks....");
     player.client.rpc.updateChunks(buffer, loadComplete);
   };
 
@@ -233,15 +233,12 @@ Player.prototype.transmitChunks = function() {
 
 
 Player.prototype.notifyWrite = function(key, val) {
-  console.log("Notifying write: ", key, val);
   this.pending_writes[key] = [val, this.instance.region.tick_count];
 }
 
 
 //Deletes an entity on the client
 Player.prototype.deleteEntity = function(entity) {
-  util.log('Client: ' + this.state._id + ', deleting entity: ' + entity.state._id);
-
   var entity_id = entity.state._id;
   if(entity_id in this.cached_entities) {
     delete this.cached_entities[entity_id];
@@ -278,6 +275,17 @@ function Instance(region, db, region_set) {
   this.client       = false;
 }
 
+
+//Called upon receiving a player input packet
+Instance.prototype.playerInput = function(player_id, packet) {
+
+  var player = this.players[player_id];
+  if(player && player.entity) {
+    player.entity.emitter.emit('apply_net_packet', packet);
+  }
+}
+
+
 //Appends a text string to the message log
 Instance.prototype.logText = function(str) {
   this.logHTML(str
@@ -290,7 +298,7 @@ Instance.prototype.logText = function(str) {
 
 //Appends an HTML string to the instance
 Instance.prototype.logHTML = function(html_str) {
-  console.log("Logging:" + html_str);
+  util.log("Logging:" + html_str);
   this.message_log += html_ster;
 };
 
@@ -434,7 +442,7 @@ Instance.prototype.updateEntity = function(entity) {
       need_check = persistent || replicated; 
   
   //Check if the entity was modified
-  if( !(need_check && entity.checkModified()) ) {
+  if( !need_check || !patcher.assign(entity.last_state, entity.state) ) {
     return;
   }
   
@@ -460,7 +468,7 @@ Instance.prototype.updateEntity = function(entity) {
 //Synchronize with the database
 Instance.prototype.sync = function() {
 
-  console.log("Synchronizing with database...");
+  util.log("Synchronizing with database...");
 
   //Apply entity updates
   var e;

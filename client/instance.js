@@ -11,7 +11,9 @@ function Entity(instance, state) {
   }
 
   this.state        = state;
+  this.last_state   = patcher.clone(state);
   this.net_state    = {};
+  this.net_tick     = 0;
   this.type         = null;
   this.emitter      = new EventEmitter();
   this.instance     = instance;
@@ -60,12 +62,12 @@ function Instance(engine, region) {
 Instance.prototype.addFuture = function(tick, fn) {
 
   if(this.region.tick_count >= tick) {
-    console.warn("Ahead of server!!!");
+    console.warn("Ahead of server! (This should never happen)");
     this.region.tick_count -= 4;
   }
   else if(this.region.tick_count <= tick - 10) {
-    console.warn("Client is lagging!!!!");
-    while(this.region.tick_count <= tick - 10) {
+    console.warn("Client is lagging!");
+    while(this.region.tick_count <= tick - 8) {
       this.tick();
     }
   }
@@ -118,6 +120,12 @@ Instance.prototype.logHTML = function(html_str) {
 //Tick instance
 Instance.prototype.tick = function() {
 
+  //Buffer previous state for rendering interpolation
+  for(var id in this.entities) {
+    var entity = this.entities[id];
+    patcher.assign(entity.last_state, entity.state);
+  }
+  
   //Update instance
   this.emitter.emit('tick');
   for(var id in this.entities) {
@@ -195,9 +203,18 @@ Instance.prototype.updateEntity = function(patch) {
 
   if(patch._id in this.entities) {
     //If entity already exists, then incrementally patch
-    var entity = this.entities[patch._id];
+    var entity = this.entities[patch._id],
+        emitter = entity.emitter;
     patcher.applyPatch(entity.net_state, patch);
-    entity.state = patcher.clone(entity.net_state);
+    entity.net_tick = this.region.tick_count;
+    
+    //Emit net update event only if there is a special handler, otherwise just overwrite state
+    if(emitter.listeners('net_update').length == 0) {
+      patcher.assign(entity.state, entity.net_state);
+    }
+    else {
+      entity.emitter.emit('net_update');
+    }
   }
   else {
     //Otherwise, bootstrap by applying patch to empty entity
@@ -205,6 +222,7 @@ Instance.prototype.updateEntity = function(patch) {
     patcher.applyPatch(nstate, patch);
     var entity = this.createEntity(nstate);
     entity.net_state = patcher.clone(nstate);
+    entity.net_tick = this.region.tick_count;
   }
 }
 

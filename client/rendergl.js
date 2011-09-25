@@ -352,12 +352,18 @@ RenderGL.prototype.setActive = function(active) {
       return;
     }
     
+    //Compute frame tween time
+    var t = (time - render.engine.last_tick) / render.engine.game_module.tick_rate;
+    if(t > 1.0) {
+      t = 1.0;
+    }
+    
     render.emitter.emit('frame_begin');
     
     for(var i=0; i<render.passes.length; ++i) {
       var pass = render.passes[i];
-      pass.begin(time, render);
-      render.emitter.emit('pass_' + pass.name, time, render, pass);
+      pass.begin(t, render);
+      render.emitter.emit('pass_' + pass.name, t, render, pass);
       pass.end(render);
     }
     

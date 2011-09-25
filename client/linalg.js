@@ -2,6 +2,38 @@
 // I also have better things to do in life than endlessly rewrite linear algebra
 // codes.  So it will do for now.
 
+
+//Linear interpolation
+exports.lerp = function(p0, p1, t, f) {
+  if(!f) {
+    f = new Array(p0.length);
+  }
+  for(var i=p0.length-1; i>=0; --i) {
+    f[i] = (1.0-t)*p0[i] + t*p1[i];
+  }
+  return f;
+}
+
+//Cubic Hermite spline interpolation
+exports.hermite = function(p0, v0, p1, v1, t, f) {
+  if(!f) {
+    f = new Array(p0.length);
+  }
+  
+  //Evaluate hermite polynomials
+  var ti  = (1.0-t), t2  = t*t, ti2 = ti*ti,
+      h00 = (1+2*t)*ti2,
+      h10 = t*ti2,
+      h01 = t2*(3-2*t),
+      h11 = t2*ti;
+      
+  for(var i=p0.length-1; i>=0; --i) {
+    f[i] = h00*p0[i] + h10*v0[i] + h01*p1[i] + h11*v1[i];
+  }
+  
+  return f;
+}
+
 exports.cross = function(u, v) {
 	return [ 
 		u[1] * v[2] - u[2] * v[1],

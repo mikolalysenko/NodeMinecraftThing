@@ -1,9 +1,10 @@
 var common = require('./common.js');
 
-exports.components    = common.components;
-exports.entity_types  = common.entity_types;
-exports.voxel_types   = common.voxel_types;
-exports.tick_rate     = common.tick_rate;
+exports.components      = common.components;
+exports.entity_types    = common.entity_types;
+exports.voxel_types     = common.voxel_types;
+exports.tick_rate       = common.tick_rate;
+exports.client_net_rate = 50;
 
 //Application states
 exports.states = {
@@ -14,15 +15,7 @@ exports.states = {
   game_state    : require('./client/game_state.js'),
 };
 
-
-function handleInput(engine) {
-  //Handle player input at the start of each frame
-  var player = engine.player,
-      entity = engine.instance.lookupEntity(player.entity_id);
-      
-  //Update player entity based on coordinates
-}
-
+//Render the scene
 function setupRender(engine) {
 
   var framework = engine.framework;
@@ -44,11 +37,6 @@ function setupRender(engine) {
   
   //Set up per-frame rendering actions
   var emitter = engine.render.emitter;
-  
-
-  emitter.on('frame_begin', function() {
-    handleInput(engine);
-  });  
   
   emitter.on('pass_forward', function(time, render, pass) {
     //TODO: Set camera here
@@ -79,6 +67,7 @@ exports.registerEngine = function(engine) {
   //Set up custom error handler
   engine.error_state = exports.states.error_state;
 
+  //Set up rendering
   setupRender(engine);
   
   //Set input actions

@@ -39,7 +39,13 @@ for(var i in argv) {
 }
 
 //Game server module
-var game_module = require(path.join(settings.game_dir, '/server.js'));
+var game_module = require(path.join(settings.game_dir, '/server.js')),
+    framework   = require('./framework.js');
+    
+for(var i=0; i<game_module.components.length; ++i) {
+  game_module.components[i].registerFramework(framework);
+}
+
 
 //Session handler
 var sessions = new (require('./session.js').SessionHandler)();

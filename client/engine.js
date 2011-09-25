@@ -42,9 +42,21 @@ function Engine(game_module, session_id) {
   
   
   //Pause/ticker
+  this.last_tick      = 0;
   this.tick_rate      = game_module.tick_rate;
-  this.tick_interval  = null;  
+  this
+  this.tick_interval  = null; 
+  this.net_interval   = null; 
   this.loaded_chunks  = false;
+}
+
+
+//Retrieves the player entity
+Engine.prototype.playerEntity = function() {
+  if(!this.instance || !this.player) {
+    return null;
+  }  
+  return this.instance.lookupEntity(this.player.entity_id);
 }
 
 //Sets the application state
@@ -63,7 +75,14 @@ Engine.prototype.setState = function(next_state) {
 //Initialize the engine
 Engine.prototype.init = function() {
 
-  var engine = this;
+  var engine = this,
+      game_module = engine.game_module,
+      components = game_module.components;
+
+  //Register all components with library framework
+  for(var i=0; i<components.length; ++i) {
+    components[i].registerFramework(engine.framework);
+  }
 
   //Initialize first subsystems
   engine.loader = require('./loader.js');
@@ -84,7 +103,7 @@ Engine.prototype.init = function() {
       engine.login.init(function() {
       
         //Register game module
-        engine.game_module.registerEngine(engine);
+        game_module.registerEngine(engine);
         
         //Initialize second set of modules 
         engine.render.init(engine);
@@ -107,17 +126,37 @@ Engine.prototype.setActive = function(active) {
       clearInterval(this.tick_interval);
       this.tick_interval = null;
     }
+    if(this.net_interval) {
+      clearInterval(this.net_interval);
+      this.net_interval = null;
+    }
   }
   else {
+    var engine = this;
     if(!this.tick_interval) {
-      var engine = this;
-      this.tick_interval = setInterval(function(){engine.tick();}, this.tick_rate);
+      this.last_tick = Date.now();
+      this.tick_interval = setInterval(function(){engine.tick();}, this.game_module.tick_rate);
+    }
+    if(!this.net_interval) {
+      this.net_interval = setInterval(function(){
+      
+        var player = engine.playerEntity();
+        if(player) {
+          player.emitter.emit('get_net_packet', function(packet) {
+            engine.network.rpc.playerInput(packet);
+          });
+        }
+        
+      }, this.game_module.client_net_rate);
     }
   }
 }
 
 //Ticks the engine
 Engine.prototype.tick = function() {
+
+  this.last_tick = Date.now();
+
   this.emitter.emit('tick');
   if(this.instance) {
     this.instance.tick();
