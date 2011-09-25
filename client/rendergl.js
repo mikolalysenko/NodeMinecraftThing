@@ -353,7 +353,10 @@ RenderGL.prototype.setActive = function(active) {
     }
     
     //Compute frame tween time
-    var t = (time - render.engine.last_tick) / render.engine.game_module.tick_rate;
+    var t = 1 - (render.engine.last_tick - time) / render.engine.game_module.tick_rate;
+    if(t < 0.0) {
+      t = 0.0;
+    }
     if(t > 1.0) {
       t = 1.0;
     }

@@ -17,10 +17,16 @@ void main(void) {\n\
 var FRAGMENT_SHADER =
 'precision mediump float;\n\
 uniform sampler2D spritesheet;\n\
-uniform vec4 color;\n\
+uniform vec3 color;\n\
 varying vec2 tex_coord;\n\
 void main(void) {\n\
-	gl_FragColor = texture2D(spritesheet, tex_coord) * color;\n\
+  vec4 fcolor = texture2D(spritesheet, tex_coord);\n\
+  if(fcolor.a < 1.0) {\n\
+    discard;\n\
+  }\n\
+  else {\n\
+    gl_FragColor = vec4(fcolor.xyz*color, 1.0);\n\
+  }\n\
 }';
 
 
@@ -44,7 +50,7 @@ function SpritePass(engine, texture) {
       uniforms      : { 'spritesheet'   : '1i', 
                         'sprite_rect'   : '4f',
                         'sprite_xform'  : 'Matrix3f',
-                        'color'         : '4f',
+                        'color'         : '3f',
                         'position'      : '4f',
                       },
     });
@@ -112,11 +118,11 @@ SpritePass.prototype.drawSprite = function(position, options) {
       sp_w      = rect[2] - rect[0],
       sp_h      = rect[3] - rect[1],
       center    = checkDefault('center', [0.5*sp_w+rect[0], 0.5*sp_h+rect[1]]),
-      scale     = checkDefault('scale', 1.0),
+      scale     = checkDefault('scale', 1.0) * sp_h / 16.0,
       aspect    = checkDefault('aspect', sp_w / sp_h),
       theta     = checkDefault('rotation', 0),
       flip      = checkDefault('flip', false),
-      color     = checkDefault('color', [1,1,1,1]),
+      color     = checkDefault('color', [1,1,1]),
       hg_pos    = linalg.xform4(render.clip_matrix, 
                     [position[0], position[1], position[2], 1]);
   
@@ -139,7 +145,7 @@ SpritePass.prototype.drawSprite = function(position, options) {
   uniforms.sprite_rect.set(rect[0]/w, rect[1]/h, rect[2]/w, rect[3]/h);
   
   //Set color
-  uniforms.color.set(color[0], color[1], color[2], color[3]);
+  uniforms.color.set(color[0], color[1], color[2]);
   
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 };

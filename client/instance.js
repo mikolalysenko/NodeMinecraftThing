@@ -65,9 +65,9 @@ Instance.prototype.addFuture = function(tick, fn) {
     console.warn("Ahead of server! (This should never happen)");
     this.region.tick_count -= 4;
   }
-  else if(this.region.tick_count <= tick - 10) {
+  else if(this.region.tick_count <= tick - 30) {
     console.warn("Client is lagging!");
-    while(this.region.tick_count <= tick - 10) {
+    while(this.region.tick_count <= tick - 4) {
       this.tick();
     }
   }

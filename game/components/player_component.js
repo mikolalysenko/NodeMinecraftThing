@@ -46,12 +46,11 @@ exports.registerEntity = function(entity) {
         entity.state.velocity[0] -= 0.1;
       }
       
+      //Play animation
       var vtotal = 0;
       for(var i=0; i<3; ++i) {
         vtotal += Math.abs(entity.state.velocity[i]);
       }
-      
-      //Play animation
       if(vtotal > 0.01) {
         if(entity.state.anim == 'idle') {
           entity.emitter.emit('play_anim', 'walk');
@@ -85,6 +84,22 @@ exports.registerEntity = function(entity) {
           v = entity.state.velocity;
       for(var i=0; i<3; ++i) {
         p[i] += v[i];
+      }
+
+      //Play animation
+      var vtotal = 0;
+      for(var i=0; i<3; ++i) {
+        vtotal += Math.abs(entity.state.velocity[i]);
+      }
+      if(vtotal > 0.01) {
+        if(entity.state.anim == 'idle') {
+          entity.emitter.emit('play_anim', 'walk');
+        }
+      }
+      else {
+        if(entity.state.anim != 'idle') {
+          entity.emitter.emit('play_anim', 'idle');
+        }
       }
     });
 
