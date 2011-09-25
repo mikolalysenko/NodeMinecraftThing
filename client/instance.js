@@ -163,6 +163,15 @@ Instance.prototype.lookupEntity = function(id) {
   return this.entities[id];
 }
 
+//Executes a draw pass
+Instance.prototype.draw = function(id, t, render, pass) {
+  var n = 'draw_' + id;
+  this.emitter.emit(n, t, render, pass);
+  for(var id in this.entities) {
+    this.entities[id].emitter.emit(n, t, render, pass);
+  }
+}
+
 //Creates an entity
 Instance.prototype.createEntity = function(state) {
   var entity = new Entity(this, state);

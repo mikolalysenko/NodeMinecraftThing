@@ -1,4 +1,5 @@
-var common = require('./common.js');
+var common = require('./common.js'),
+    framework = null;
 
 exports.components      = common.components;
 exports.entity_types    = common.entity_types;
@@ -18,8 +19,6 @@ exports.states = {
 //Render the scene
 function setupRender(engine) {
 
-  var framework = engine.framework;
-
   //Select WebGL for rendering
   engine.render = new framework.RenderGL(document.getElementById("renderCanvas"));
   
@@ -38,8 +37,18 @@ function setupRender(engine) {
   //Set up per-frame rendering actions
   var emitter = engine.render.emitter;
   
-  emitter.on('pass_forward', function(time, render, pass) {
-    //TODO: Set camera here
+  emitter.on('pass_forward', function(t, render, pass) {
+    
+    var player_entity = engine.playerEntity();
+    if(!player_entity) {
+      return;
+    }
+    
+    //Set up player camera
+    var pos = framework.tools.renderPosition(player_entity, t),
+        eye = [pos[0], pos[1]+10, pos[2]],
+        up  = [0, 0, -1];
+    render.lookAt(eye, pos, up);
   });
   
   emitter.on('pass_voxels', function(time, render, pass) {
@@ -47,13 +56,7 @@ function setupRender(engine) {
   });
   
   emitter.on('pass_sprites', function(time, render, pass) {
-    //Draw a test sprite
-    pass.drawSprite([0,0,(-1 + Math.cos(time/5000.0)) * 50], {
-      rect:((time / 100)&1 ? [64,0,96,64] : [96,0,128,64]),
-      rotation:0,
-      center:[16,32],
-      scale:2,
-    });
+    engine.instance.draw('sprites', time, render, pass);
   });
 }
 
@@ -62,7 +65,7 @@ function setupRender(engine) {
 exports.registerEngine = function(engine) {
   
   //Application framework
-  var framework     = engine.framework;
+  framework = engine.framework;
   
   //Set up custom error handler
   engine.error_state = exports.states.error_state;

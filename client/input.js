@@ -8,8 +8,11 @@ var buttons     = [],
     engine      = null,
     mouse       = [[0,0],[0,0]]
     
-exports.state     = state;
 exports.emitter   = emitter;
+
+exports.getState = function() {
+  return state;
+}
 
 //Initialization
 exports.init = function(engine) {
@@ -37,7 +40,7 @@ exports.bindKeys = function(kb) {
 //Sets up keyboard buttons
 exports.setButtons = function(b) {
   buttons = b;
-  state   = {}
+  state   = {};
   for(var i=0; i<buttons.length; ++i) {
     state[buttons[i]] = 0;
   }
@@ -48,10 +51,9 @@ exports.setActive = function(active) {
   if(active === activated) {
     return;
   }
-  active = activated;
+  activated = active;
   
   if(active) {
-
     //Reset state
     state   = {}
     for(var i=0; i<buttons.length; ++i) {

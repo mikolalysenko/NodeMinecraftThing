@@ -21,7 +21,7 @@ exports.hermite = function(p0, v0, p1, v1, t, f) {
   }
   
   //Evaluate hermite polynomials
-  var ti  = (1.0-t), t2  = t*t, ti2 = ti*ti,
+  var ti  = (t-1), t2  = t*t, ti2 = ti*ti,
       h00 = (1+2*t)*ti2,
       h10 = t*ti2,
       h01 = t2*(3-2*t),
@@ -132,7 +132,7 @@ exports.xform4 = function(A, x, y) {
   for(i=0; i<4; ++i) {
     y[i] = 0;
     for(j=0; j<4; ++j) {
-      y[i] += A[j+4*i] * x[j];
+      y[i] += A[4*j+i] * x[j];
     }
   }
   return y;

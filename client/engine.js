@@ -43,8 +43,6 @@ function Engine(game_module, session_id) {
   
   //Pause/ticker
   this.last_tick      = 0;
-  this.tick_rate      = game_module.tick_rate;
-  this
   this.tick_interval  = null; 
   this.net_interval   = null; 
   this.loaded_chunks  = false;
@@ -80,7 +78,7 @@ Engine.prototype.init = function() {
       components = game_module.components;
 
   //Register all components with library framework
-  for(var i=0; i<components.length; ++i) {
+  for(var i in components) {
     components[i].registerFramework(engine.framework);
   }
 
@@ -139,7 +137,6 @@ Engine.prototype.setActive = function(active) {
     }
     if(!this.net_interval) {
       this.net_interval = setInterval(function(){
-      
         var player = engine.playerEntity();
         if(player) {
           player.emitter.emit('get_net_packet', function(packet) {
@@ -276,7 +273,7 @@ Engine.prototype.notifyJoin = function(player_rec) {
   this.player = player_rec;
 
   //Bind keys
-  this.input.bindKeys(player_rec.bindings);
+  this.input.bindKeys(player_rec.key_bindings);
   
   //Start loading the instance
   this.changeInstance();

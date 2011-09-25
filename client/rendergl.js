@@ -271,11 +271,11 @@ RenderGL.prototype.perspective = function(fov_y, aspect, z_near, z_far) {
   proj_matrix[11] = (2.0 * z_far * z_near) / (z_near - z_far);
   proj_matrix[14] = -1;
   
-  linalg.mmult4(this.view_matrix, proj_matrix, this.clip_matrix);
+  linalg.mmult4(this.proj_matrix, this.view_matrix, this.clip_matrix);
 }
 
 //Sets camera to look at a particular target
-RenderGL.prototype.lookAt = function(eye, center, up) {
+RenderGL.prototype.lookAt = function(eye, center, u) {
   var f = [0.0,0.0,0.0], fmag=0.0, umag=0.0;
   for(var i=0; i<3; ++i) {
     f[i] = center[i] - eye[i];
@@ -289,19 +289,19 @@ RenderGL.prototype.lookAt = function(eye, center, up) {
   var s = [
     f[1]*u[2] - f[2]*u[1],
     f[2]*u[0] - f[0]*u[2],
-    f[0]*u[1] - f[1]*u[2] ], smag = 0.0;
+    f[0]*u[1] - f[1]*u[0] ], smag = 0.0;
     
   for(i=0; i<3; ++i) {
     smag += s[i]*s[i];
   }
   smag = 1.0/Math.sqrt(smag);
 
-  var M = view_matrix;
+  var M = this.view_matrix;
   for(i=0; i<3; ++i) {
-    M[i]    = s[i] * smag;
-    M[4+i]  = u[i] * umag;
-    M[8+i]  = f[i] * fmag;
-    M[12+i] = 0.0;
+    M[4*i+0] = s[i] * smag;
+    M[4*i+1] = u[i] * umag;
+    M[4*i+2] = f[i] * fmag;
+    M[4*i+3] = 0.0;
   }
   M[15] = 1.0;
   
@@ -310,10 +310,10 @@ RenderGL.prototype.lookAt = function(eye, center, up) {
     for(var j=0; j<3; ++j) {
       x += M[4*j+i] * eye[j];
     }
-    M[4*i+3] = x;
+    M[12+i] = -x;
   }
   
-  linalg.mmult4(M, this.proj_matrix, this.clip_matrix);
+  linalg.mmult4(this.proj_matrix, this.view_matrix, this.clip_matrix);
 }
 
 

@@ -3,6 +3,7 @@
 exports.linalg    = require('./linalg.js');
 exports.patcher   = require('./patcher.js');
 exports.voxels    = require('./voxels.js');
+exports.tools     = require('./tools.js');
 
 
 exports.RenderGL     = require('./rendergl.js').RenderGL,

@@ -8,12 +8,13 @@ exports.tick_rate = 30;
 //Game components
 exports.components = {
   'player' : require('./components/player_component.js'),
+  'sprite' : require('./components/sprite_component.js'),
 };
 
 //Entity type data
 exports.entity_types = {
   'player': {
-    components  : [ 'player' ],
+    components  : [ 'player', 'sprite' ],
   },
 };
 

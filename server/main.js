@@ -41,8 +41,7 @@ for(var i in argv) {
 //Game server module
 var game_module = require(path.join(settings.game_dir, '/server.js')),
     framework   = require('./framework.js');
-    
-for(var i=0; i<game_module.components.length; ++i) {
+for(var i in game_module.components) {
   game_module.components[i].registerFramework(framework);
 }
 

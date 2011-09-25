@@ -40,6 +40,8 @@ exports.createPlayer = function(account, options) {
   var entity_rec = {
     'player_name' : options.player_name,
     'type'        : 'player',
+    'position'    : [0,0,0],
+    'velocity'    : [0,0,0],
   };
   
   return [player_rec, entity_rec, 'Starting Area'];
