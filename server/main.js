@@ -6,6 +6,7 @@ var path = require('path'),
 
 exports.bootStrap = function(settings) {
 
+
 //Game server module
 var game_module = require(path.join(settings.game_dir, '/server.js')),
     framework   = require('./framework.js');
@@ -81,7 +82,7 @@ function attachOpenID(server, login) {
   var openid = require('openid'),
   
       relying_party = new openid.RelyingParty(
-        'http://' + settings.web_domain + ':' + settings.web_port + '/verify',
+        settings.web_url + '/verify',
         null,
         false,
         false,
@@ -110,7 +111,7 @@ function attachOpenID(server, login) {
       if(provider == "temp") {
       
         //Make a temporary account
-        res.writeHead(302, {Location: 'http://' + settings.web_domain + ':' + settings.web_port + '/verify?temp=1'});
+        res.writeHead(302, {Location: settings.web_url + '/verify?temp=1'});
         res.end();
       }
       else {
@@ -118,11 +119,11 @@ function attachOpenID(server, login) {
         //Otherwise, verify through OpenID
         relying_party.authenticate(provider, false, function(error, auth_url) {
           if(error || !auth_url) {
+            util.log("Authentication with provider failed!");
             res.writeHead(200);
-            res.end('Authentication failed');
+            res.end('Authentication with provider failed');
           }
           else {
-          
             res.writeHead(302, {Location: auth_url});
             res.end();
           }
