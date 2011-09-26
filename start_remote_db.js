@@ -6,6 +6,7 @@ var settings = {
   //Web configuration
   web_domain  : 'localhost',
   web_port    : 8080,
+  web_url     : 'http://localhost:8080',
   
   //Session token name
   session_token  : '$SESSION_TOKEN',

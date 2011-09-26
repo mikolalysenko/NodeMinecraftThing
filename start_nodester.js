@@ -6,6 +6,7 @@ var settings = {
   //Web configuration
   web_domain  : 'mmotest.nodester.com',
   web_port    : 12070,
+  web_url     : 'http://mmotest.nodester.com',
   
   //Session token name
   session_token  : '$SESSION_TOKEN',
