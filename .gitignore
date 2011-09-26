@@ -3,4 +3,5 @@
 mongo/*
 *.o
 node_modules/*
+.nodester.appconfig
 
