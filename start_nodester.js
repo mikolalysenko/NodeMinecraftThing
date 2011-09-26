@@ -4,8 +4,8 @@ var path = require('path');
 var settings = {
 
   //Web configuration
-  web_domain  : 'localhost',
-  web_port    : 8080,
+  web_domain  : 'mmotest.nodester.com',
+  web_port    : 12070,
   
   //Session token name
   session_token  : '$SESSION_TOKEN',
