@@ -3,5 +3,4 @@
 mongo/*
 *.o
 node_modules/*
-start_nodester.js
 
