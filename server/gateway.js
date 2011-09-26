@@ -52,7 +52,9 @@ function Gateway(db, server, sessions, game_module) {
 
     //Don't register client until 
     var client      = null,
-        account_id  = null;
+        account_id  = null,
+        throttle_counter = game_module.client_throttle,
+        throttle_interval = null;
     
     //Bind any connection events
     connection.on('end', function() {
@@ -112,6 +114,10 @@ function Gateway(db, server, sessions, game_module) {
         gateway.clients[account_id] = client;
         account_id = account._id;
         
+        //Set up throttle counter
+        setInterval(function() {
+          throttle_counter = gateway.game_module.client_throttle;
+        }, 1000);
         
         //Retrieve players, send to client
         gateway.accounts.listAllPlayers(account_id, function(err, players) {
@@ -127,7 +133,9 @@ function Gateway(db, server, sessions, game_module) {
     
     //Creates a player
     this.createPlayer = function(options, cb) {
-      if(!client || client.state != 'login' ||
+    
+      if(--throttle_counter < 0 ||
+        !client || client.state != 'login' ||
         typeof(options) != "object" ||
         typeof(cb) != "function" ) {
         connection.end();
@@ -147,7 +155,8 @@ function Gateway(db, server, sessions, game_module) {
     };
     
     this.deletePlayer = function(player_name, cb) {
-      if(!client || client.state != 'login' ||
+      if(--throttle_counter < 0 ||
+        !client || client.state != 'login' ||
         typeof(player_name) != "string" ||
         typeof(cb) != "function") {
         connection.end();
@@ -159,7 +168,8 @@ function Gateway(db, server, sessions, game_module) {
     
     //Joins the game
     this.joinGame = function(player_name, cb) {
-      if(!client || client.state != 'login' ||
+      if(--throttle_counter < 0 ||
+        !client || client.state != 'login' ||
         typeof(player_name) != "string" ||
         typeof(cb) != "function") {
         connection.end();
@@ -186,10 +196,11 @@ function Gateway(db, server, sessions, game_module) {
     };
     
     
-    //Sends a player input packet
+    //Receives a player input packet
     this.playerInput = function(packet) {
     
-      if(!client || 
+      if(--throttle_counter < 0 ||
+         !client || 
           client.state != 'game' ||
          !client.player ||
          !client.instance ||
@@ -199,6 +210,23 @@ function Gateway(db, server, sessions, game_module) {
       
       client.instance.playerInput(client.player._id, packet);
     };
+    
+    //Player action
+    this.playerAction = function(action_name, args) {
+    
+      if(--throttle_counter < 0 ||
+         !client ||
+          client.state != 'game' ||
+         !client.player ||
+         !client.instance ||
+         typeof(action_name) != 'string' ||
+         typeof(args) != 'object' ||
+         !(args instanceof Array)) {
+        return;
+      }
+    
+      client.instance.remoteAction(client.player._id, action_name, args);
+    }
     
   });
   

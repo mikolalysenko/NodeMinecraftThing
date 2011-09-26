@@ -153,7 +153,7 @@ Player.prototype.pushUpdates = function() {
 
 //Just cat directly to player log
 Player.prototype.logHTML = function(html_str) {
-  this.client.rpc.logHTM(html_str);
+  this.client.rpc.logHTML(html_str);
 };
 
 Player.prototype.init = function() {
@@ -192,6 +192,9 @@ Player.prototype.transmitChunks = function() {
 
     //Send load complete notification
     player.client.rpc.notifyLoadComplete(instance.region);
+    
+    //Send message of the day to player
+    player.client.rpc.logHTML(instance.game_module.motd);
 
     //Send a join event to all listeners
     player.emitter.emit('join');
@@ -275,31 +278,40 @@ function Instance(region, db, region_set) {
   this.client       = false;
 }
 
+//Called remotely
+Instance.prototype.remoteAction = function(player_id, action_name, action) {
+  var player = this.players[player_id];
+  if(!player || !player.entity ||
+    typeof(action_name) != 'string' ||
+    typeof(action) != 'object' ||
+    !(action instanceof Array)) {
+    return; 
+  }
+  this.emitter.emit.apply(this.emitter, ['action_'+action_name, player.entity].concat(action));
+}
+
+//Local action
+Instance.prototype.action = function(entity, action_name) {
+  this.emitter.emit.apply(this.emitter, ['action_'+action_name].concat(Array.prototype.slice.call(arguments, 1)));
+}
+
 
 //Called upon receiving a player input packet
 Instance.prototype.playerInput = function(player_id, packet) {
-
   var player = this.players[player_id];
   if(player && player.entity) {
     player.entity.emitter.emit('apply_net_packet', packet);
   }
 }
 
-
-//Appends a text string to the message log
-Instance.prototype.logText = function(str) {
-  this.logHTML(str
-    .replace(/\&/g, '&amp;')
-    .replace(/\</g, '&lt;')
-    .replace(/\>/g, '&gt;')
-    .replace(/\n/g, '<br/>')
-    .replace(/\s/g, '&nbsp;'));
-};
-
 //Appends an HTML string to the instance
 Instance.prototype.logHTML = function(html_str) {
   util.log("Logging:" + html_str);
-  this.message_log += html_ster;
+  
+  this.message_log += html_str;
+  for(var id in this.players) {
+    this.players[id].logHTML(html_str);
+  } 
 };
 
 //Sets a voxel

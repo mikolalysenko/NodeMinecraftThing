@@ -81,6 +81,17 @@ Instance.prototype.addFuture = function(tick, fn) {
   }
 }
 
+
+//Action (usually from player)
+Instance.prototype.action = function(action_name, entity) {
+  var args = Array.prototype.slice.call(arguments, 2);
+  if(entity === this.engine.playerEntity())
+    this.engine.network.rpc.playerAction(action_name, args);
+  this.emitter.emit.apply(this.emitter, ['action_'+action_name, entity].concat(args));
+}
+
+
+
 //Initialize instance
 Instance.prototype.init = function() {
   this.running = true;
@@ -106,12 +117,17 @@ Instance.prototype.deinit = function() {
 }
 
 //Adds a string to the chat/game log
-Instance.prototype.logString = function(str) {
-  console.log(str);
+Instance.prototype.logText = function(str) {
+  this.logHTML(str
+    .replace(/\&/g, '&amp;')
+    .replace(/\</g, '&lt;')
+    .replace(/\>/g, '&gt;')
+    .replace(/\n/g, '<br/>')
+    .replace(/\s/g, '&nbsp;'));
 };
 
 Instance.prototype.logHTML = function(html_str) {
-  console.log(html_str);
+  this.engine.emitter.emit('log_html', html_str);
 };
 
 //Tick instance

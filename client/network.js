@@ -83,7 +83,7 @@ exports.connectToServer = function(engine, cb) {
       if(engine.instance) {
         engine.instance.logHTML(html_str);
       }
-    }
+    },
     
   }).connect(function(rpc, connection) {
   

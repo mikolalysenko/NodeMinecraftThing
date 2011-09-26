@@ -14,6 +14,24 @@ exports.registerEntity = function(entity) {
     return;
   }
 
+  function updateAnimation() {
+    //Set player animation
+    var vtotal = 0;
+    for(var i=0; i<3; ++i) {
+      vtotal += Math.abs(entity.state.velocity[i]);
+    }
+    if(vtotal > 0.01) {
+      if(entity.state.anim == 'idle') {
+        entity.emitter.emit('play_anim', 'walk');
+      }
+    }
+    else {
+      if(entity.state.anim != 'idle') {
+        entity.emitter.emit('play_anim', 'idle');
+      }
+    }
+  }
+
 
   //Use different event handlers for local player
   var is_local_player = instance.client && 
@@ -46,22 +64,8 @@ exports.registerEntity = function(entity) {
         entity.state.velocity[0] -= 0.1;
       }
       
-      //Play animation
-      var vtotal = 0;
-      for(var i=0; i<3; ++i) {
-        vtotal += Math.abs(entity.state.velocity[i]);
-      }
-      if(vtotal > 0.01) {
-        if(entity.state.anim == 'idle') {
-          entity.emitter.emit('play_anim', 'walk');
-        }
-      }
-      else {
-        if(entity.state.anim != 'idle') {
-          entity.emitter.emit('play_anim', 'idle');
-        }
-      }
       
+      updateAnimation();
     });
   
     //Correct player's local position
@@ -85,22 +89,8 @@ exports.registerEntity = function(entity) {
       for(var i=0; i<3; ++i) {
         p[i] += v[i];
       }
-
-      //Play animation
-      var vtotal = 0;
-      for(var i=0; i<3; ++i) {
-        vtotal += Math.abs(entity.state.velocity[i]);
-      }
-      if(vtotal > 0.01) {
-        if(entity.state.anim == 'idle') {
-          entity.emitter.emit('play_anim', 'walk');
-        }
-      }
-      else {
-        if(entity.state.anim != 'idle') {
-          entity.emitter.emit('play_anim', 'idle');
-        }
-      }
+      
+      updateAnimation();
     });
 
     //Apply a network packet to update player position  

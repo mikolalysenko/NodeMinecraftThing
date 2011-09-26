@@ -44,6 +44,7 @@ exports.buttons = [
   'left',
   'right',
   'jump',
+  'chat',
 ];
 
 
@@ -56,6 +57,9 @@ exports.default_bindings = {
   65 : "left",
   68 : "right",
   32 : "jump",
+  9  : "chat",
+  13 : "chat",
+  84 : "chat",
 };
 
 

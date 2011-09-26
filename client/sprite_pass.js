@@ -84,6 +84,8 @@ SpritePass.prototype.begin = function(time, render) {
   gl.bindTexture(gl.TEXTURE_2D, spritesheet.texture.texture);
   shader.uniforms.spritesheet.set(0);
   
+  //Mik- Need to do this, otherwise WebGL doesn't pass alpha channel to shader
+  // Why?  I don't really know...
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   gl.enable(gl.BLEND);
   
@@ -119,7 +121,7 @@ SpritePass.prototype.drawSprite = function(position, options) {
       sp_h      = rect[3] - rect[1],
       center    = checkDefault('center', [0.5*sp_w+rect[0], 0.5*sp_h+rect[1]]),
       scale     = checkDefault('scale', 1.0) * sp_h / 16.0,
-      aspect    = checkDefault('aspect', sp_w / sp_h),
+      aspect    = checkDefault('aspect', sp_w / sp_h) * render.canvas.height / render.canvas.width,
       theta     = checkDefault('rotation', 0),
       flip      = checkDefault('flip', false),
       color     = checkDefault('color', [1,1,1]),

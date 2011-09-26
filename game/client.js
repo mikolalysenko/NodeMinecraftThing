@@ -80,6 +80,11 @@ exports.registerEngine = function(engine) {
   engine.emitter.on('change_instance', function() {
     engine.setState(exports.states.load_state);
   });
+  
+  //Bind chat log handler
+  engine.emitter.on('log_html', function(str) {
+    document.getElementById('uiChatLog').innerHTML += str;
+  });
 
   engine.loader.fetchImage('/img/voxels.png');
   engine.loader.fetchImage('/img/spritesheet.png');

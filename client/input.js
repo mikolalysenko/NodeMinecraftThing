@@ -134,6 +134,9 @@ exports.setActive = function(active) {
 	  };
   }
   else {
+    if(window.onblur) {
+      window.onblur();
+    }
 	  window.onkeyup      = null;
 	  window.onkeydown    = null;
 	  window.onmousemove  = null;
