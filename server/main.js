@@ -4,39 +4,7 @@ var path = require('path'),
     util = require('util'),
     querystring = require('querystring');
 
-//Default settings
-var settings = {
-
-  //Web configuration
-  web_domain  : 'localhost',
-  web_port    : 8080,
-  
-  //Session token name
-  session_token  : '$SESSION_TOKEN',
-  
-  //Database configuration
-  db_name     : 'test',
-  db_server   : 'localhost',
-  db_port     : 27017,
-  
-  //Game config options
-  game_dir    : path.join(__dirname, '../game'),
-  
-  //If this flag is set, then reset the entire game state (useful for testing)
-  RESET       : true,
-  
-  //If this flag is set, don't compress the client
-  debug       : true,
-  
-};
-
-//Parse out arguments from commandline
-var argv = require('optimist').argv;
-for(var i in argv) {
-  if(i in settings) {
-    settings[i] = argv[i];
-  }
-}
+exports.bootStrap = function(settings) {
 
 //Game server module
 var game_module = require(path.join(settings.game_dir, '/server.js')),
@@ -45,10 +13,41 @@ for(var i in game_module.components) {
   game_module.components[i].registerFramework(framework);
 }
 
-
 //Session handler
 var sessions = new (require('./session.js').SessionHandler)();
 
+function addCollections(db, next) {
+  function addCollection(col, cb) {
+    db.collection(col, function(err, collection) {
+      if(err) {
+        util.log("Error adding collection '" + col + "': " + err);
+        return;
+      }
+      db[col] = collection;
+      cb();
+    });
+  }
+  
+  addCollection('accounts', function() {
+    db.accounts.ensureIndex([['user_id', 1]], true, function() {
+      addCollection('entities', function() {
+        addCollection('players', function() { 
+          db.players.ensureIndex([['user_id', 1]], false, function() {
+            db.players.ensureIndex([['player_name',1]], true, function() {
+              addCollection('regions', function() {
+                addCollection('chunks', function() {
+                  db.chunks.ensureIndex([['region_id',1]], false, function() {
+                    next(db);
+                  });
+                });
+              }); 
+            });
+          });
+        });
+      });
+    });
+  });
+}
 
 //Connects to database, adds references for collections
 function initializeDB(next) {
@@ -56,44 +55,21 @@ function initializeDB(next) {
       db_name   = settings.db_name,
       db_server = settings.db_server,
       db_port   = settings.db_port,
+      db_user   = settings.db_user,
+      db_passwd = settings.db_passwd,
       db = new mongodb.Db(db_name, new mongodb.Server(db_server, db_port, {}), {});
 
-  db.open(function(err, db){
-
+  db.open(function(err, db) {
     if(err) {
       util.log("Error connecting to database");
       return;
     }
-    
-    function addCollection(col, cb) {
-      db.collection(col, function(err, collection) {
-        if(err) {
-          util.log("Error adding collection '" + col + "': " + err);
-          return;
-        }
-        db[col] = collection;
-        cb();
-      });
-    }
-    
-    addCollection('accounts', function() {
-      db.accounts.ensureIndex([['user_id', 1]], true, function() {
-        addCollection('entities', function() {
-          addCollection('players', function() { 
-            db.players.ensureIndex([['user_id', 1]], false, function() {
-              db.players.ensureIndex([['player_name',1]], true, function() {
-                addCollection('regions', function() {
-                  addCollection('chunks', function() {
-                    db.chunks.ensureIndex([['region_id',1]], false, function() {
-                      next(db);
-                    });
-                  });
-                }); 
-              });
-            });
-          });
-        });
-      });
+    db.authenticate(db_user, db_passwd, function(err) {
+      if(err) {
+        util.log("Error authenticating with database");
+        return;
+      }
+      addCollections(db, next);
     });
   });
 }
@@ -316,3 +292,5 @@ if(settings.debug) {
   var repl = require('repl');
   repl.start('Admin> ');
 }
+
+};
