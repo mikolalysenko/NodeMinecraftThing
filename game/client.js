@@ -81,6 +81,16 @@ exports.registerEngine = function(engine) {
     engine.setState(exports.states.load_state);
   });
   
+  engine.input.emitter.on('press', function(button) {
+  
+    if(button == 'action') {
+      var pl = engine.playerEntity(),
+          x = pl.state.position;
+    
+      engine.instance.action('voxel', pl, Math.floor(x[0]), Math.floor(x[1]), Math.floor(x[2]) );
+    }
+  });
+  
   //Bind chat log handler
   engine.emitter.on('log_html', function(str) {
     var chat_log = document.getElementById('uiChatLog');
@@ -99,7 +109,6 @@ exports.registerEngine = function(engine) {
     console.log("Post-initialization");
     engine.setState(exports.states.login_state);
   }, 0);
-
 };
 
 exports.registerInstance = function(instance) {

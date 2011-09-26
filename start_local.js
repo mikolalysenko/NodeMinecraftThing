@@ -15,8 +15,6 @@ var settings = {
   db_name     : 'test',
   db_server   : 'localhost',
   db_port     : 27017,
-  db_user     : 'test',
-  db_passwd   : '',
   
   //Game config options
   game_dir    : path.join(__dirname, 'game'),

@@ -73,33 +73,14 @@ exports.registerInstance = function(instance) {
 var region    = instance.region,
     emitter   = instance.emitter;
     
-emitter.on('construct', function() {
-  //Called first time an instance is constructed
-});
+  instance.emitter.on('action_voxel', function(entity,x,y,z) {  
+    instance.setVoxel(
+      Math.floor(x), 
+      Math.floor(y),
+      Math.floor(z),
+      1);
+  });
 
-emitter.on('init', function() {
-  //Instance start up
-});
-
-emitter.on('tick', function() {
-  //Tick
-});
-
-emitter.on('spawn', function(entity) {
-  //Entity spawn
-});
-
-emitter.on('destroy', function(entity) {
-  //Entity destruction
-});
-
-emitter.on('join', function(player) {
-  //Player join
-});
-
-emitter.on('depart', function(player) {
-  //Player leave
-});
 
 };
 

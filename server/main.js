@@ -65,13 +65,20 @@ function initializeDB(next) {
       util.log("Error connecting to database");
       return;
     }
-    db.authenticate(db_user, db_passwd, function(err) {
-      if(err) {
-        util.log("Error authenticating with database");
-        return;
-      }
+    
+    console.log("HERE!");
+    if(db_user || db_passwd) {
+      db.authenticate(db_user, db_passwd, function(err) {
+        if(err) {
+          util.log("Error authenticating with database");
+          return;
+        }
+        addCollections(db, next);
+      });
+    }
+    else {
       addCollections(db, next);
-    });
+    }
   });
 }
 

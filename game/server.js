@@ -10,7 +10,7 @@ exports.net_rate        = 50;
 exports.client_throttle = 30;  //Max number of (messages per second) per client
 exports.motd = 
 '<h4>Welcome to the node.js MMO test!</h4>\
-To chat, press "t", tab or enter.  Use WASD for movement.<br><br>'
+To chat, press "t", tab or enter.  Use WASD for movement. Left click to place a block!<br><br>'
 
 //Path to client HTML
 exports.client_html = path.join(__dirname, 'www/client.html');
@@ -82,13 +82,6 @@ exports.registerInstance = function(instance) {
     instance.logHTML('<b>' + player.state.player_name + ' left</b><br>');
   });
 
-  instance.emitter.on('action_voxel', function(player) {
-    instance.setVoxel(
-      Math.floor(player.position[0]), 
-      Math.floor(player.position[1]),
-      Math.floor(player.position[2]),
-      1);
-  });
 }
 
 exports.registerEntity = function(entity) {
