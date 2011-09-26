@@ -75,6 +75,15 @@ exports.registerInstance = function(instance) {
           .replace('<', '&lt;')
           .replace('>', '&gt;') + '<br/>');
   });
+  
+  instance.emitter.on('join', function(player) {
+    instance.logHTML('<b>' + player.state.player_name + ' joined the game!</b><br>');
+  });
+  
+  instance.emitter.on('depart', function(player) {
+    instance.logHTML('<b>' + player.state.player_name + ' left</b><br>');
+  });
+
 }
 
 exports.registerEntity = function(entity) {

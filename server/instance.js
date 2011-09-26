@@ -192,8 +192,6 @@ Player.prototype.transmitChunks = function() {
     //Send message of the day to player
     player.client.rpc.logHTML(instance.game_module.motd);
     
-    //Announce player login message
-    instance.logHTML("<b>" + player.state.player_name + " has entered the game!</b><br>");
 
     //Send initial copy of game state to player
     for(var id in this.entities) {
@@ -209,8 +207,7 @@ Player.prototype.transmitChunks = function() {
     player.pushUpdates();
     
     //Send a join event to all listeners
-    player.emitter.emit('join');
-    instance.emitter.emit('join');
+    instance.emitter.emit('join', player.entity);
   };
   
   
@@ -572,7 +569,7 @@ Instance.prototype.deactivatePlayer = function(player_id, cb) {
    
   //Deinit player entity
   if(player.entity) {
-    this.emitter.emit('depart', player);
+    this.emitter.emit('depart', player.entity);
     var entity_id = player.entity.state._id;
     
     //Remove player from dirty entity list
