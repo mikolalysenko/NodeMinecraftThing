@@ -63,6 +63,9 @@ exports.registerEntity = function(entity) {
       if(buttons['left'] > 0) {
         entity.state.velocity[0] -= 0.1;
       }
+      if(buttons['action'] > 0) {
+        instance.action('voxel');
+      }
       
       
       updateAnimation();

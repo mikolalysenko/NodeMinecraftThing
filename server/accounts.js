@@ -75,10 +75,15 @@ AccountManager.prototype.createPlayer = function(account, options, cb) {
     return;
   }
   
+  if(!options.player_name.match(/^[a-z0-9]+$/i)) {
+    cb("Invalid player name", null);
+    return;
+  }
+  
   var db = this.db,
       game_module = this.game_module,
       region_set = this.region_set;
-
+      
   //Check if player name exists already
   db.players.findOne({'player_name':options.player_name}, function(err, player) {
     if(err) {

@@ -5,7 +5,7 @@ exports.components      = common.components;
 exports.entity_types    = common.entity_types;
 exports.voxel_types     = common.voxel_types;
 exports.tick_rate       = common.tick_rate;
-exports.sync_rate       = 15*60*1000;
+exports.sync_rate       = 100*60*1000;
 exports.net_rate        = 50;
 exports.client_throttle = 30;  //Max number of (messages per second) per client
 exports.motd = 
@@ -68,8 +68,6 @@ exports.registerInstance = function(instance) {
       n = entity.state.type;
     }
   
-    console.log(n + ":" + mesg);
-  
     instance.logHTML('<b>'+n+':</b> '+
       mesg.replace('&', '&amp;')
           .replace('<', '&lt;')
@@ -84,6 +82,13 @@ exports.registerInstance = function(instance) {
     instance.logHTML('<b>' + player.state.player_name + ' left</b><br>');
   });
 
+  instance.emitter.on('action_voxel', function(player) {
+    instance.setVoxel(
+      Math.floor(player.position[0]), 
+      Math.floor(player.position[1]),
+      Math.floor(player.position[2]),
+      1);
+  });
 }
 
 exports.registerEntity = function(entity) {
