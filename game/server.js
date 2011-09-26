@@ -7,11 +7,10 @@ exports.voxel_types     = common.voxel_types;
 exports.tick_rate       = common.tick_rate;
 exports.sync_rate       = 60*1000;
 exports.net_rate        = 50;
-exports.client_throttle = 30;  //Max number of (messages / second) / client
-
+exports.client_throttle = 30;  //Max number of (messages per second) per client
 exports.motd = 
 '<h4>Welcome to the node.js MMO test!</h4>\
-To chat, press either "t", tab or enter.  Use WASD for movement.<br><br>'
+To chat, press "t", tab or enter.  Use WASD for movement.<br><br>'
 
 //Path to client HTML
 exports.client_html = path.join(__dirname, 'www/client.html');
@@ -71,7 +70,7 @@ exports.registerInstance = function(instance) {
   
     console.log(n + ":" + mesg);
   
-    instance.logHTML('<b>'+n+':</b>: '+
+    instance.logHTML('<b>'+n+':</b> '+
       mesg.replace('&', '&amp;')
           .replace('<', '&lt;')
           .replace('>', '&gt;') + '<br/>');

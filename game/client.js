@@ -83,7 +83,9 @@ exports.registerEngine = function(engine) {
   
   //Bind chat log handler
   engine.emitter.on('log_html', function(str) {
-    document.getElementById('uiChatLog').innerHTML += str;
+    var chat_log = document.getElementById('uiChatLog');
+    chat_log.innerHTML += str;
+    chat_log.scrollTop = chat_log.scrollHeight;
   });
 
   engine.loader.fetchImage('/img/voxels.png');
