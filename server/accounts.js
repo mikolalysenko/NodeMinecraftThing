@@ -21,7 +21,7 @@ AccountManager.prototype.getAccount = function(user_id, cb) {
     }
     else if(account) {
       if(account.logged_in) {
-        cb(err, "Already logged in");
+        cb("Already logged in", null);
       }
       else {
         db.accounts.update(account, { '$set': { logged_in : true } }, {safe:true}, function(err) {

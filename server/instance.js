@@ -183,10 +183,6 @@ Player.prototype.transmitChunks = function() {
   
     util.log("Player connected!");
     
-    //Start update interval
-    player.net_state = 'game';
-    player.update_interval = setInterval(function() { player.pushUpdates(); }, player.instance.game_module.net_rate);
-
     //Create player entity
     player.entity = instance.createEntity(player.entity_rec);
 
@@ -195,7 +191,23 @@ Player.prototype.transmitChunks = function() {
     
     //Send message of the day to player
     player.client.rpc.logHTML(instance.game_module.motd);
+    
+    //Announce player login message
+    instance.logHTML("<b>" + player.state.player_name + " has entered the game!</b><br>");
 
+    //Send initial copy of game state to player
+    for(var id in this.entities) {
+      var entity = this.entities[id];
+      if( entity.net_replicated || entity.net_one_shot ) {
+        player.updateEntity(entity);
+      }
+    }
+    
+    //Start update interval
+    player.net_state = 'game';
+    player.update_interval = setInterval(function() { player.pushUpdates(); }, player.instance.game_module.net_rate);
+    player.pushUpdates();
+    
     //Send a join event to all listeners
     player.emitter.emit('join');
     instance.emitter.emit('join');
@@ -543,14 +555,6 @@ Instance.prototype.activatePlayer = function(client, player_rec, entity_rec, cb)
     
   //Initialize player
   player.init();
-    
-  //Send initial copy of game state to player
-  for(var id in this.entities) {
-    var entity = this.entities[id];
-    if( entity.net_replicated || entity.net_one_shot ) {
-      player.updateEntity(entity);
-    }
-  }
   
   //Done
   cb(null);

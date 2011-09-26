@@ -111,6 +111,7 @@ function attachOpenID(server, login) {
       
         //Make a temporary account
         res.writeHead(302, {Location: 'http://' + settings.web_domain + ':' + settings.web_port + '/verify?temp=1'});
+        res.end();
       }
       else {
       
@@ -140,9 +141,14 @@ function attachOpenID(server, login) {
       else {
         
         relying_party.verifyAssertion(req, function(error, result) {
-        
-          //Log in to database, send response
-          login(res, result.claimedIdentifier);
+          if(error || !result || !result.claimedIdentifier) {
+            res.writeHead(302, {Location: '/index.html'});
+            res.end();
+          }
+          else {
+            //Log in to database, send response
+            login(res, result.claimedIdentifier);
+          }
         });
       }
     }
