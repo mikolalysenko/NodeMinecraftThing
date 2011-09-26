@@ -7,7 +7,10 @@ exports.voxel_types     = common.voxel_types;
 exports.tick_rate       = common.tick_rate;
 exports.sync_rate       = 100*60*1000;
 exports.net_rate        = 50;
-exports.client_throttle = 30;  //Max number of (messages per second) per client
+exports.socket_timeout  = 1000; //Socket timeout limit
+exports.heartbeat_rate  = 80;   //Rate for sending heartbeat packets
+exports.polling_rate    = 50;  //Controls long polling rate
+exports.client_throttle = 100;  //Max number of (messages per second) per client
 exports.motd = 
 '<h4>Welcome to the node.js MMO test!</h4>\
 To chat, press "t", tab or enter.  Use WASD for movement. Left click to place a block!<br><br>'

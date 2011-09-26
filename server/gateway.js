@@ -230,8 +230,16 @@ function Gateway(db, server, sessions, game_module) {
     
   });
   
+  
   //Listen for connections on server
-  this.client_interface.listen(server);
+  this.client_interface.listen(server, {
+    io:{
+      'close timeout':game_module.socket_timeout,
+      'heartbeat timeout':game_module.socket_timeout,
+      'heratbeat interval':game_module.heartbeat_rate,
+      'polling duration':game_module.polling_rate,
+    }
+  });
   
   util.log("Gateway listening");
 }
