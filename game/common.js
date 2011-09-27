@@ -75,7 +75,13 @@ exports.registerInstance = function(instance) {
 var region    = instance.region,
     emitter   = instance.emitter;
     
-  instance.emitter.on('action_voxel', function(entity,x,y,z) {  
+  instance.emitter.on('action_voxel', function(entity,x,y,z) {
+    if(typeof(x) !== 'number' ||
+      typeof(y) !== 'number' ||
+      typeof(z) !== 'number') {
+      return;
+    }
+  
     instance.setVoxel(
       Math.floor(x), 
       Math.floor(y),

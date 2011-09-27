@@ -117,7 +117,6 @@ exports.registerEntity = function(entity) {
          console.log("Bad input packet", packet);
          return;       
       }
-       
     
       var dt = entity.instance.region.tick_count - packet[0],
           p = packet[1],
