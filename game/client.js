@@ -8,6 +8,7 @@ exports.socket_timeout      = common.socket_timeout;
 exports.socket_transports   = common.socket_transports;
 exports.tick_rate           = common.tick_rate;
 exports.client_net_rate     = 50;
+exports.ping_rate           = 4000;
 
 //Application states
 exports.states = {

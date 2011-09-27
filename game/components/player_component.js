@@ -88,8 +88,6 @@ exports.registerEntity = function(entity) {
         return
       }
     
-      console.log("updating");
-    
       need_update = false;
       var packet = [entity.instance.region.tick_count + engine.lag, entity.state.position, entity.state.velocity];
       cb(packet);
@@ -110,11 +108,25 @@ exports.registerEntity = function(entity) {
 
     //Apply a network packet to update player position  
     entity.emitter.on('apply_net_packet', function(packet) {
+    
+      if(typeof(packet) !== 'object' ||
+         !(packet instanceof Array) ||
+         typeof(packet[0]) !== 'number' ||
+         typeof(packet[1]) !== 'object' ||
+         typeof(packet[2]) !== 'object' ) {
+         console.log("Bad input packet", packet);
+         return;       
+      }
+       
+    
       var dt = entity.instance.region.tick_count - packet[0],
           p = packet[1],
           q = packet[2];
           
       for(var i=0; i<3; ++i) {
+        if(typeof(p[1]) !== 'number' || typeof(q[1]) !== 'number') {
+          continue;
+        }
         entity.state.position[i] = p[i] + q[i]*dt;
         entity.state.velocity[i] = q[i];
       }

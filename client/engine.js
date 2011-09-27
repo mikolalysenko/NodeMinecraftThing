@@ -42,11 +42,12 @@ function Engine(game_module, session_id) {
   
   
   //Pause/ticker
-  this.min_lag        = 4;
-  this.max_lag        = 30;
-  this.lag            = 4;
+  this.fast_forward_threshold        = 30;
+  this.lag            = 10;
+  this.frame_skip     = 0;
+  this.server_tick_count = 0;
   this.last_tick      = 0;
-  this.tick_interval  = null; 
+  this.tick_interval  = null;
   this.net_interval   = null; 
   this.preload_complete  = false;
 }
@@ -177,6 +178,11 @@ Engine.prototype.setActive = function(active) {
 //Ticks the engine
 Engine.prototype.tick = function() {
 
+  if(this.frame_skip > 0) {
+    --this.frame_skip;
+    return;
+  }
+
   this.emitter.emit('tick');
   if(this.instance) {
     this.instance.tick();
@@ -255,7 +261,7 @@ Engine.prototype.crash = function(errMsg) {
 //Called upon receiving an update
 Engine.prototype.notifyUpdate = function(tick_count) {
   if(!this.preload_complete) {
-    this.instance.region.tick_count = tick_count - this.min_lag;
+    this.instance.region.tick_count = tick_count - this.lag;
     
     //Set engine state to loaded
     this.preload_complete = true;
@@ -269,15 +275,17 @@ Engine.prototype.notifyUpdate = function(tick_count) {
   var region = this.instance.region;
   if(region.tick_count >= tick_count) {
     console.warn("Ahead of server! (This should never happen)");
-    region.tick_count -= this.min_lag;
+    region.tick_count = tick_count - this.lag;
   }
-  else if(region.tick_count <= tick_count - this.max_lag) {
+  else if(region.tick_count < this.tick_count + this.lag) {
+    this.frame_skip = region.tick_count - this.tick_count - this.lag;
+  }
+  else if(region.tick_count <= tick_count - this.fast_forward_threshold) {
     console.warn("Client is lagging!");
-    while(region.tick_count <= tick_count - this.min_lag) {
+    while(region.tick_count < tick_count - this.lag) {
       this.tick();
     }
   }
-  this.lag = tick_count - region.tick_count;
 }
 
 Engine.prototype.changeInstance = function(region_rec) {

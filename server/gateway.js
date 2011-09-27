@@ -196,6 +196,13 @@ function Gateway(db, server, sessions, game_module) {
     };
     
     
+    //Used for timing measurement
+    this.ping = function(pong) {
+      if(typeof(pong) === 'function') {
+        pong();
+      }
+    };
+    
     //Receives a player input packet
     this.playerInput = function(packet) {
     
