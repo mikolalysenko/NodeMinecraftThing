@@ -7,6 +7,7 @@ exports.voxel_types       = common.voxel_types;
 exports.socket_timeout    = common.socket_timeout;
 exports.socket_transports = common.socket_transports;
 exports.tick_rate         = common.tick_rate;
+exports.net_rate          = 50;
 exports.sync_rate         = 100*60*1000;    //Rate at which database gets synchronized
 exports.client_throttle   = 100;  //Max number of (messages per second) per client
 

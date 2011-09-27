@@ -233,12 +233,35 @@ function Gateway(db, server, sessions, game_module) {
   
   
   //Listen for connections on server
-  debugger;
+  var tout = this.game_module.socket_timeout;
   this.client_interface.listen(server, {
     io:{
-      'close timeout': this.game_module.socket_timeout,
       //'heartbeat timeout': this.game_module.socket_timeout,
       'transports': this.game_module.socket_transports,
+      
+      /*
+      transportOptions: {
+        'flashsocket': {
+          closeTimeout: tout,
+          timeout: tout
+        }, 'websocket': {
+          closeTimeout: tout,
+          timeout: tout
+        }, 'htmlfile': {
+          closeTimeout: tout,
+          timeout: tout
+        }, 'xhr-multipart': {
+          closeTimeout: tout,
+          timeout: tout
+        }, 'xhr-polling': {
+          closeTimeout: tout,
+          timeout: tout
+        }, 'jsonp-polling': {
+          closeTimeout: tout,
+          timeout: tout
+        }
+      } 
+      */
     }
   });
   

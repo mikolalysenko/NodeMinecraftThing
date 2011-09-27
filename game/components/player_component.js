@@ -40,7 +40,8 @@ exports.registerEntity = function(entity) {
   
     console.log("Registering local player");
         
-    var engine = instance.engine;
+    var engine = instance.engine,
+        need_update = false;
     
     //Apply input here
     entity.emitter.on('tick', function() {
@@ -48,22 +49,30 @@ exports.registerEntity = function(entity) {
 
       for(var i=0; i<3; ++i) {
         entity.state.position[i] += entity.state.velocity[i];
-        entity.state.velocity[i] = 0;
       }
+      
+      var nx = 0, nz = 0;
       
       if(buttons['up'] > 0) {
-        entity.state.velocity[2] -= 0.1;
+        nz -= 0.125;
       }
       if(buttons['down'] > 0) {
-        entity.state.velocity[2] += 0.1;
+        nz += 0.125;
       }
       if(buttons['right'] > 0) {
-        entity.state.velocity[0] += 0.1;
+        nx += 0.125;
       }
       if(buttons['left'] > 0) {
-        entity.state.velocity[0] -= 0.1;
+        nx -= 0.125;
       }
       
+      if(entity.state.velocity[0] != nx ||
+         entity.state.velocity[2] != nz ) {
+         entity.state.velocity[0] = nx;
+         entity.state.velocity[2] = nz;
+         need_update = true;
+      }
+         
       
       updateAnimation();
     });
@@ -75,7 +84,14 @@ exports.registerEntity = function(entity) {
       
     //Create a packet and pass it to the server  
     entity.emitter.on('get_net_packet', function(cb) {
-      var packet = [entity.state.position, entity.state.velocity];
+      if(!need_update) {
+        return
+      }
+    
+      console.log("updating");
+    
+      need_update = false;
+      var packet = [entity.instance.region.tick_count + engine.lag, entity.state.position, entity.state.velocity];
       cb(packet);
     });
   }  
@@ -89,14 +105,19 @@ exports.registerEntity = function(entity) {
       for(var i=0; i<3; ++i) {
         p[i] += v[i];
       }
-      
       updateAnimation();
     });
 
     //Apply a network packet to update player position  
     entity.emitter.on('apply_net_packet', function(packet) {
-      entity.state.position = packet[0];
-      entity.state.velocity = packet[1];
+      var dt = entity.instance.region.tick_count - packet[0],
+          p = packet[1],
+          q = packet[2];
+          
+      for(var i=0; i<3; ++i) {
+        entity.state.position[i] = p[i] + q[i]*dt;
+        entity.state.velocity[i] = q[i];
+      }
     });
   }  
 };

@@ -307,4 +307,8 @@ if(settings.debug) {
   repl.start('Admin> ');
 }
 
+process.on('uncaughtException', function(err) {
+  console.log(err.stack);
+});
+
 };

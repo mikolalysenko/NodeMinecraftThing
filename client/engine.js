@@ -42,6 +42,9 @@ function Engine(game_module, session_id) {
   
   
   //Pause/ticker
+  this.min_lag        = 4;
+  this.max_lag        = 30;
+  this.lag            = 4;
   this.last_tick      = 0;
   this.tick_interval  = null; 
   this.net_interval   = null; 
@@ -250,20 +253,31 @@ Engine.prototype.crash = function(errMsg) {
 }
 
 //Called upon receiving an update
-Engine.prototype.notifyUpdate = function() {
-  if(this.preload_complete) {
-    return;
+Engine.prototype.notifyUpdate = function(tick_count) {
+  if(!this.preload_complete) {
+    this.instance.region.tick_count = tick_count - this.min_lag;
+    
+    //Set engine state to loaded
+    this.preload_complete = true;
+    var engine = this;
+    engine.emitter.emit('loaded');
+    
+    //Activate game engine
+    engine.setActive(true);
   }
-
-  console.log("Chunk loading complete, starting local simulation");
   
-  //Set engine state to loaded
-  this.preload_complete = true;
-  var engine = this;
-  engine.emitter.emit('loaded');
-  
-  //Activate game engine
-  engine.setActive(true);
+  var region = this.instance.region;
+  if(region.tick_count >= tick_count) {
+    console.warn("Ahead of server! (This should never happen)");
+    region.tick_count -= this.min_lag;
+  }
+  else if(region.tick_count <= tick_count - this.max_lag) {
+    console.warn("Client is lagging!");
+    while(region.tick_count <= tick_count - this.min_lag) {
+      this.tick();
+    }
+  }
+  this.lag = tick_count - region.tick_count;
 }
 
 Engine.prototype.changeInstance = function(region_rec) {

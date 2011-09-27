@@ -85,6 +85,7 @@ function Player(instance, client, player_rec, entity_rec) {
   this.client_state = {};
   
   //Entity replication information
+  this.update_interval = null;
   this.cached_entities = {};
   this.pending_entity_updates = {};
   this.pending_entity_deletes = {};
@@ -100,6 +101,7 @@ Player.prototype.pushUpdates = function() {
   if(this.client.state !== 'game' ||
      this.net_state !== 'game') {
     clearInterval(this.update_interval);
+    this.update_interval = null;
     return;
   }
   
@@ -155,12 +157,6 @@ Player.prototype.logHTML = function(html_str) {
   this.client.rpc.logHTML(html_str);
 };
 
-Player.prototype.init = function() {
-  var player = this;
-  this.net_state = 'loading';
-  this.preload();
-}
-
 Player.prototype.deinit = function() {
   clearInterval(this.update_interval);
   this.net_state = 'leaving';
@@ -168,7 +164,9 @@ Player.prototype.deinit = function() {
 
 
 //Transmits chunks while the player is in the loading state
-Player.prototype.preload = function() {
+Player.prototype.init = function() {
+
+  this.net_state = 'loading';
   var player = this,
       instance = player.instance;
   
@@ -176,16 +174,14 @@ Player.prototype.preload = function() {
     if(player.net_state !== 'loading') {
       return;
     }
-  
-    util.log("Player connected!");
     
     //Create player entity
     player.entity = instance.createEntity(player.entity_rec);
     player.entity.player = player;
 
     //Send initial copy of game state to player
-    for(var id in this.entities) {
-      var entity = this.entities[id];
+    for(var id in instance.entities) {
+      var entity = instance.entities[id];
       if( entity.net_replicated || entity.net_one_shot ) {
         player.updateEntity(entity);
       }
@@ -193,30 +189,16 @@ Player.prototype.preload = function() {
     
     //Start update interval
     player.net_state = 'game';
-    player.update_interval = setInterval(function() { player.pushUpdates(); }, player.instance.game_module.net_rate);
-    player.pushUpdates();
+    
+    player.update_interval = setInterval(function() { player.pushUpdates(); }, instance.game_module.net_rate);
     
     //Send a join event to all listeners
     instance.emitter.emit('join', player.entity);
   };
-  
-  
-  //Kill client if they take too long to respond to the chunk transmission
-  // (max 1 minute)
-  var disconnect_interval = setTimeout(function() {
-    if(player.net_state === 'loading') {
-      player.client.connection.end();
-    }
-  }, 60*1000);
-  
-  
+    
   //FIXME: This should probably send chunks in multiple parts
   function executeTransmit() {
   
-    if(disconnect_interval) {
-      clearTimeout(disconnect_interval);
-      disconnect_interval = null;
-    }
     if(player.net_state !== 'loading') {
       return;
     }
@@ -226,6 +208,7 @@ Player.prototype.preload = function() {
       buffer.push(parseInt(id))
       buffer.push(chunk_set.chunks[id].data);
     }
+    
     util.log("Transmitting chunks....");
     player.client.rpc.updateChunks(buffer, loadComplete);
   };
@@ -493,7 +476,6 @@ Instance.prototype.updateEntity = function(entity) {
 
 //Synchronize with the database
 Instance.prototype.sync = function() {
-
   util.log("Synchronizing with database...");
 
   //Apply entity updates

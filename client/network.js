@@ -9,6 +9,8 @@ function Connection(rpc, connection) {
 
 exports.connectToServer = function(engine, cb) {
 
+  var tout = engine.game_module.socket_timeout;
+
   dnode({
 
     changeInstance : function(region_info) {
@@ -24,7 +26,7 @@ exports.connectToServer = function(engine, cb) {
       }
       
       //Notify game engine
-      engine.notifyUpdate();
+      engine.notifyUpdate(tick_count);
       
       //Handle updates
       if(updates.length > 0) {
@@ -105,9 +107,33 @@ exports.connectToServer = function(engine, cb) {
     
     cb(new Connection(rpc, connection));
   }, {
-    'connectTimeout':engine.game_module.socket_timeout,
+    //'connectTimeout':tout,
     'transports':engine.game_module.socket_transports,
-    'rememberTransport':false,
+    //'rememberTransport':false,
+    
+    /*
+    transportOptions: {
+      'flashsocket': {
+        closeTimeout: tout,
+        timeout: tout
+      }, 'websocket': {
+        closeTimeout: tout,
+        timeout: tout
+      }, 'htmlfile': {
+        closeTimeout: tout,
+        timeout: tout
+      }, 'xhr-multipart': {
+        closeTimeout: tout,
+        timeout: tout
+      }, 'xhr-polling': {
+        closeTimeout: tout,
+        timeout: tout
+      }, 'jsonp-polling': {
+        closeTimeout: tout,
+        timeout: tout
+      }
+    } 
+    */
   });
 }
 
