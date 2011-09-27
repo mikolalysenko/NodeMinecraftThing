@@ -104,6 +104,10 @@ exports.connectToServer = function(engine, cb) {
     });
     
     cb(new Connection(rpc, connection));
+  }, {
+    'connectTimeout':engine.game_module.socket_timeout,
+    'transports':engine.game_module.socket_transports,
+    'rememberTransport':false,
   });
 }
 

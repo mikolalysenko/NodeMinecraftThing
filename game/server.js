@@ -1,16 +1,14 @@
 var path = require('path'),
     common = require('./common.js');
 
-exports.components      = common.components;
-exports.entity_types    = common.entity_types;
-exports.voxel_types     = common.voxel_types;
-exports.tick_rate       = common.tick_rate;
-exports.sync_rate       = 100*60*1000;
-exports.net_rate        = 50;
-exports.socket_timeout  = 1000; //Socket timeout limit
-exports.heartbeat_rate  = 80;   //Rate for sending heartbeat packets
-exports.polling_rate    = 50;  //Controls long polling rate
-exports.client_throttle = 100;  //Max number of (messages per second) per client
+exports.components        = common.components;
+exports.entity_types      = common.entity_types;
+exports.voxel_types       = common.voxel_types;
+exports.socket_timeout    = common.socket_timeout;
+exports.socket_transports = common.socket_transports;
+exports.tick_rate         = common.tick_rate;
+exports.sync_rate         = 100*60*1000;    //Rate at which database gets synchronized
+exports.client_throttle   = 100;  //Max number of (messages per second) per client
 
 //Message of the day
 var motd = 

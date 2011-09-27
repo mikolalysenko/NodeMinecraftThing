@@ -1,11 +1,13 @@
 var common = require('./common.js'),
     framework = null;
 
-exports.components      = common.components;
-exports.entity_types    = common.entity_types;
-exports.voxel_types     = common.voxel_types;
-exports.tick_rate       = common.tick_rate;
-exports.client_net_rate = 50;
+exports.components          = common.components;
+exports.entity_types        = common.entity_types;
+exports.voxel_types         = common.voxel_types;
+exports.socket_timeout      = common.socket_timeout;
+exports.socket_transports   = common.socket_transports;
+exports.tick_rate           = common.tick_rate;
+exports.client_net_rate     = 50;
 
 //Application states
 exports.states = {
