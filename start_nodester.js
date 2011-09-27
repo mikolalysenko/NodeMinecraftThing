@@ -22,7 +22,7 @@ var settings = {
   game_dir    : path.join(__dirname, 'game'),
   
   //If this flag is set, then reset the entire game state (useful for testing)
-  RESET       : true,
+  RESET       : false,
   
   //If this flag is set, don't compress the client
   debug       : false,
