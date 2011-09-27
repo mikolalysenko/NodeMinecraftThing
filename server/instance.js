@@ -72,7 +72,6 @@ function Player(instance, client, player_rec, entity_rec) {
   //Player record  
   this.state     = player_rec;
   this.entity    = null;
-  this.emitter   = new EventEmitter();
   
   //RPC interface
   this.net_state = 'loading';
@@ -159,20 +158,17 @@ Player.prototype.logHTML = function(html_str) {
 Player.prototype.init = function() {
   var player = this;
   this.net_state = 'loading';
-  this.emitter.emit('init');
-  this.transmitChunks();
+  this.preload();
 }
 
 Player.prototype.deinit = function() {
   clearInterval(this.update_interval);
-  this.emitter.emit('deinit');
-  this.emitter.removeAllListeners();
   this.net_state = 'leaving';
 }
 
 
 //Transmits chunks while the player is in the loading state
-Player.prototype.transmitChunks = function() {
+Player.prototype.preload = function() {
   var player = this,
       instance = player.instance;
   
@@ -185,13 +181,7 @@ Player.prototype.transmitChunks = function() {
     
     //Create player entity
     player.entity = instance.createEntity(player.entity_rec);
-
-    //Send load complete notification
-    player.client.rpc.notifyLoadComplete(instance.region);
-    
-    //Send message of the day to player
-    player.client.rpc.logHTML(instance.game_module.motd);
-    
+    player.entity.player = player;
 
     //Send initial copy of game state to player
     for(var id in this.entities) {
@@ -240,7 +230,11 @@ Player.prototype.transmitChunks = function() {
     player.client.rpc.updateChunks(buffer, loadComplete);
   };
 
-  setTimeout(executeTransmit, 0);
+  //Set player to change instance
+  player.client.rpc.changeInstance(player.instance.region);
+  
+  //Set timeout
+  setTimeout(executeTransmit, 10);
 }
 
 
@@ -314,13 +308,24 @@ Instance.prototype.playerInput = function(player_id, packet) {
 }
 
 //Appends an HTML string to the instance
-Instance.prototype.logHTML = function(html_str) {
+Instance.prototype.logHTML = function(html_str, entity, local) {
   util.log("Logging:" + html_str);
   
-  this.message_log += html_str;
-  for(var id in this.players) {
-    this.players[id].logHTML(html_str);
-  } 
+  if(local) {
+    return;
+  }
+  
+  if(entity) {
+    if(entity.player) {
+      entity.player.client.rpc.logHTML(html_str);
+    }
+  }
+  else {  
+    this.message_log += html_str;
+    for(var id in this.players) {
+      this.players[id].logHTML(html_str);
+    } 
+  }
 };
 
 //Sets a voxel

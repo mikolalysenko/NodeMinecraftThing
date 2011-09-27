@@ -7,13 +7,12 @@ function Connection(rpc, connection) {
 }
 
 
-
 exports.connectToServer = function(engine, cb) {
 
   dnode({
 
-    notifyLoadComplete : function(region_info) {
-      engine.notifyLoadComplete(region_info);
+    changeInstance : function(region_info) {
+      engine.changeInstance(region_info);
     },
   
     updateInstance : function(tick_count, updates, removals, voxels) {
@@ -23,6 +22,9 @@ exports.connectToServer = function(engine, cb) {
         console.warn("Got an update packet before instance started!");
         return;
       }
+      
+      //Notify game engine
+      engine.notifyUpdate();
       
       //Handle updates
       if(updates.length > 0) {

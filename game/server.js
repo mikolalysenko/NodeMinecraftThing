@@ -11,9 +11,12 @@ exports.socket_timeout  = 1000; //Socket timeout limit
 exports.heartbeat_rate  = 80;   //Rate for sending heartbeat packets
 exports.polling_rate    = 50;  //Controls long polling rate
 exports.client_throttle = 100;  //Max number of (messages per second) per client
-exports.motd = 
+
+//Message of the day
+var motd = 
 '<h4>Welcome to the node.js MMO test!</h4>\
-To chat, press "t", tab or enter.  Use WASD for movement. Left click to place a block!<br><br>'
+To chat, press "t", tab or enter.  Use WASD for movement. Left click to place a block!<br>\
+<br>'
 
 //Path to client HTML
 exports.client_html = path.join(__dirname, 'www/client.html');
@@ -78,6 +81,7 @@ exports.registerInstance = function(instance) {
   });
   
   instance.emitter.on('join', function(player) {
+    instance.logHTML(motd, player);
     instance.logHTML('<b>' + player.state.player_name + ' joined the game!</b><br>');
   });
   

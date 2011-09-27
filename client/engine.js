@@ -45,7 +45,7 @@ function Engine(game_module, session_id) {
   this.last_tick      = 0;
   this.tick_interval  = null; 
   this.net_interval   = null; 
-  this.loaded_chunks  = false;
+  this.preload_complete  = false;
 }
 
 
@@ -174,7 +174,6 @@ Engine.prototype.setActive = function(active) {
 //Ticks the engine
 Engine.prototype.tick = function() {
 
-
   this.emitter.emit('tick');
   if(this.instance) {
     this.instance.tick();
@@ -250,22 +249,24 @@ Engine.prototype.crash = function(errMsg) {
   this.emitter.removeAllListeners();
 }
 
+//Called upon receiving an update
+Engine.prototype.notifyUpdate = function() {
+  if(this.preload_complete) {
+    return;
+  }
 
-Engine.prototype.notifyLoadComplete = function(region_info) {
   console.log("Chunk loading complete, starting local simulation");
-
-  this.loaded_chunks = true;
-
-  this.instance = new Instance(this, region_info);
-  this.instance.init();
-
+  
+  //Set engine state to loaded
+  this.preload_complete = true;
   var engine = this;
   engine.emitter.emit('loaded');
   
+  //Activate game engine
   engine.setActive(true);
 }
 
-Engine.prototype.changeInstance = function() {
+Engine.prototype.changeInstance = function(region_rec) {
 
   console.log("Changing instances");
 
@@ -273,12 +274,14 @@ Engine.prototype.changeInstance = function() {
   this.setActive(false);
 
   //Set chunk state to unloaded
-  this.loaded_chunks = false;
+  this.preload_complete = false;
 
   //Create and restart
   if(this.instance) {
     this.instance.deinit();
   }
+  this.instance = new Instance(this, region_rec);
+  this.instance.init();
 
   //Clear out voxel data
   this.voxels.reset();
@@ -290,18 +293,17 @@ Engine.prototype.changeInstance = function() {
 //Called upon joining an instance
 Engine.prototype.notifyJoin = function(player_rec) {
 
+  console.log("Entered game");
+
   //Save player record
   this.player = player_rec;
 
   //Bind keys
   this.input.bindKeys(player_rec.key_bindings);
-  
-  //Start loading the instance
-  this.changeInstance();
 }
 
 Engine.prototype.listenLoadComplete = function(cb) {
-  if(this.loaded_chunks) {
+  if(this.preload_complete) {
     setTimeout(cb, 0);
   }
   else {
