@@ -150,7 +150,19 @@ ChunkSet = function() {
 };
 
 ChunkSet.prototype.insertChunk = function(chunk) {
-  this.chunks[hashCode(chunk.x, chunk.y, chunk.z)] = chunk;
+
+  var nc = chunk;
+  if(nc.constructor !== Chunk) {
+    nc = new Chunk(chunk.x, chunk.y, chunk.z, chunk.data);
+    for(var id in chunk) {
+      if(!(id in nc) && chunk.hasOwnProperty(id)) {
+        nc[id] = chunk[id];
+      }
+    }
+  }
+
+  this.chunks[hashCode(chunk.x, chunk.y, chunk.z)] = nc;
+  
 }
 
 ChunkSet.prototype.setChunk = function(cx,cy,cz,data) {
