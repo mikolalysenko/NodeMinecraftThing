@@ -75,6 +75,7 @@ exports.registerInstance = function(instance) {
   var region    = instance.region,
     emitter   = instance.emitter;
     
+  //Log a string to the client
   emitter.on('remote_chat', function(player, mesg) {
     if(typeof(mesg) !== 'string') {
       return;
@@ -85,7 +86,7 @@ exports.registerInstance = function(instance) {
         html_str = mesg.replace('&', '&amp;')
                        .replace('<', '&lt;')
                        .replace('>', '&gt;');
-    instance.message('log', '<b>' + player_name + ':</b>' + html_str + '<br>');
+    instance.message('log', '<b>'+player_name+':</b> '+html_str+'<br>');
   });
   
   emitter.on('server_log', function(html_str) {

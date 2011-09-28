@@ -91,9 +91,7 @@ exports.connectToServer = function(engine, cb) {
     //Called on client by server
     remoteMessage : function(tick_count, action_name, entity_id, params) {    
       if(engine.instance) {
-        engine.instance.addFuture(tick_count, function() {
-          engine.instance.remoteMessage(action_name, entity_id, params);
-        });
+        engine.instance.remoteMessage(action_name, entity_id, params);
       }
     },
     
