@@ -90,7 +90,6 @@ exports.registerEntity = function(entity) {
     
     //Logs a message to the player
     entity.emitter.on('server_log', function(html_str) {
-      console.log("HERE:", html_str);
       instance.logHTML(html_str);
     });
   }  

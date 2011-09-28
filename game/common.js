@@ -4,7 +4,7 @@
 
 //Game tick rate
 exports.tick_rate         = 30;
-exports.socket_timeout    = 2500;
+exports.socket_timeout    = 25;
 exports.socket_transports = ['websocket', 'flashsocket', 'htmlfile', 'xhr-multipart', 'xhr-polling', 'jsonp-polling'];
 
 //Game components

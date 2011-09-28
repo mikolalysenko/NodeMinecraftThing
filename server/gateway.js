@@ -60,16 +60,8 @@ function Gateway(db, server, sessions, game_module) {
         throttle_counter = game_module.client_throttle,
         throttle_interval = null;
     
-    connection.on('end', function() {
-      console.log("CONNECTION ENDED");
-    });
-    
-    connection.on('close', function() {
-      console.log("CONNECTION CLOSED");
-    });
-    
     //Bind any connection events
-    connection.on('disconnect', function() {
+    connection.on('end', function() {
     
       util.log("Client disconnected");
       if(!client) {
