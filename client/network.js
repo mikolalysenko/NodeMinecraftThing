@@ -78,11 +78,13 @@ exports.connectToServer = function(engine, cb) {
       cb();
     },
     
-    //Logs a string to the terminal
-    logHTML : function(html_str) {
-      if(engine.instance) {
-        engine.instance.logHTML(html_str);
+    //Called on client by server
+    remoteMessage : function(action_name, tick_count, entity, params) {
+    
+      if(game.instance) {
+      
       }
+      alert("HERE");    
     },
     
   }).connect(function(rpc, connection) {

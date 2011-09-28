@@ -17,6 +17,10 @@ function Client(account, rpc, connection) {
   this.instance   = null;
 }
 
+Client.prototype.kick = function() {
+  this.connection.end();
+}
+
 //--------------------------------------------------------------
 // The RPC interface which is exposed to the client
 //--------------------------------------------------------------
@@ -195,24 +199,8 @@ function Gateway(db, server, sessions, game_module) {
       });
     };
     
-    
-    //Receives a player input packet
-    this.playerInput = function(packet) {
-    
-      if(--throttle_counter < 0 ||
-         !client || 
-          client.state != 'game' ||
-         !client.player ||
-         !client.instance ||
-         !packet ) {
-        return;
-      }
-      
-      client.instance.playerInput(client.player._id, packet);
-    };
-    
     //Player action
-    this.playerAction = function(action_name, args) {
+    this.remoteMessage = function(action_name, entity_id, args) {
     
       if(--throttle_counter < 0 ||
          !client ||
@@ -225,8 +213,8 @@ function Gateway(db, server, sessions, game_module) {
         return;
       }
     
-      client.instance.remoteAction(client.player._id, action_name, args);
-    }
+      client.instance.remoteAction(action_name, client.player._id, entity_id, args);
+    };
     
   });
   

@@ -69,7 +69,7 @@ exports.registerEntity = function(entity) {
     });
   
     //Correct player's local position
-    entity.emitter.on('net_update', function() {
+    entity.emitter.on('server_input', function() {
       //Disregard
     });
       

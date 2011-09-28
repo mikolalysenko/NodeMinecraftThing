@@ -40,6 +40,13 @@ Entity.prototype.draw = function() {
   this.emitter.emit('draw');
 }
 
+//Sends a message to the server on behalf of this entity
+Entity.prototype.message = function(action_name) {
+  var args = Array.prototype.slice.call(arguments,1);
+  this.instance.engine.network.rpc.remoteMessage(action_name, this.state._id, args);
+  this.emitter.emit.apply(this.emitter, ['client_' + action_name].concat(arguments));
+}
+
 
 //----------------------------------------------------------------
 // Client side instance object
@@ -81,15 +88,28 @@ Instance.prototype.addFuture = function(tick, fn) {
   }
 }
 
-
-//Action (usually from player)
-Instance.prototype.action = function(action_name, entity) {
-  var args = Array.prototype.slice.call(arguments, 2);
-  if(entity === this.engine.playerEntity())
-    this.engine.network.rpc.playerAction(action_name, args);
-  this.emitter.emit.apply(this.emitter, ['action_'+action_name, entity].concat(args));
+//Called upon receiving a remote message
+Instance.prototype.remoteMessage = function(action_name, entity_id, params) {
+  if(entity_id) {
+    var entity = this.lookupEntity(entity_id);
+    if(!entity) {
+      console.warn("Got action: " + action_name + ", for invalid entity_id: " + entity_id);
+      return;
+    }
+    entity.emitter.emit.apply(entity.emitter, ['server_' + action_name].concat(params));
+  }
+  else {
+    this.emitter.apply(this.emitter, ['server_' + action_name].concat(params));
+  }
 }
 
+
+//Action (usually from player)
+Instance.prototype.message = function(action_name) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  this.engine.network.rpc.remoteAction(action_name, null, args);
+  this.emitter.emit.apply(this.emitter, ['action_'+action_name].concat(args));
+}
 
 
 //Initialize instance

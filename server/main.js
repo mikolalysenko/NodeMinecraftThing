@@ -300,6 +300,10 @@ function startServer() {
   });
 } 
 
+process.on('uncaughtException', function(err) {
+  util.log("Uncaught exception: " + err.stack);
+});
+
 startServer();
 
 if(settings.debug) {

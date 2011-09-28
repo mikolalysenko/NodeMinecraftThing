@@ -64,6 +64,14 @@ Entity.prototype.deinit = function() {
   this.emitter.removeAllListeners();
 }
 
+//Sends a message to the entity
+Entity.prototype.message = function(action_name) {
+}
+
+Entity.prototype.remoteMessage = function(action_name, player, params) {
+}
+
+
 //----------------------------------------------------------------
 // A player connection
 //----------------------------------------------------------------
@@ -92,6 +100,11 @@ function Player(instance, client, player_rec, entity_rec) {
   
   //Chunk replication
   this.pending_writes = {};
+}
+
+//Pushes a message out to the client
+Player.prototype.pushMessage(action_name, entity_id, params) {
+  this.client.rpc.remoteMessage(action_name, entity_id, params);
 }
 
 
@@ -215,7 +228,7 @@ Player.prototype.transmitChunks = function() {
   // (max 1 minute)
   var disconnect_interval = setTimeout(function() {
     if(player.net_state === 'loading') {
-      player.client.connection.end();
+      player.client.kick();
     }
   }, 60*1000);
   
@@ -287,31 +300,44 @@ function Instance(region, db, region_set) {
   this.client       = false;
 }
 
-//Called remotely
-Instance.prototype.remoteAction = function(player_id, action_name, action) {
+//Called remotely on server from client
+Instance.prototype.remoteMessage = function(action_name, player_id, entity_id, params) {
+  if(typeof(player_id) !== 'string') {
+    return;
+  }
   var player = this.players[player_id];
-  if(!player || !player.entity ||
+  if(!player || 
+    'game' !== player.state ||
+    !player.entity ||
     typeof(action_name) != 'string' ||
-    typeof(action) != 'object' ||
-    !(action instanceof Array)) {
+    typeof(params) != 'object' ||
+    !(params instanceof Array)) {
     return; 
   }
-  this.emitter.emit.apply(this.emitter, ['action_'+action_name, player.entity].concat(action));
+  
+  if(entity_id) {
+    var entity = this.lookupEntity(entity_id);
+    if(entity) {
+      entity.remoteMessage(action_name, player_id, entity_id, params);
+    }
+  }
+  else {
+    this.emitter.emit.apply(this.emitter, ['remote_'+action_name, player.entity].concat(params));
+  }
 }
 
 //Local action
-Instance.prototype.action = function(entity, action_name) {
-  this.emitter.emit.apply(this.emitter, ['action_'+action_name].concat(Array.prototype.slice.call(arguments, 1)));
-}
+Instance.prototype.message = function(action_name) {
 
+  var action = Array.prototype.slice.call(arguments,1);
 
-//Called upon receiving a player input packet
-Instance.prototype.playerInput = function(player_id, packet) {
-  var player = this.players[player_id];
-  if(player && player.entity) {
-    player.entity.emitter.emit('apply_net_packet', packet);
+  //Send action to all clients
+  for(var player_id in this.players) {
+    this.players[player_id].pushMessage(action_name, null, action);
   }
+  this.emitter.emit.apply(this.emitter, ['server_'+action_name].concat(action_name));
 }
+
 
 //Appends an HTML string to the instance
 Instance.prototype.logHTML = function(html_str) {
@@ -658,6 +684,9 @@ Instance.prototype.createEntity = function(state) {
 
 //Looks up an entity in this region
 Instance.prototype.lookupEntity = function(entity_id) {
+  if(!entity_id) {
+    return null;
+  }
   var e = this.entities[entity_id];
   if(e && !e.deleted) {
     return e;

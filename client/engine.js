@@ -40,11 +40,9 @@ function Engine(game_module, session_id) {
   this.login        = null;
   this.instance     = null;
   
-  
   //Pause/ticker
   this.last_tick      = 0;
   this.tick_interval  = null; 
-  this.net_interval   = null; 
   this.loaded_chunks  = false;
 }
 
@@ -124,10 +122,6 @@ Engine.prototype.setActive = function(active) {
       clearTimeout(this.tick_interval);
       this.tick_interval = null;
     }
-    if(this.net_interval) {
-      clearInterval(this.net_interval);
-      this.net_interval = null;
-    }
   }
   else {
     var engine = this;
@@ -156,17 +150,6 @@ Engine.prototype.setActive = function(active) {
       
       engine.last_tick = Date.now();
       this.tick_interval = setTimeout(ticker, 0);
-    }
-    if(!this.net_interval) {
-      this.net_interval = setInterval(function(){
-        var player = engine.playerEntity();
-        if(player) {
-          player.emitter.emit('get_net_packet', function(packet) {
-            engine.network.rpc.playerInput(packet);
-          });
-        }
-        
-      }, this.game_module.client_net_rate);
     }
   }
 }
