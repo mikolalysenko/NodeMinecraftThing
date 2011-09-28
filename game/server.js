@@ -1,19 +1,21 @@
 var path = require('path'),
     common = require('./common.js');
 
-exports.components      = common.components;
-exports.entity_types    = common.entity_types;
-exports.voxel_types     = common.voxel_types;
-exports.tick_rate       = common.tick_rate;
-exports.sync_rate       = 100*60*1000;
-exports.net_rate        = 50;
-exports.socket_timeout  = 1000; //Socket timeout limit
-exports.heartbeat_rate  = 80;   //Rate for sending heartbeat packets
-exports.polling_rate    = 50;  //Controls long polling rate
-exports.client_throttle = 100;  //Max number of (messages per second) per client
-exports.motd = 
+exports.components        = common.components;
+exports.entity_types      = common.entity_types;
+exports.voxel_types       = common.voxel_types;
+exports.socket_timeout    = common.socket_timeout;
+exports.socket_transports = common.socket_transports;
+exports.tick_rate         = common.tick_rate;
+exports.net_rate          = 50;
+exports.sync_rate         = 60*1000;    //Rate at which database gets synchronized
+exports.client_throttle   = 100;  //Max number of (messages per second) per client
+
+//Message of the day
+var motd = 
 '<h4>Welcome to the node.js MMO test!</h4>\
-To chat, press "t", tab or enter.  Use WASD for movement. Left click to place a block!<br><br>'
+To chat, press "t", tab or enter.  Use WASD for movement. Left click to place a block!<br>\
+<br>'
 
 //Path to client HTML
 exports.client_html = path.join(__dirname, 'www/client.html');
@@ -78,11 +80,12 @@ exports.registerInstance = function(instance) {
   });
   
   instance.emitter.on('join', function(player) {
-    instance.logHTML('<b>' + player.state.player_name + ' joined the game!</b><br>');
+    player.message('log', motd);
+    instance.message('log', '<b>' + player.state.player_name + ' joined the game!</b><br>');
   });
   
   instance.emitter.on('depart', function(player) {
-    instance.logHTML('<b>' + player.state.player_name + ' left</b><br>');
+    instance.message('log', '<b>' + player.state.player_name + ' left</b><br>');
   });
 
 }

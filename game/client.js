@@ -1,11 +1,14 @@
 var common = require('./common.js'),
     framework = null;
 
-exports.components      = common.components;
-exports.entity_types    = common.entity_types;
-exports.voxel_types     = common.voxel_types;
-exports.tick_rate       = common.tick_rate;
-exports.client_net_rate = 50;
+exports.components          = common.components;
+exports.entity_types        = common.entity_types;
+exports.voxel_types         = common.voxel_types;
+exports.socket_timeout      = common.socket_timeout;
+exports.socket_transports   = common.socket_transports;
+exports.tick_rate           = common.tick_rate;
+exports.client_net_rate     = 50;
+exports.ping_rate           = 4000;
 
 //Application states
 exports.states = {
@@ -80,17 +83,7 @@ exports.registerEngine = function(engine) {
   engine.emitter.on('change_instance', function() {
     engine.setState(exports.states.load_state);
   });
-  
-  engine.input.emitter.on('press', function(button) {
-  
-    if(button == 'action') {
-      var pl = engine.playerEntity(),
-          x = pl.state.position;
     
-      engine.instance.action('voxel', pl, Math.floor(x[0]), Math.floor(x[1]), Math.floor(x[2]) );
-    }
-  });
-  
   //Bind chat log handler
   engine.emitter.on('log_html', function(str) {
     var chat_log = document.getElementById('uiChatLog');

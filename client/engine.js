@@ -41,9 +41,14 @@ function Engine(game_module, session_id) {
   this.instance     = null;
   
   //Pause/ticker
+  this.fast_forward_threshold   = 40;
+  this.lag            = 10;
+  this.frame_skip     = 0;
+  this.server_tick_count = 0;
   this.last_tick      = 0;
-  this.tick_interval  = null; 
-  this.loaded_chunks  = false;
+  this.tick_interval  = null;
+  this.preload_complete  = false;
+  this.input_handlers = [];
 }
 
 
@@ -122,6 +127,13 @@ Engine.prototype.setActive = function(active) {
       clearTimeout(this.tick_interval);
       this.tick_interval = null;
     }
+    
+    //Clear out input handlers
+    if(this.input_handlers.length > 0) {
+      this.input.emitter.removeListener('press', this.input_handlers[0]);
+      this.input.emitter.removeListener('release', this.input_handlers[1]);
+      this.input_handlers.length = 0;
+    }
   }
   else {
     var engine = this;
@@ -151,12 +163,28 @@ Engine.prototype.setActive = function(active) {
       engine.last_tick = Date.now();
       this.tick_interval = setTimeout(ticker, 0);
     }
+    
+    //Register input handlers
+    if(this.input_handlers.length == 0) {
+      this.input_handlers.push(function(button) {
+        engine.instance.emitter.emit('press_'+button);
+      });
+      this.input_handlers.push(function(button) {
+        engine.instance.emitter.emit('release_'+button);
+      });
+      this.input.emitter.on('press', this.input_handlers[0]);
+      this.input.emitter.on('release', this.input_handlers[1]);
+    }
   }
 }
 
 //Ticks the engine
 Engine.prototype.tick = function() {
 
+  if(this.frame_skip > 0) {
+    --this.frame_skip;
+    return;
+  }
 
   this.emitter.emit('tick');
   if(this.instance) {
@@ -233,22 +261,43 @@ Engine.prototype.crash = function(errMsg) {
   this.emitter.removeAllListeners();
 }
 
+//Called upon receiving an update
+Engine.prototype.notifyUpdate = function(tick_count) {
 
-Engine.prototype.notifyLoadComplete = function(region_info) {
-  console.log("Chunk loading complete, starting local simulation");
+  var first_load = false;
 
-  this.loaded_chunks = true;
-
-  this.instance = new Instance(this, region_info);
-  this.instance.init();
-
-  var engine = this;
-  engine.emitter.emit('loaded');
+  if(!this.preload_complete) {
+    this.instance.region.tick_count = tick_count - this.lag;
+    
+    //Set engine state to loaded
+    this.preload_complete = true;
+    var engine = this;
+    engine.emitter.emit('loaded');
+    
+    //Activate game engine
+    engine.setActive(true);
+    
+    first_load = true;
+  }
   
-  engine.setActive(true);
+  var region = this.instance.region;
+  if(region.tick_count >= tick_count) {
+    console.warn("Ahead of server! (This should never happen)");
+    region.tick_count = tick_count - this.lag;
+  }
+  else if(region.tick_count < this.tick_count + this.lag) {
+    this.frame_skip = region.tick_count - this.tick_count - this.lag;
+  }
+  else if(region.tick_count <= tick_count - this.fast_forward_threshold) {
+    console.warn("Client is lagging!");
+    while(region.tick_count < tick_count - this.lag) {
+      this.tick();
+    }
+  }
+  return first_load;
 }
 
-Engine.prototype.changeInstance = function() {
+Engine.prototype.changeInstance = function(region_rec) {
 
   console.log("Changing instances");
 
@@ -256,12 +305,14 @@ Engine.prototype.changeInstance = function() {
   this.setActive(false);
 
   //Set chunk state to unloaded
-  this.loaded_chunks = false;
+  this.preload_complete = false;
 
   //Create and restart
   if(this.instance) {
     this.instance.deinit();
   }
+  this.instance = new Instance(this, region_rec);
+  this.instance.init();
 
   //Clear out voxel data
   this.voxels.reset();
@@ -273,18 +324,17 @@ Engine.prototype.changeInstance = function() {
 //Called upon joining an instance
 Engine.prototype.notifyJoin = function(player_rec) {
 
+  console.log("Entered game");
+
   //Save player record
   this.player = player_rec;
 
   //Bind keys
   this.input.bindKeys(player_rec.key_bindings);
-  
-  //Start loading the instance
-  this.changeInstance();
 }
 
 Engine.prototype.listenLoadComplete = function(cb) {
-  if(this.loaded_chunks) {
+  if(this.preload_complete) {
     setTimeout(cb, 0);
   }
   else {

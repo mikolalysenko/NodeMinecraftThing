@@ -7,13 +7,14 @@ function Connection(rpc, connection) {
 }
 
 
-
 exports.connectToServer = function(engine, cb) {
+
+  var tout = engine.game_module.socket_timeout;
 
   dnode({
 
-    notifyLoadComplete : function(region_info) {
-      engine.notifyLoadComplete(region_info);
+    changeInstance : function(region_info) {
+      engine.changeInstance(region_info);
     },
   
     updateInstance : function(tick_count, updates, removals, voxels) {
@@ -24,13 +25,23 @@ exports.connectToServer = function(engine, cb) {
         return;
       }
       
+      //Notify game engine
+      var first_load = engine.notifyUpdate(tick_count);
+      
       //Handle updates
       if(updates.length > 0) {
-        engine.instance.addFuture(tick_count, function() {
-          for(var i=0; i<updates.length; ++i) {
+        if(first_load) {
+         for(var i=0; i<updates.length; ++i) {
             instance.updateEntity(updates[i]);
           }
-        });
+        }
+        else {
+          engine.instance.addFuture(tick_count, function() {
+            for(var i=0; i<updates.length; ++i) {
+              instance.updateEntity(updates[i]);
+            }
+          });
+        }
       }
       
       //Handles removals
@@ -47,9 +58,8 @@ exports.connectToServer = function(engine, cb) {
         }
       }
       
-      //Handles voxels
+      //Handles voxel updates (these are processed separately from normal messages, due to large volume)
       if(voxels.length > 0) {
-      
         function handleVoxel(i) {
           instance.addFuture(voxels[i+2], function() {
             var k = parseInt(voxels[i]),
@@ -79,12 +89,12 @@ exports.connectToServer = function(engine, cb) {
     },
     
     //Called on client by server
-    remoteMessage : function(action_name, tick_count, entity, params) {
-    
-      if(game.instance) {
-      
+    remoteMessage : function(tick_count, action_name, entity_id, params) {    
+      if(engine.instance) {
+        engine.instance.addFuture(tick_count, function() {
+          engine.instance.remoteMessage(action_name, entity_id, params);
+        });
       }
-      alert("HERE");    
     },
     
   }).connect(function(rpc, connection) {
@@ -104,6 +114,34 @@ exports.connectToServer = function(engine, cb) {
     });
     
     cb(new Connection(rpc, connection));
+  }, {
+    //'connectTimeout':tout,
+    'transports':engine.game_module.socket_transports,
+    //'rememberTransport':false,
+    
+    /*
+    transportOptions: {
+      'flashsocket': {
+        closeTimeout: tout,
+        timeout: tout
+      }, 'websocket': {
+        closeTimeout: tout,
+        timeout: tout
+      }, 'htmlfile': {
+        closeTimeout: tout,
+        timeout: tout
+      }, 'xhr-multipart': {
+        closeTimeout: tout,
+        timeout: tout
+      }, 'xhr-polling': {
+        closeTimeout: tout,
+        timeout: tout
+      }, 'jsonp-polling': {
+        closeTimeout: tout,
+        timeout: tout
+      }
+    } 
+    */
   });
 }
 

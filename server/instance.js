@@ -66,9 +66,16 @@ Entity.prototype.deinit = function() {
 
 //Sends a message to the entity
 Entity.prototype.message = function(action_name) {
-}
-
-Entity.prototype.remoteMessage = function(action_name, player, params) {
+  var action = Array.prototype.slice.call(arguments,1);
+  
+  
+  for(var player_id in this.instance.players) {
+    var player = this.instance.players[player_id];
+    if(player.entity === this) {
+      player.pushMessage(action_name, this.state._id, action);
+    }
+  }
+  this.emitter.emit.apply(this.emitter, ['server_'+action_name].concat(action));
 }
 
 
@@ -80,7 +87,6 @@ function Player(instance, client, player_rec, entity_rec) {
   //Player record  
   this.state     = player_rec;
   this.entity    = null;
-  this.emitter   = new EventEmitter();
   
   //RPC interface
   this.net_state = 'loading';
@@ -94,6 +100,7 @@ function Player(instance, client, player_rec, entity_rec) {
   this.client_state = {};
   
   //Entity replication information
+  this.update_interval = null;
   this.cached_entities = {};
   this.pending_entity_updates = {};
   this.pending_entity_deletes = {};
@@ -103,10 +110,10 @@ function Player(instance, client, player_rec, entity_rec) {
 }
 
 //Pushes a message out to the client
-Player.prototype.pushMessage(action_name, entity_id, params) {
-  this.client.rpc.remoteMessage(action_name, entity_id, params);
+Player.prototype.pushMessage = function(action_name, entity_id, params) {
+  console.log("HERE:", action_name, entity_id, params);
+  this.client.rpc.remoteMessage(this.instance.region.tick_count, action_name, entity_id, params);
 }
-
 
 //Pushes updates to the player over the network
 Player.prototype.pushUpdates = function() {
@@ -114,6 +121,7 @@ Player.prototype.pushUpdates = function() {
   if(this.client.state !== 'game' ||
      this.net_state !== 'game') {
     clearInterval(this.update_interval);
+    this.update_interval = null;
     return;
   }
   
@@ -169,23 +177,16 @@ Player.prototype.logHTML = function(html_str) {
   this.client.rpc.logHTML(html_str);
 };
 
-Player.prototype.init = function() {
-  var player = this;
-  this.net_state = 'loading';
-  this.emitter.emit('init');
-  this.transmitChunks();
-}
-
 Player.prototype.deinit = function() {
   clearInterval(this.update_interval);
-  this.emitter.emit('deinit');
-  this.emitter.removeAllListeners();
   this.net_state = 'leaving';
 }
 
 
 //Transmits chunks while the player is in the loading state
-Player.prototype.transmitChunks = function() {
+Player.prototype.init = function() {
+
+  this.net_state = 'loading';
   var player = this,
       instance = player.instance;
   
@@ -193,22 +194,14 @@ Player.prototype.transmitChunks = function() {
     if(player.net_state !== 'loading') {
       return;
     }
-  
-    util.log("Player connected!");
     
     //Create player entity
     player.entity = instance.createEntity(player.entity_rec);
-
-    //Send load complete notification
-    player.client.rpc.notifyLoadComplete(instance.region);
-    
-    //Send message of the day to player
-    player.client.rpc.logHTML(instance.game_module.motd);
-    
+    player.entity.player = player;
 
     //Send initial copy of game state to player
-    for(var id in this.entities) {
-      var entity = this.entities[id];
+    for(var id in instance.entities) {
+      var entity = instance.entities[id];
       if( entity.net_replicated || entity.net_one_shot ) {
         player.updateEntity(entity);
       }
@@ -216,30 +209,16 @@ Player.prototype.transmitChunks = function() {
     
     //Start update interval
     player.net_state = 'game';
-    player.update_interval = setInterval(function() { player.pushUpdates(); }, player.instance.game_module.net_rate);
+    player.update_interval = setInterval(function() { player.pushUpdates(); }, instance.game_module.net_rate);
     player.pushUpdates();
     
     //Send a join event to all listeners
     instance.emitter.emit('join', player.entity);
   };
   
-  
-  //Kill client if they take too long to respond to the chunk transmission
-  // (max 1 minute)
-  var disconnect_interval = setTimeout(function() {
-    if(player.net_state === 'loading') {
-      player.client.kick();
-    }
-  }, 60*1000);
-  
-  
   //FIXME: This should probably send chunks in multiple parts
   function executeTransmit() {
   
-    if(disconnect_interval) {
-      clearTimeout(disconnect_interval);
-      disconnect_interval = null;
-    }
     if(player.net_state !== 'loading') {
       return;
     }
@@ -249,11 +228,16 @@ Player.prototype.transmitChunks = function() {
       buffer.push(parseInt(id))
       buffer.push(chunk_set.chunks[id].data);
     }
+    
     util.log("Transmitting chunks....");
     player.client.rpc.updateChunks(buffer, loadComplete);
   };
 
-  setTimeout(executeTransmit, 0);
+  //Set player to change instance
+  player.client.rpc.changeInstance(player.instance.region);
+  
+  //Set timeout
+  setTimeout(executeTransmit, 10);
 }
 
 
@@ -302,12 +286,9 @@ function Instance(region, db, region_set) {
 
 //Called remotely on server from client
 Instance.prototype.remoteMessage = function(action_name, player_id, entity_id, params) {
-  if(typeof(player_id) !== 'string') {
-    return;
-  }
   var player = this.players[player_id];
   if(!player || 
-    'game' !== player.state ||
+    'game' !== player.net_state ||
     !player.entity ||
     typeof(action_name) != 'string' ||
     typeof(params) != 'object' ||
@@ -318,11 +299,11 @@ Instance.prototype.remoteMessage = function(action_name, player_id, entity_id, p
   if(entity_id) {
     var entity = this.lookupEntity(entity_id);
     if(entity) {
-      entity.remoteMessage(action_name, player_id, entity_id, params);
+      entity.emitter.emit.apply(entity.emitter, ['remote_'+action_name, player].concat(params));
     }
   }
   else {
-    this.emitter.emit.apply(this.emitter, ['remote_'+action_name, player.entity].concat(params));
+    this.emitter.emit.apply(this.emitter, ['remote_'+action_name, player].concat(params));
   }
 }
 
@@ -335,18 +316,13 @@ Instance.prototype.message = function(action_name) {
   for(var player_id in this.players) {
     this.players[player_id].pushMessage(action_name, null, action);
   }
-  this.emitter.emit.apply(this.emitter, ['server_'+action_name].concat(action_name));
+  this.emitter.emit.apply(this.emitter, ['server_'+action_name].concat(action));
 }
 
 
 //Appends an HTML string to the instance
 Instance.prototype.logHTML = function(html_str) {
-  util.log("Logging:" + html_str);
-  
-  this.message_log += html_str;
-  for(var id in this.players) {
-    this.players[id].logHTML(html_str);
-  } 
+  util.log("LOG: " + html_str);
 };
 
 //Sets a voxel
@@ -514,7 +490,6 @@ Instance.prototype.updateEntity = function(entity) {
 
 //Synchronize with the database
 Instance.prototype.sync = function() {
-
   util.log("Synchronizing with database...");
 
   //Apply entity updates

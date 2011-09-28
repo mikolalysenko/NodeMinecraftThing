@@ -13,7 +13,7 @@ function Client(account, rpc, connection) {
   this.account    = account;
   this.rpc        = rpc;
   this.connection = connection;
-  this.player     = null;
+  this.player_id  = null;
   this.instance   = null;
 }
 
@@ -194,6 +194,8 @@ function Gateway(db, server, sessions, game_module) {
         
           //Set client state to game
           client.state = 'game';
+          client.player_id = player_rec._id;
+          
           cb(null, player_rec);
         });
       });
@@ -205,7 +207,6 @@ function Gateway(db, server, sessions, game_module) {
       if(--throttle_counter < 0 ||
          !client ||
           client.state != 'game' ||
-         !client.player ||
          !client.instance ||
          typeof(action_name) != 'string' ||
          typeof(args) != 'object' ||
@@ -213,19 +214,43 @@ function Gateway(db, server, sessions, game_module) {
         return;
       }
     
-      client.instance.remoteAction(action_name, client.player._id, entity_id, args);
+      client.instance.remoteMessage(action_name, client.player_id, entity_id, args);
     };
     
   });
   
   
+  
   //Listen for connections on server
+  var tout = this.game_module.socket_timeout;
   this.client_interface.listen(server, {
     io:{
-      'close timeout':game_module.socket_timeout,
-      'heartbeat timeout':game_module.socket_timeout,
-      'heratbeat interval':game_module.heartbeat_rate,
-      'polling duration':game_module.polling_rate,
+      //'heartbeat timeout': this.game_module.socket_timeout,
+      'transports': this.game_module.socket_transports,
+      
+      /*
+      transportOptions: {
+        'flashsocket': {
+          closeTimeout: tout,
+          timeout: tout
+        }, 'websocket': {
+          closeTimeout: tout,
+          timeout: tout
+        }, 'htmlfile': {
+          closeTimeout: tout,
+          timeout: tout
+        }, 'xhr-multipart': {
+          closeTimeout: tout,
+          timeout: tout
+        }, 'xhr-polling': {
+          closeTimeout: tout,
+          timeout: tout
+        }, 'jsonp-polling': {
+          closeTimeout: tout,
+          timeout: tout
+        }
+      } 
+      */
     }
   });
   

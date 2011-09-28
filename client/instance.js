@@ -65,6 +65,11 @@ function Instance(engine, region) {
   this.region.tick_count -= 4;
 }
 
+//Returns state of all input buttons
+Instance.prototype.getButtons = function() {
+  return this.engine.input.getState();
+}
+
 //Adds a future action
 Instance.prototype.addFuture = function(tick, fn) {
 
@@ -99,7 +104,7 @@ Instance.prototype.remoteMessage = function(action_name, entity_id, params) {
     entity.emitter.emit.apply(entity.emitter, ['server_' + action_name].concat(params));
   }
   else {
-    this.emitter.apply(this.emitter, ['server_' + action_name].concat(params));
+    this.emitter.emit.apply(this.emitter, ['server_' + action_name].concat(params));
   }
 }
 
@@ -107,8 +112,8 @@ Instance.prototype.remoteMessage = function(action_name, entity_id, params) {
 //Action (usually from player)
 Instance.prototype.message = function(action_name) {
   var args = Array.prototype.slice.call(arguments, 1);
-  this.engine.network.rpc.remoteAction(action_name, null, args);
-  this.emitter.emit.apply(this.emitter, ['action_'+action_name].concat(args));
+  this.engine.network.rpc.remoteMessage(action_name, null, args);
+  this.emitter.emit.apply(this.emitter, ['client_'+action_name].concat(args));
 }
 
 
@@ -137,15 +142,6 @@ Instance.prototype.deinit = function() {
 }
 
 //Adds a string to the chat/game log
-Instance.prototype.logText = function(str) {
-  this.logHTML(str
-    .replace(/\&/g, '&amp;')
-    .replace(/\</g, '&lt;')
-    .replace(/\>/g, '&gt;')
-    .replace(/\n/g, '<br/>')
-    .replace(/\s/g, '&nbsp;'));
-};
-
 Instance.prototype.logHTML = function(html_str) {
   this.engine.emitter.emit('log_html', html_str);
 };

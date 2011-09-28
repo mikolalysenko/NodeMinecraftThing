@@ -3,7 +3,9 @@
 //----------------------------------------------------------------
 
 //Game tick rate
-exports.tick_rate = 30;
+exports.tick_rate         = 30;
+exports.socket_timeout    = 2500;
+exports.socket_transports = ['websocket', 'flashsocket', 'htmlfile', 'xhr-multipart', 'xhr-polling', 'jsonp-polling'];
 
 //Game components
 exports.components = {
@@ -70,18 +72,44 @@ exports.registerPlayer = function(player) {
 
 exports.registerInstance = function(instance) {
 
-var region    = instance.region,
+  var region    = instance.region,
     emitter   = instance.emitter;
     
-  instance.emitter.on('action_voxel', function(entity,x,y,z) {  
+  emitter.on('remote_chat', function(player, mesg) {
+    if(typeof(mesg) !== 'string') {
+      return;
+    }
+    
+    //Sanitize message
+    var player_name = player.state.player_name,
+        html_str = mesg.replace('&', '&amp;')
+                       .replace('<', '&lt;')
+                       .replace('>', '&gt;');
+    instance.message('log', '<b>' + player_name + ':</b>' + html_str + '<br>');
+  });
+  
+  emitter.on('server_log', function(html_str) {
+    instance.logHTML(html_str);
+  });
+  
+  emitter.on('remote_voxel', function(player, x, y, z) {
+  
+    if(typeof(x) !== 'number' ||
+       typeof(y) !== 'number' ||
+       typeof(z) !== 'number') {
+      return;
+    }
+    
     instance.setVoxel(
       Math.floor(x), 
       Math.floor(y),
       Math.floor(z),
       1);
   });
-
-
+  
+  emitter.on('client_voxel', function(x,y,z) {
+    instance.setVoxel(x,y,z,1);
+  });
 };
 
 //----------------------------------------------------------------

@@ -20,7 +20,6 @@ exports.init = function(e_) {
       gamePane = document.getElementById('gamePane'),
       chatbox = document.getElementById('uiChatBox');
   
-  engine.input.emitter.on('press', chatListener);
   
   window.onresize = function() {
     gamePane.width  = window.innerWidth;
@@ -32,6 +31,9 @@ exports.init = function(e_) {
   gamePane.style.display = 'block';
   window.onresize();
 
+
+  engine.input.emitter.on('press', chatListener);
+  
   chatbox.onfocus = function() {
     engine.input.setActive(false);
   }
@@ -47,7 +49,7 @@ exports.init = function(e_) {
       var mesg = chatbox.value;
       chatbox.value = "";
       if(engine.instance && mesg.length > 0) {
-        engine.instance.action('chat', engine.playerEntity(), mesg);
+        engine.instance.message('chat', mesg);
       }
     }
     if(ev.keyCode === 9 || ev.keyCode === 13) {
