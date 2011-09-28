@@ -187,7 +187,9 @@ function markChunk(cx, cy, cz) {
 
 //Creates chunks from all the pending updates
 function makeCells() {
+
   for(var id in dirty_cells) {
+  
     var cell = dirty_cells[id],
         x = cell[0]<<CELL_SHIFT,
         y = cell[1]<<CELL_SHIFT,
@@ -234,7 +236,7 @@ emitter.on('stop', function() {
 
 emitter.on('start', function() {
   voxel_set = new Voxels.ChunkSet();
-  worker_interval = setInterval(makeCells);
+  worker_interval = setInterval(makeCells, 16);
   dirty_cells = {};
   post('started');
 });

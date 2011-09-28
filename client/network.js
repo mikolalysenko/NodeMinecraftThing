@@ -99,7 +99,7 @@ exports.connectToServer = function(engine, cb) {
     
   }).connect(function(rpc, connection) {
   
-    connection.on('end', function() {
+    connection.on('disconnect', function() {
       throw Error("Lost connection to network");
     });
     

@@ -18,7 +18,7 @@ function Client(account, rpc, connection) {
 }
 
 Client.prototype.kick = function() {
-  this.connection.end();
+  this.connection.disconnect();
 }
 
 //--------------------------------------------------------------
@@ -60,8 +60,16 @@ function Gateway(db, server, sessions, game_module) {
         throttle_counter = game_module.client_throttle,
         throttle_interval = null;
     
-    //Bind any connection events
     connection.on('end', function() {
+      console.log("CONNECTION ENDED");
+    });
+    
+    connection.on('close', function() {
+      console.log("CONNECTION CLOSED");
+    });
+    
+    //Bind any connection events
+    connection.on('disconnect', function() {
     
       util.log("Client disconnected");
       if(!client) {
@@ -83,7 +91,7 @@ function Gateway(db, server, sessions, game_module) {
     
     //Reject bad RPC interface
     if(!validateInterface(rpc, [])) {
-        connection.end();
+        client.kick();
         return;
     }
     
@@ -92,13 +100,13 @@ function Gateway(db, server, sessions, game_module) {
       if( client ||
           typeof(session_id) != "string" ||
           typeof(cb) != "function" ) {
-        connection.end();
+        client.kick();
         return;
       }    
       user_id = sessions.getToken(session_id);
       if(!user_id) {
         cb("Invalid session token", null);
-        connection.end();
+        client.kick();
         return;
       }
       
@@ -106,7 +114,7 @@ function Gateway(db, server, sessions, game_module) {
       gateway.accounts.getAccount(user_id, function(err, account) {
         if(err || !account) {
           cb(err, null);
-          connection.end();
+          client.kick();
           return;
         }
         
@@ -127,7 +135,7 @@ function Gateway(db, server, sessions, game_module) {
         gateway.accounts.listAllPlayers(account_id, function(err, players) {
           if(err) {
             cb(err, null, null);
-            connection.end();
+            client.kick();
             return;
           }
           cb(null, account, players);
@@ -142,7 +150,7 @@ function Gateway(db, server, sessions, game_module) {
         !client || client.state != 'login' ||
         typeof(options) != "object" ||
         typeof(cb) != "function" ) {
-        connection.end();
+        client.kick();
         return;
       }
       
@@ -163,7 +171,7 @@ function Gateway(db, server, sessions, game_module) {
         !client || client.state != 'login' ||
         typeof(player_name) != "string" ||
         typeof(cb) != "function") {
-        connection.end();
+        client.kick();
         return;
       }
       
@@ -176,7 +184,7 @@ function Gateway(db, server, sessions, game_module) {
         !client || client.state != 'login' ||
         typeof(player_name) != "string" ||
         typeof(cb) != "function") {
-        connection.end();
+        client.kick();
         return;
       }
       

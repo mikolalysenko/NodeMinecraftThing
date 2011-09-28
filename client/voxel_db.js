@@ -42,7 +42,7 @@ function post() {
 
 //Special case for handling console.log
 emitter.on('log', function() {
-  //console.log.apply(console, ['VoxelWorker:'].concat(Array.prototype.slice.call(arguments)));
+  console.log.apply(console, ['VoxelWorker:'].concat(Array.prototype.slice.call(arguments)));
 }); 
 
 //Update a cell
@@ -108,6 +108,7 @@ exports.init = function(engine_, cb) {
   
   //Wait for worker to start
   emitter.once('started', function() {
+    console.log("Voxel worker started!");
     cb(null);
   });
   
