@@ -106,9 +106,14 @@ Engine.prototype.init = function() {
         //Register game module
         game_module.registerEngine(engine);
         
-        //Initialize second set of modules 
-        engine.render.init(engine);
-        engine.loader.setReady();
+        //Initialize second set of modules
+        try {
+          engine.render.init(engine);
+          engine.loader.setReady();
+        }
+        catch(err) {
+          engine.crash(err);
+        }
       });
     });
   });
@@ -347,13 +352,13 @@ Engine.prototype.listenLoadComplete = function(cb) {
 exports.createEngine = function(game_module, session_id) {
 
   var engine = new Engine(game_module, session_id);
-  
-  window.onload   = function() { engine.init(); };
-  window.onunload = function() { engine.setState(DefaultState); };
-  window.onclose  = function() { engine.setState(DefaultState); };
+
   window.onerror  = function(errMsg, url, lineno) {
     engine.crash("Script error (" + url + ":" + lineno + ") -- " + errMsg);
   };
+  window.onunload = function() { engine.setState(DefaultState); };
+  window.onclose  = function() { engine.setState(DefaultState); };  
+  window.onload   = function() { engine.init(); };
   
   return engine;
 }

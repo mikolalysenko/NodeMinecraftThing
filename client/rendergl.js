@@ -22,9 +22,9 @@ function RenderGL(canvas) {
   this.textures = {};
   
   //Camera
-  this.view_matrix  = new Float32Array(16);
-  this.proj_matrix  = new Float32Array(16);
-  this.clip_matrix  = new Float32Array(16);
+  this.view_matrix  = null;
+  this.proj_matrix  = null;
+  this.clip_matrix  = null;
   
   //Rendering passes
   this.passes       = [ ];
@@ -33,23 +33,33 @@ function RenderGL(canvas) {
 }
 
 RenderGL.prototype.init = function(engine) {
+
+  if(typeof(Float32Array) === "undefined") {
+    throw Error("WebGL not supported");
+  }
+
   this.engine = engine;
 
   try {
-	  this.gl = this.canvas.getContext("experimental-webgl");
-	}
-	catch(err) {
-	  throw Error("WebGL not supported");
-	}
-	if(!this.gl) {
+    this.gl = this.canvas.getContext("experimental-webgl");
+      
+    //Camera
+    this.view_matrix  = new Float32Array(16);
+    this.proj_matrix  = new Float32Array(16);
+    this.clip_matrix  = new Float32Array(16);    
+  }
+  catch(err) {
     throw Error("WebGL not supported");
-	}
-	
+  }
+  if(!this.gl) {
+    throw Error("WebGL not supported");
+  }
+
   this.EXT_FPTex        = this.gl.getExtension("OES_texture_float");
   this.EXT_StdDeriv     = this.gl.getExtension("OES_standard_derivatives");
-	this.EXT_VertexArray  = this.gl.getExtension("OES_vertex_array_object");
-	
-	this.emitter.emit('init');
+  this.EXT_VertexArray  = this.gl.getExtension("OES_vertex_array_object");
+
+  this.emitter.emit('init');
 }
 
 RenderGL.prototype.deinit = function() {
