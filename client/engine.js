@@ -235,7 +235,7 @@ Engine.prototype.crash = function(errMsg) {
   //Shut down subsystems
   try {
     if(this.network) {
-      this.network.connection.end();
+      this.network.disconnect();
       this.network = null;
     }
     if(this.loader) {
