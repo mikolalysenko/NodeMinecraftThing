@@ -45,12 +45,7 @@ exports.registerEntity = function(entity) {
     entity.emitter.on('tick', function() {
       var buttons = instance.getButtons();
 
-      for(var i=0; i<3; ++i) {
-        entity.state.position[i] += entity.state.velocity[i];
-      }
-      
       var nx = 0, nz = 0;
-      
       if(buttons['up'] > 0) {
         nz -= 0.125;
       }
@@ -64,23 +59,28 @@ exports.registerEntity = function(entity) {
         nx -= 0.125;
       }
       
+      
+      var v = entity.velocity();
+      
       if(entity.state.velocity[0] != nx ||
          entity.state.velocity[2] != nz ) {
-         entity.state.velocity[0] = nx;
-         entity.state.velocity[2] = nz;
+         
+         //Update entity velocity         
+         entity.setVelocity([nx, 0, nz]);
          
          entity.message('input', 
-          entity.instance.region.tick_count + instance.engine.lag, 
-          entity.state.position, 
-          entity.state.velocity);
+          instance.region.tick_count, 
+          entity.position(), 
+          [nx, 0, nz]);
       }
       
       updateAnimation();
     });
     
+    
     //Handle action press here
     instance.emitter.on('press_action', function(button) {
-      var x = entity.state.position;
+      var x = entity.position();
       instance.message('voxel', Math.floor(x[0]), Math.floor(x[1]), Math.floor(x[2]));
     });
   
@@ -99,11 +99,6 @@ exports.registerEntity = function(entity) {
     console.log("Registering networked player");
 
     entity.emitter.on('tick', function() {
-      var p = entity.state.position,
-          v = entity.state.velocity;
-      for(var i=0; i<3; ++i) {
-        p[i] += v[i];
-      }
       updateAnimation();
     });
 
@@ -121,12 +116,23 @@ exports.registerEntity = function(entity) {
          console.log("Bad input packet");
          return;       
       }
-    
-      var dt = entity.instance.region.tick_count - ticks;
-      for(var i=0; i<3; ++i) {
-        entity.state.position[i] = position[i] + velocity[i]*dt;
-        entity.state.velocity[i] = velocity[i];
+      
+      if(ticks <= entity.motion_start_time) {
+        return;
       }
+      
+      var p = entity.position(),
+          d = 0.0;
+          
+      for(var i=0; i<3; ++i) {
+        d += Math.abs(p[i] - position[i]);
+      }
+      if( d > 1 ) {
+        return;
+      }
+
+      entity.setPosition(position);
+      entity.setVelocity(velocity);
     });
   }  
 };
