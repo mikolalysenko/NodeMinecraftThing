@@ -18,8 +18,8 @@ function Client(account, socket) {
 }
 
 Client.prototype.makeCallback = function(cb) {
-  this.callbacks[++callback_id] = cb;
-  return callback_id;
+  this.callbacks[++this.callback_id] = cb;
+  return this.callback_id;
 }
 
 Client.prototype.kick = function() {
@@ -88,7 +88,7 @@ function Gateway(db, server, sessions, game_module) {
     //Converts callback into callback num
     function callback(cb_num) {
       return function() {
-        socket.emit.apply(socket, ['callback', cb_num].concat(Array.prototype.slice.call(arguments, 1)));
+        socket.emit.apply(socket, ['callback', cb_num].concat(Array.prototype.slice.call(arguments)));
       }
     }
     
@@ -103,7 +103,7 @@ function Gateway(db, server, sessions, game_module) {
       
       //Unregister callback, and execute it
       delete client.callbacks[cb_num];      
-      cb.call(Array.slice.call(arguments,1));
+      cb.apply(null, Array.prototype.slice.call(arguments,1));
     });
     
     //Bind any connection events

@@ -8,12 +8,6 @@ function makeCallback(cb) {
   return callback_id;
 }
 
-function evalCallback(cb_num) {
-  return function() {
-    socket.emit.apply(socket, ['callback', cb_num].concat(Array.prototype.slice.call(arguments, 1)));
-  }
-}
-
 
 function Connection(socket) {
   this.socket = socket;
@@ -46,9 +40,22 @@ Connection.prototype.disconnect = function() {
 exports.connectToServer = function(engine, cb) {
   var tout    = engine.game_module.socket_timeout,
       socket  = io.connect(window.location.origin);
+      
+  function evalCallback(cb_num) {
+    return function() {
+      socket.emit.apply(socket, ['callback', cb_num].concat(Array.prototype.slice.call(arguments, 1)));
+    }
+  }
+
 
   socket.on('callback', function(cb_num) {
-    callbacks[cb_num].call(Array.prototype.slice.call(arguments, 1));
+    var args = Array.prototype.slice.call(arguments, 1),
+        cb = callbacks[cb_num];
+        
+    if(cb) {
+      delete callbacks[cb_num];
+      cb.apply(null, args);
+    }
   });
   
   socket.on('changeInstance', function(region_info) {
