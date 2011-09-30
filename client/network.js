@@ -135,33 +135,8 @@ exports.connectToServer = function(engine, cb) {
     
     cb(new Connection(rpc, connection));
   }, {
-    //'connectTimeout':tout,
+    'connectTimeout':tout,
     'transports':engine.game_module.socket_transports,
-    //'rememberTransport':false,
-    
-    /*
-    transportOptions: {
-      'flashsocket': {
-        closeTimeout: tout,
-        timeout: tout
-      }, 'websocket': {
-        closeTimeout: tout,
-        timeout: tout
-      }, 'htmlfile': {
-        closeTimeout: tout,
-        timeout: tout
-      }, 'xhr-multipart': {
-        closeTimeout: tout,
-        timeout: tout
-      }, 'xhr-polling': {
-        closeTimeout: tout,
-        timeout: tout
-      }, 'jsonp-polling': {
-        closeTimeout: tout,
-        timeout: tout
-      }
-    } 
-    */
   });
 }
 

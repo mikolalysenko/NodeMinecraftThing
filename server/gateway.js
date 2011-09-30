@@ -66,7 +66,9 @@ function Gateway(db, server, sessions, game_module) {
   }
 
   //Sets up client interface for gateway
-  var gateway = this;
+  var gateway = this,
+      io = require('io');
+
   this.client_interface = dnode(function(rpc, connection) {
 
     util.log("Client connected");
