@@ -43,7 +43,7 @@ Entity.prototype.draw = function() {
 //Sends a message to the server on behalf of this entity
 Entity.prototype.message = function(action_name) {
   var args = Array.prototype.slice.call(arguments,1);
-  this.instance.engine.network.rpc.remoteMessage(action_name, this.state._id, args);
+  this.instance.engine.network.remoteMessage(action_name, this.state._id, args);
   this.emitter.emit.apply(this.emitter, ['client_' + action_name].concat(arguments));
 }
 
@@ -112,7 +112,7 @@ Instance.prototype.remoteMessage = function(action_name, entity_id, params) {
 //Action (usually from player)
 Instance.prototype.message = function(action_name) {
   var args = Array.prototype.slice.call(arguments, 1);
-  this.engine.network.rpc.remoteMessage(action_name, null, args);
+  this.engine.network.remoteMessage(action_name, null, args);
   this.emitter.emit.apply(this.emitter, ['client_'+action_name].concat(args));
 }
 

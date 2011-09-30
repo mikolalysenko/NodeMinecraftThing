@@ -1,4 +1,3 @@
-
 //Event emitter module
 var EventEmitter = require('events').EventEmitter,
     Instance     = require('./instance.js').Instance;

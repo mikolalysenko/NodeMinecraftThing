@@ -11,7 +11,7 @@ function sink(err) { if(err) util.log(err); }
 function Client(account, rpc, connection) {
   this.state      = 'login';
   this.account    = account;
-  this.rpc        = rpc;
+  this.rpc_       = rpc;
   this.connection = connection;
   this.player_id  = null;
   this.instance   = null;
@@ -20,6 +20,23 @@ function Client(account, rpc, connection) {
 Client.prototype.kick = function() {
   this.connection.disconnect();
 }
+
+Client.prototype.changeInstance = function(region_info) {
+  this.rpc_.changeInstance(region_info);
+}
+
+Client.prototype.updateInstance = function(tick_count, updates, removals, voxels) {
+  this.rpc_.updateInstance(tick_count, updates, removals, voxels);
+}
+
+Client.prototype.updateChunks = function(updates, cb) {
+  this.rpc_.updateChunks(updates, cb);
+}
+
+Client.prototype.remoteMessage = function(tick_count, action_name, entity_id, actions) {
+  this.rpc_.remoteMessage(tick_count, action_name, entity_id, actions);
+}
+
 
 //--------------------------------------------------------------
 // The RPC interface which is exposed to the client

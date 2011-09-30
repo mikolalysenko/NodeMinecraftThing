@@ -112,7 +112,7 @@ function Player(instance, client, player_rec, entity_rec) {
 //Pushes a message out to the client
 Player.prototype.pushMessage = function(action_name, entity_id, params) {
   console.log("HERE:", action_name, entity_id, params);
-  this.client.rpc.remoteMessage(this.instance.region.tick_count, action_name, entity_id, params);
+  this.client.remoteMessage(this.instance.region.tick_count, action_name, entity_id, params);
 }
 
 //Pushes updates to the player over the network
@@ -168,13 +168,8 @@ Player.prototype.pushUpdates = function() {
   
   //Send updates to client if necessary
   if(update_buffer.length > 0 || removals.length > 0 || voxel_buf.length > 0) {
-    this.client.rpc.updateInstance(this.instance.region.tick_count, update_buffer, removals, voxel_buf);
+    this.client.updateInstance(this.instance.region.tick_count, update_buffer, removals, voxel_buf);
   }
-};
-
-//Just cat directly to player log
-Player.prototype.logHTML = function(html_str) {
-  this.client.rpc.logHTML(html_str);
 };
 
 Player.prototype.deinit = function() {
@@ -230,11 +225,11 @@ Player.prototype.init = function() {
     }
     
     util.log("Transmitting chunks....");
-    player.client.rpc.updateChunks(buffer, loadComplete);
+    player.client.updateChunks(buffer, loadComplete);
   };
 
   //Set player to change instance
-  player.client.rpc.changeInstance(player.instance.region);
+  player.client.changeInstance(player.instance.region);
   
   //Set timeout
   setTimeout(executeTransmit, 10);

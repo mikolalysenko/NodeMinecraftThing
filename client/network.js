@@ -2,9 +2,31 @@ var dnode = require('dnode'),
     Voxels = require('./voxels.js');
 
 function Connection(rpc, connection) {
-  this.rpc        = rpc;
+  this.rpc_       = rpc;
   this.connection = connection;
 }
+
+Connection.prototype.login = function(session_id, cb) {
+  this.rpc_.login(session_id, cb);
+}
+
+Connection.prototype.createPlayer = function(options, cb) {
+  this.rpc_.createPlayer(options, cb);
+}
+
+
+Connection.prototype.deletePlayer = function(player_name, cb) {
+  this.rpc_.deletePlayer(player_name, cb);
+}
+
+Connection.prototype.joinGame = function(player_name, cb) {
+  this.rpc_.joinGame(player_name, cb);
+}
+
+Connection.prototype.remoteMessage = function(action_name, entity_id, args) {
+  this.rpc_.remoteMessage(action_name, entity_id, args);
+}
+
 
 
 exports.connectToServer = function(engine, cb) {
