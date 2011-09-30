@@ -38,7 +38,7 @@ function Entity(instance, state) {
   this.persistent = true;        //If set, entity gets stored to db.  This is done using copy-on-write semantics.
   this.net_replicated = true;    //If set, then the entity gets sent across the network
                                  // Useful for objects that are important for the client or have long lives.
-  this.net_cache  = false;       //If set along with net_replicated, keep track of entity state for each player to delta encode updates.  
+  this.net_cache  = true;       //If set along with net_replicated, keep track of entity state for each player to delta encode updates.  
                                  // Useful for big entities with, small frequently changing variables.
   this.net_one_shot = false;     //If set, only replicate entity creation event.  Do not synchronize after creation.
                                  // Useful for projectiles and other shortly lived objects
@@ -131,17 +131,22 @@ Player.prototype.pushUpdates = function() {
   for(var id in this.pending_entity_updates) {
     var entity = this.instance.lookupEntity(id);
     
-    if(entity.net_cached) {
+    if(entity.net_cache) {
       
-      if(!(id in cached_entities)) {
-        cached_entities[id] = {};
+      util.log("Cached!");
+      
+      if(!(id in this.cached_entities)) {
+        this.cached_entities[id] = {};
       }
       
-      var patch = patcher.computePatch(known_entities[id], entity.state);
+      var patch = patcher.computePatch(this.cached_entities[id], entity.state, true);
       patch._id = entity.state._id;
       update_buffer.push(patch);
+      
+      console.log("patch:", patch);
     }
     else {
+      util.log("no cache");
       update_buffer.push(entity.state);
     }
   }
@@ -637,7 +642,7 @@ Instance.prototype.createEntity = function(state) {
   //Create the entity and register it
   var entity = new Entity(this, state);
   this.entities[entity.state._id] = entity;
-  entity.state.region_id = this.region.region_id;
+  entity.state.region_id = this.region._id;
   
   //Add components to entity
   this.region_set.registerEntity(entity);

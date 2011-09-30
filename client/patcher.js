@@ -115,7 +115,7 @@ function computePatch(prev, next, update_in_place) {
     var target_id = (typeof(id) === "string" && id.charAt(0) == "$" ? "$" + id : id);
     
     //First, check if the element exists and types match
-    if(id in prev && typeof(prev[id]) === typeof(next[id])) {
+    if(id in prev && typeof(prev[id]) == typeof(next[id])) {
     
       if(typeof(next[id]) === "object") {
       
@@ -132,7 +132,7 @@ function computePatch(prev, next, update_in_place) {
           return;
         }
       }
-      else if(prev[id] === next[id]) {
+      else if(prev[id] == next[id]) {
       
         //P.O.D. case
         return;

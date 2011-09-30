@@ -13,6 +13,7 @@ exports.registerEntity = function(entity) {
   if(!instance) {
     return;
   }
+  
 
   function updateAnimation() {
     //Set player animation
