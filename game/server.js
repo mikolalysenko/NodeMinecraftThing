@@ -8,6 +8,7 @@ exports.registerFramework = function(framework_) {
 }
 
 exports.components        = common.components;
+exports.sprite_classes    = common.sprite_classes;
 exports.entity_types      = common.entity_types;
 exports.voxel_types       = common.voxel_types;
 exports.socket_timeout    = common.socket_timeout;

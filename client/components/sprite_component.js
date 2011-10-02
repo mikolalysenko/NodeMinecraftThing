@@ -1,10 +1,11 @@
-var sprite_classes = require('../sprites.js').sprite_classes;
+var sprite_classes = {};
 
 var framework = null;
 exports.registerFramework = function(f) { framework = f; };
 
 //Registers instance
 exports.registerInstance = function(instance) {
+  sprite_classes = instance.game_module.sprite_classes;
 };
 
 //Registers an entity

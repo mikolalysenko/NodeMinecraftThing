@@ -8,10 +8,12 @@ var framework = null;
 exports.tick_rate         = 30;
 exports.socket_transports = ['websocket', 'flashsocket', 'htmlfile', 'xhr-multipart', 'xhr-polling', 'jsonp-polling'];
 
+//Sprite classes
+exports.sprite_classes = require('./sprites.js').sprite_classes;
+
 //Game components
 exports.components = {
   'player' : require('./components/player_component.js'),
-  'sprite' : require('./components/sprite_component.js'),
 };
 
 //Entity type data

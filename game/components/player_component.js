@@ -45,7 +45,6 @@ exports.registerEntity = function(entity) {
                         entity === instance.engine.playerEntity();
   if(is_local_player) {
   
-  
     function processInput() {
       var buttons = instance.getButtons();
       var nx = 0, nz = 0;
@@ -62,7 +61,6 @@ exports.registerEntity = function(entity) {
         nx -= 0.125;
       }
       
-      
       var v = entity.velocity();
       
       if(entity.state.velocity[0] != nx ||
@@ -78,18 +76,14 @@ exports.registerEntity = function(entity) {
       }    
     };
     
-    
     function checkPosition() {
-    
       var net_position = computePosition(instance.region.tick_count, entity.net_state),
           local_position = entity.position(),
           d = 0;
       for(var i=0; i<3; ++i) {
         d = Math.max(d, Math.abs(net_position[i] - local_position[i]));
       }
-      if(d > CORRECT_THRESHOLD) {
-        entity.setPosition(net_position);
-      }
+      return d <= CORRECT_THRESHOLD;
     }
     
   
@@ -107,8 +101,27 @@ exports.registerEntity = function(entity) {
     });
     
     //Correct player's local position
-    entity.emitter.on('net_update', function() {
-      //Disregard
+    entity.emitter.on('net_update', function(net_state, overrides) {
+      
+      //Check if local position is acceptable
+      if(net_state.motion_start_tick <= entity.state.motion_start_tick && checkPosition() ) {
+        //Save motion state and update
+        var p = entity.position(),
+            v = entity.velocity(),
+            t = instance.region.tick_count;
+        overrides.push(function() {
+          entity.state.motion_start_tick = t;
+          entity.state.position          = p;
+          entity.state.velocity          = v;
+        });
+      }
+      else {
+        //Otherwise, need to correct player position
+        var v = entity.velocity();
+        overrides.push(function() {
+          entity.setVelocity(v);
+        });
+      }
     });
     
     //Logs a message to the player
@@ -118,14 +131,13 @@ exports.registerEntity = function(entity) {
   }  
   else {
   
+    //Tick
     entity.emitter.on('tick', function() {
       updateAnimation();
     });
     
     //Apply a network packet to update player position  
     entity.emitter.on('remote_input', function(player, ticks, position, velocity) {
-    
-      console.log("input:", ticks, position, velocity);
     
       if(player.entity !== entity ||
          typeof(ticks) !== 'number' ||
@@ -144,11 +156,9 @@ exports.registerEntity = function(entity) {
           d = 0.0,
           dt = instance.region.tick_count - ticks;
           
-      console.log("entity:", p);
       for(var i=0; i<3; ++i) {
         d = Math.max(d, Math.abs(p[i] - position[i])) ;
       }
-      console.log("dist = ", d);
       if(d > CORRECT_THRESHOLD) {
         console.log("Player is out of sync");
         entity.setVelocity(velocity);

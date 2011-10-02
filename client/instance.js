@@ -52,6 +52,7 @@ Entity.prototype.message = function(action_name) {
 // Client side instance object
 //----------------------------------------------------------------
 function Instance(engine, region) {
+  this.game_module  = engine.game_module;
   this.region       = region;
   this.entities     = {};
   this.running      = false;
@@ -241,11 +242,13 @@ Instance.prototype.updateEntity = function(patch) {
     entity.net_tick = this.region.tick_count;
     
     //Emit net update event only if there is a special handler, otherwise just overwrite state
-    if(emitter.listeners('net_update').length == 0) {
-      patcher.assign(entity.state, entity.net_state);
-    }
-    else {
-      entity.emitter.emit('net_update');
+    var overrides = [];
+    entity.emitter.emit('net_update', entity.net_state, overrides);
+    patcher.assign(entity.state, entity.net_state);
+    
+    //Apply overrides
+    for(var i=0; i<overrides.length; ++i) {
+      overrides[i]();
     }
   }
   else {

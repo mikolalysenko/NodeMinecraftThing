@@ -13,4 +13,5 @@ exports.SpritePass   = require('./sprite_pass.js').SpritePass;
 //Components
 exports.default_components = {
   'motion' : require('./components/motion_component.js'),
+  'sprite' : require('./components/sprite_component.js'),
 };
