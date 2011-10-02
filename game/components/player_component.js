@@ -1,9 +1,15 @@
-var framework = null;
-exports.registerFramework = function(f) { framework = f; };
+var CORRECT_THRESHOLD = 2.0;
+
+
+var framework = null,
+    computePosition = null;
+exports.registerFramework = function(f) {
+  framework = f;
+  computePosition = framework.default_components['motion'].computePosition;  
+};
 
 //Registers instance
 exports.registerInstance = function(instance) {
-  console.log("Registered instance");
 };
 
 //Registers an entity
@@ -39,12 +45,9 @@ exports.registerEntity = function(entity) {
                         entity === instance.engine.playerEntity();
   if(is_local_player) {
   
-    console.log("Registering local player");
-        
-    //Apply input here
-    entity.emitter.on('tick', function() {
+  
+    function processInput() {
       var buttons = instance.getButtons();
-
       var nx = 0, nz = 0;
       if(buttons['up'] > 0) {
         nz -= 0.125;
@@ -72,8 +75,27 @@ exports.registerEntity = function(entity) {
           instance.region.tick_count, 
           entity.position(), 
           [nx, 0, nz]);
+      }    
+    };
+    
+    
+    function checkPosition() {
+    
+      var net_position = computePosition(instance.region.tick_count, entity.net_state),
+          local_position = entity.position(),
+          d = 0;
+      for(var i=0; i<3; ++i) {
+        d = Math.max(d, Math.abs(net_position[i] - local_position[i]));
       }
-      
+      if(d > CORRECT_THRESHOLD) {
+        entity.setPosition(net_position);
+      }
+    }
+    
+  
+    //Apply input here
+    entity.emitter.on('tick', function() {
+      processInput();
       updateAnimation();
     });
     
@@ -83,7 +105,7 @@ exports.registerEntity = function(entity) {
       var x = entity.position();
       instance.message('voxel', Math.floor(x[0]), Math.floor(x[1]), Math.floor(x[2]));
     });
-  
+    
     //Correct player's local position
     entity.emitter.on('net_update', function() {
       //Disregard
@@ -96,12 +118,10 @@ exports.registerEntity = function(entity) {
   }  
   else {
   
-    console.log("Registering networked player");
-
     entity.emitter.on('tick', function() {
       updateAnimation();
     });
-
+    
     //Apply a network packet to update player position  
     entity.emitter.on('remote_input', function(player, ticks, position, velocity) {
     
@@ -120,15 +140,20 @@ exports.registerEntity = function(entity) {
          return;       
       }
       
-      var p = entity.position(),
-          d = 0.0;
+      var p = computePosition(ticks, entity.state),
+          d = 0.0,
+          dt = instance.region.tick_count - ticks;
           
       console.log("entity:", p);
       for(var i=0; i<3; ++i) {
-        d += Math.abs(p[i] - position[i]);
+        d = Math.max(d, Math.abs(p[i] - position[i])) ;
       }
-      
       console.log("dist = ", d);
+      if(d > CORRECT_THRESHOLD) {
+        console.log("Player is out of sync");
+        entity.setVelocity(velocity);
+        return;
+      }
 
       entity.state.position = position;
       entity.state.velocity = velocity;

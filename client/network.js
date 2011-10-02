@@ -85,7 +85,7 @@ exports.connectToServer = function(engine, cb) {
           var tc = updates[i],
               patch = updates[i+1];
           if(patch.motion_start_tick && patch.motion_start_tick < tc) {
-            tc = Math.max(instance.region.tick_count, patch.motion_start_tick);
+            tc = Math.max(instance.region.tick_count+1, patch.motion_start_tick);
           }
           instance.addFuture(tc, function() {
             instance.updateEntity(updates[i+1]);

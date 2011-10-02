@@ -7,6 +7,9 @@ function computePosition(tick_count, state, r) {
     r = [0,0,0];
   }
   var dt = tick_count - state.motion_start_tick;
+  if(dt < 0) {
+    dt = 0;
+  }
   for(var i=0; i<3; ++i) {
     r[i] = state.position[i] + dt * state.velocity[i];
   }

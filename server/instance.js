@@ -111,7 +111,6 @@ function Player(instance, client, player_rec, entity_rec) {
 
 //Pushes a message out to the client
 Player.prototype.pushMessage = function(action_name, entity_id, params) {
-  console.log("HERE:", action_name, entity_id, params);
   this.client.remoteMessage(this.instance.region.tick_count, action_name, entity_id, params);
 }
 
@@ -285,8 +284,6 @@ function Instance(region, db, region_set) {
 
 //Called remotely on server from client
 Instance.prototype.remoteMessage = function(action_name, player_id, entity_id, params) {
-
-  console.log("remote message:", action_name, player_id, entity_id, params);
 
   var player = this.players[player_id];
   if(!player || 
