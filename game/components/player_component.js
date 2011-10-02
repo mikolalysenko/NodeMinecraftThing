@@ -105,6 +105,8 @@ exports.registerEntity = function(entity) {
     //Apply a network packet to update player position  
     entity.emitter.on('remote_input', function(player, ticks, position, velocity) {
     
+      console.log("input:", ticks, position, velocity);
+    
       if(player.entity !== entity ||
          typeof(ticks) !== 'number' ||
          typeof(position) !== 'object' ||
@@ -112,27 +114,25 @@ exports.registerEntity = function(entity) {
          position.length !== 3 ||
          typeof(velocity) !== 'object' ||
          !(velocity instanceof Array) ||
-         velocity.length !== 3) {
+         velocity.length !== 3 ||
+         ticks <= entity.motion_start_tick) {
          console.log("Bad input packet");
          return;       
-      }
-      
-      if(ticks <= entity.motion_start_time) {
-        return;
       }
       
       var p = entity.position(),
           d = 0.0;
           
+      console.log("entity:", p);
       for(var i=0; i<3; ++i) {
         d += Math.abs(p[i] - position[i]);
       }
-      if( d > 1 ) {
-        return;
-      }
+      
+      console.log("dist = ", d);
 
-      entity.setPosition(position);
-      entity.setVelocity(velocity);
+      entity.state.position = position;
+      entity.state.velocity = velocity;
+      entity.state.motion_start_tick = ticks;
     });
   }  
 };

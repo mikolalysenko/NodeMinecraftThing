@@ -75,6 +75,9 @@ Engine.prototype.setState = function(next_state) {
 //Initialize the engine
 Engine.prototype.init = function() {
 
+  //Register framework
+  this.game_module.registerFramework(this.framework);
+
   var engine = this,
       game_module = engine.game_module,
       components = game_module.components;
@@ -98,7 +101,7 @@ Engine.prototype.init = function() {
     //Start voxel database
     engine.voxels.init(engine, function() {
       
-      //Set up login framework
+      //Set up login
       engine.login = new (require('./login.js').LoginHandler)(engine);
       engine.login.init(function() {
       

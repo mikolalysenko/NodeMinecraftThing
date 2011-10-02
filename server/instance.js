@@ -126,27 +126,26 @@ Player.prototype.pushUpdates = function() {
   }
   
   //Send update messages
-  // FIXME: Prioritize updates
   var update_buffer = [];
   for(var id in this.pending_entity_updates) {
-    var entity = this.instance.lookupEntity(id);
+    var tick = this.pending_entity_updates[id],
+        entity = this.instance.lookupEntity(id);
     
-    if(entity.net_cache) {
-      
-      util.log("Cached!");
-      
+    if(entity.net_cache) {      
       if(!(id in this.cached_entities)) {
         this.cached_entities[id] = {};
       }
       
       var patch = patcher.computePatch(this.cached_entities[id], entity.state, true);
-      patch._id = entity.state._id;
-      update_buffer.push(patch);
       
-      console.log("patch:", patch);
+      if(patch) {
+        patch._id = entity.state._id;
+        update_buffer.push(tick);
+        update_buffer.push(patch);
+      }
     }
     else {
-      util.log("no cache");
+      update_buffer.push(tick);
       update_buffer.push(entity.state);
     }
   }
@@ -203,7 +202,7 @@ Player.prototype.init = function() {
     for(var id in instance.entities) {
       var entity = instance.entities[id];
       if( entity.net_replicated || entity.net_one_shot ) {
-        player.updateEntity(entity);
+        player.updateEntity(entity, instance.region.tick_count);
       }
     }
     
@@ -259,8 +258,8 @@ Player.prototype.deleteEntity = function(entity) {
 }
 
 //Marks an entity for getting updated
-Player.prototype.updateEntity = function(entity) {
-  this.pending_entity_updates[entity.state._id] = entity.net_priority;
+Player.prototype.updateEntity = function(entity, tick) {
+  this.pending_entity_updates[entity.state._id] = tick;
 }
 
 
@@ -286,6 +285,9 @@ function Instance(region, db, region_set) {
 
 //Called remotely on server from client
 Instance.prototype.remoteMessage = function(action_name, player_id, entity_id, params) {
+
+  console.log("remote message:", action_name, player_id, entity_id, params);
+
   var player = this.players[player_id];
   if(!player || 
     'game' !== player.net_state ||
@@ -477,8 +479,9 @@ Instance.prototype.updateEntity = function(entity) {
   
   //Mark entity in each player
   if(replicated) {
+    var tc = this.region.tick_count;
     for(var player_id in this.players) {
-      this.players[player_id].updateEntity(entity);
+      this.players[player_id].updateEntity(entity, tc);
     }
     
     //If entity is one-shot, only replicate it once

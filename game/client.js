@@ -1,5 +1,10 @@
 var common = require('./common.js'),
     framework = null;
+    
+exports.registerFramework = function(framework_) {
+  framework = framework_;
+  common.registerFramework(framework);
+}
 
 exports.components          = common.components;
 exports.entity_types        = common.entity_types;
@@ -66,9 +71,6 @@ function setupRender(engine) {
 
 //Called at start up
 exports.registerEngine = function(engine) {
-  
-  //Application framework
-  framework = engine.framework;
   
   //Set up custom error handler
   engine.error_state = exports.states.error_state;

@@ -11,4 +11,6 @@ exports.VoxelPass    = require('./voxel_pass.js').VoxelPass;
 exports.SpritePass   = require('./sprite_pass.js').SpritePass;
 
 //Components
-exports.MotionComponent = require('./components/motion_component.js');
+exports.default_components = {
+  'motion' : require('./components/motion_component.js'),
+};

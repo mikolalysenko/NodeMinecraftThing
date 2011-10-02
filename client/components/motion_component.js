@@ -1,6 +1,20 @@
 var framework = null;
 exports.registerFramework = function(f) { framework = f; };
 
+//Function for computing position
+function computePosition(tick_count, state, r) {
+  if(!r) {
+    r = [0,0,0];
+  }
+  var dt = tick_count - state.motion_start_tick;
+  for(var i=0; i<3; ++i) {
+    r[i] = state.position[i] + dt * state.velocity[i];
+  }
+  return r;
+}
+
+exports.computePosition = computePosition;
+
 //Registers instance
 exports.registerInstance = function(instance) { };
 
@@ -20,17 +34,13 @@ exports.registerEntity = function(entity) {
   if(!entity.state.motion_start_tick) {
     entity.state.motion_start_tick = 0;
   }
+  if(!entity.state.motion_model) {
+    entity.state.motion_model = 'linear';
+  }
   
   //Retrieves the position at a tick (if specified)
   entity.position = function(r) {
-    if(!r) {
-      r = [0,0,0];
-    }
-    var dt = instance.region.tick_count - entity.state.motion_start_tick;
-    for(var i=0; i<3; ++i) {
-      r[i] = entity.state.position[i] + dt * entity.state.velocity[i];
-    }
-    return r;
+    return computePosition(instance.region.tick_count, entity.state, r);
   }
   
   //Retrieves entity velocity
@@ -59,5 +69,5 @@ exports.registerEntity = function(entity) {
     }
     entity.state.motion_start_tick = instance.region.tick_count;
   }
-}
+};
 

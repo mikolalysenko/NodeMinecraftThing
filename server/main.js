@@ -8,8 +8,9 @@ exports.bootStrap = function(settings) {
 
 
 //Game server module
-var game_module = require(path.join(settings.game_dir, '/server.js')),
-    framework   = require('./framework.js');
+var framework   = require('./framework.js'),
+    game_module = require(path.join(settings.game_dir, '/server.js'));
+game_module.registerFramework(framework);
 for(var i in game_module.components) {
   game_module.components[i].registerFramework(framework);
 }

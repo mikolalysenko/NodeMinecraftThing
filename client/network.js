@@ -76,16 +76,24 @@ exports.connectToServer = function(engine, cb) {
     //Handle updates
     if(updates.length > 0) {
       if(first_load) {
-       for(var i=0; i<updates.length; ++i) {
-          instance.updateEntity(updates[i]);
+       for(var i=0; i<updates.length; i+=2) {
+          instance.updateEntity(updates[i+1]);
         }
       }
       else {
-        engine.instance.addFuture(tick_count, function() {
-          for(var i=0; i<updates.length; ++i) {
-            instance.updateEntity(updates[i]);
+        function addUpdate(i) {
+          var tc = updates[i],
+              patch = updates[i+1];
+          if(patch.motion_start_tick && patch.motion_start_tick < tc) {
+            tc = Math.max(instance.region.tick_count, patch.motion_start_tick);
           }
-        });
+          instance.addFuture(tc, function() {
+            instance.updateEntity(updates[i+1]);
+          });
+        }
+        for(var i=0; i<updates.length; i+=2) {
+          addUpdate(i);
+        }
       }
     }
     

@@ -1,5 +1,11 @@
 var path = require('path'),
-    common = require('./common.js');
+    common = require('./common.js'),
+    framework = null;
+
+exports.registerFramework = function(framework_) {
+  framework = framework_;
+  common.registerFramework(framework_);
+}
 
 exports.components        = common.components;
 exports.entity_types      = common.entity_types;

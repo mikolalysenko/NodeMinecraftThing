@@ -1,18 +1,20 @@
-var linalg = require('./linalg.js');
+var linalg = require('./linalg.js'),
+    motion = require('./components/motion_component.js');
+
+var computePosition = motion.computePosition;
+
+exports.computePosition = computePosition;
 
 exports.renderPosition = function(entity, t) {
-  var n = entity.state, p = entity.last_state;
-  
-  var pp = [0,0,0], pv = p.velocity, np = [0,0,0], nv = n.velocity,
-      tc = instance.region.tick_count,
-      pt = tc - p.motion_start_tick,
-      nt = tc - n.motion_start_tick;
-  
-  for(var i=0; i<3; ++i) {
-    pp[i] = p.position[i] + pv[i] * pt;
-    np[i] = n.position[i] + nv[i] * nt;
-  }
-  
+  var tc  = entity.instance.region.tick_count,
+      p   = entity.last_state,
+      pp  = computePosition(tc-1, p), 
+      pv  = p.velocity, 
+      pt  = tc - p.motion_start_tick,
+      n   = entity.state,
+      np  = computePosition(tc, n), 
+      nv  = n.velocity,
+      nt  = tc - n.motion_start_tick;
   return linalg.hermite(pp, pv, np, nv, t);
 };
 

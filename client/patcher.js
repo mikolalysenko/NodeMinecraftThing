@@ -221,8 +221,7 @@ function applyPatch(obj, patch) {
     
     if(typeof(obj[t]) === typeof(patch[i]) &&
       typeof(patch[i]) === "object" &&
-      patch[i] !== null &&
-      (obj[t] instanceof Array) === (patch[i] instanceof Array)) {
+      patch[i] !== null) {
       applyPatch(obj[t], patch[i]);
       continue;
     }
