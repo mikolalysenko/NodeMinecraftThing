@@ -54,8 +54,8 @@ function setupRender(engine) {
     
     //Set up player camera
     var pos = framework.tools.renderPosition(player_entity, t),
-        eye = [pos[0], pos[1]+10, pos[2]],
-        up  = [0, 0, -1];
+        eye = [pos[0], pos[1]+10, pos[2]+5],
+        up  = [0, 1, -1];
     render.lookAt(eye, pos, up);
   });
   

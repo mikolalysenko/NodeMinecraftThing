@@ -286,35 +286,49 @@ RenderGL.prototype.perspective = function(fov_y, aspect, z_near, z_far) {
 
 //Sets camera to look at a particular target
 RenderGL.prototype.lookAt = function(eye, center, u) {
-  var f = [0.0,0.0,0.0], fmag=0.0, umag=0.0;
+  var f = [0.0,0.0,0.0], un = [0.0, 0.0, 0.0], fmag=0.0, fdu = 0.0;
   for(var i=0; i<3; ++i) {
     f[i] = center[i] - eye[i];
     fmag += f[i]*f[i];
-    umag += u[i]*u[i];
+    fdu  += f[i]*u[i];
+  }
+  fmag =  1.0/Math.sqrt(fmag);
+  
+  //Project u/normalize f
+  var umag = 0.0;
+  for(var i=0; i<3; ++i) {
+    f[i] *= fmag;
+    un[i] = (u[i] - fdu * fmag * f[i]);
+    umag += un[i]*un[i];
   }
   
-  fmag = -1.0/Math.sqrt(fmag);
+  //Normalize u
   umag =  1.0/Math.sqrt(umag);
+  for(var i=0; i<3; ++i) {
+    un[i] *= umag;
+  }
   
+  //Construct right vector  
   var s = [
-    f[1]*u[2] - f[2]*u[1],
-    f[2]*u[0] - f[0]*u[2],
-    f[0]*u[1] - f[1]*u[0] ], smag = 0.0;
-    
+    f[1]*un[2] - f[2]*un[1],
+    f[2]*un[0] - f[0]*un[2],
+    f[0]*un[1] - f[1]*un[0] ], smag = 0.0;
   for(i=0; i<3; ++i) {
     smag += s[i]*s[i];
   }
-  smag = 1.0/Math.sqrt(smag);
+  smag = 1.0 / Math.sqrt(smag);
 
+  //Fill in matrix
   var M = this.view_matrix;
   for(i=0; i<3; ++i) {
     M[4*i+0] = s[i] * smag;
-    M[4*i+1] = u[i] * umag;
-    M[4*i+2] = f[i] * fmag;
+    M[4*i+1] = un[i];
+    M[4*i+2] = -f[i];
     M[4*i+3] = 0.0;
   }
   M[15] = 1.0;
   
+  //Add translation component
   for(i=0; i<3; ++i) {
     var x = 0;
     for(var j=0; j<3; ++j) {
@@ -323,6 +337,7 @@ RenderGL.prototype.lookAt = function(eye, center, u) {
     M[12+i] = -x;
   }
   
+  //Concatenate transformations
   linalg.mmult4(this.proj_matrix, this.view_matrix, this.clip_matrix);
 }
 
