@@ -50,15 +50,16 @@ exports.createPlayer = function(account, options) {
   }
   
   var player_rec = {
-    'player_name' : options.player_name,
-    'key_bindings' : common.default_bindings,
+    'player_name'   : options.player_name,
+    'key_bindings'  : common.default_bindings,
   };
   var entity_rec = {
-    'player_name' : options.player_name,
-    'type'        : 'player',
-    'position'    : [0,0,0],
-    'velocity'    : [0,0,0],
-    'sprite_class': 'player',
+    'player_name'   : options.player_name,
+    'type'          : 'player',
+    'motion_model'  : 'linear',
+    'position'      : [0,0,0],
+    'velocity'      : [0,0,0],
+    'sprite_class'  : 'player',
   };
   
   return [player_rec, entity_rec, 'Starting Area'];

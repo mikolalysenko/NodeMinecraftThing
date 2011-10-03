@@ -19,7 +19,6 @@ exports.registerEntity = function(entity) {
   if(!instance) {
     return;
   }
-  
 
   function updateAnimation() {
     //Set player animation
@@ -63,16 +62,13 @@ exports.registerEntity = function(entity) {
       
       var v = entity.velocity();
       
-      if(entity.state.velocity[0] != nx ||
-         entity.state.velocity[2] != nz ) {
-         
-         //Update entity velocity         
+      //Update entity velocity         
+      if(v[0] != nx || v[2] != nz ) {
          entity.setVelocity([nx, 0, nz]);
-         
          entity.message('input', 
-          instance.region.tick_count, 
-          entity.position(), 
-          [nx, 0, nz]);
+            entity.state.motion_start_tick,
+            entity.state.position,
+            entity.state.velocity);
       }    
     };
     
@@ -106,13 +102,9 @@ exports.registerEntity = function(entity) {
       //Check if local position is acceptable
       if(net_state.motion_start_tick <= entity.state.motion_start_tick && checkPosition() ) {
         //Save motion state and update
-        var p = entity.position(),
-            v = entity.velocity(),
-            t = instance.region.tick_count;
+        var params = entity.getMotionParams();
         overrides.push(function() {
-          entity.state.motion_start_tick = t;
-          entity.state.position          = p;
-          entity.state.velocity          = v;
+          entity.setMotionParams(params);
         });
       }
       else {
