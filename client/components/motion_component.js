@@ -54,12 +54,24 @@ var Models = {
     
     params: [
       'motion_model',
+      'motion_flags',
+      'motion_radius',
+      'motion_height',
       'motion_position',
     ],
     
     checkDefaults: function(state) {
       if(!state.motion_position) {
         state.motion_position = [0.0,0.0,0.0];
+      }
+      if(!state.motion_flags) {
+        state.motion_flags = {};
+      }
+      if(!state.motion_radius) {
+        state.motion_radius = 0.5;
+      }
+      if(!state.motion_height) {
+        state.motion_height = 1.0;
       }
     },
   },
@@ -111,6 +123,9 @@ var Models = {
     
     params: [
       'motion_model',
+      'motion_flags',
+      'motion_radius',
+      'motion_height',
       'motion_position',
       'motion_velocity',
       'motion_start_tick',
@@ -242,15 +257,19 @@ var Models = {
       return r;    
     },
     
-    
     params: [
       'motion_model',
+      'motion_flags',
+      'motion_radius',
+      'motion_height',
+      'motion_contact',
       'motion_position',
       'motion_velocity',
       'motion_start_tick',
       'motion_friction',
       'motion_forces',
       'motion_mass',
+      'motion_restitution',
     ],
     
     checkDefaults: function(state) {
@@ -263,6 +282,12 @@ var Models = {
       }
       if(!state.motion_mass) {
         state.motion_mass = 1.0;
+      }
+      if(!state.motion_contact) {
+        state.motion_contact = { type:'none' };
+      }
+      if(!state.motion_restitution) {
+        state.motion_restitution = 1.0;
       }
     },
   },
@@ -323,6 +348,28 @@ exports.getMotionParams = getMotionParams;
 exports.setMotionParams = setMotionParams;
 
 
+function applyCollision(tick_count, state1, state2, constraintPlane) {
+
+  var cr    = Math.min(state1.motion_restitution, state2.motion_restitution),
+      q1    = getPosition(tick_count-1, state1),
+      p1    = getPosition(tick_count, state1),
+      v1    = getVelocity(tick_count, state1),
+      m1    = state1.motion_mass,
+      q1    = getPosition(tick_count-1, state2),
+      p2    = getPosition(tick_count, state2),
+      v2    = getVelocity(tick_count, state2),
+      m2    = state2.motion_mass,
+      t_mu  = Math.max(state1.motion_body_friction, state2.motion_body_friction);
+
+
+  //Compute final position for each body
+
+
+  
+}
+
+
+
 //Registers instance
 exports.registerInstance = function(instance) { };
 
@@ -368,6 +415,15 @@ exports.registerEntity = function(entity) {
   });
   entity.__defineSetter__('motion_params', function(p) {
     return setMotionParams(entity.state, p);
-  });  
+  });
+  
+  
+  entity.emitter.on('tick', function() {
+    
+    //Check for collisions
+    if(entity.state.motion_flags.collides) {
+    
+    }
+  });
 };
 

@@ -62,7 +62,7 @@ exports.registerEntity = function(entity) {
       //Update entity velocity         
       var v = entity.forces;
       if(v[0] != nx || v[2] != nz ) {
-        entity.friction = [1,1,1];
+        entity.friction = [1,0,1];
         entity.forces = [nx, 0, nz];
         entity.message('input', entity.motion_params);
       }   

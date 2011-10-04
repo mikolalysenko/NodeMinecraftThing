@@ -31,13 +31,17 @@ exports.voxel_texture = "./voxels/voxels.png";
 exports.voxel_types = [
 
   { name:         'Air', 
-    transparent:   true, 
     textures:     [ [0,0], [0,0], [0,0], [0,0], [0,0], [0,0] ],
+    transparent:  true, 
+    solid:        false,
+    friction:     0.2,
   },
   
   { name:         'Stone', 
-    transparent:   false, 
     textures:     [ [0,1], [0,1], [0,1], [0,1], [0,1], [0,1] ],
+    transparent:  false, 
+    solid:        true,
+    friction:     1.0,
   },  
 ];
 

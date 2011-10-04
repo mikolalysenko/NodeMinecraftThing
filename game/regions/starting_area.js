@@ -12,7 +12,6 @@ emitter.on('construct', function() {
   for(var j=-30; j<=30; ++j) {
     instance.setVoxel(i, -5, j, 1);
   }
-  
 });
 
 
