@@ -136,14 +136,18 @@ var Models = {
       var t  = computeTime(tick_count, state),
           a  = Models.physical.getAcceleration(tick_count, state),
           v  = state.motion_velocity,
-          mu = state.motion_friction,
-          p  = state.motion_position;
+          p  = state.motion_position,
+          mu = state.motion_friction;
       for(var i=0; i<3; ++i) {
         if(mu[i] < 1e-6) {
           r[i] = (v[i] + 0.5*a[i]*t)*t + p[i];
         }
         else {
-          r[i] = ((a[i] - v[i] * mu[i]) * Math.exp(-mu[i] * t) / mu[i] + a[i]) / mu[i] + p[i];
+          var f = Math.exp(-mu[i]*t),
+              u = -1.0/mu[i],
+              h = (a[i]*u-v[i])*u;
+              
+          r[i] = h*(1.0-f) - a[i]*t*u + p[i];
         }
       }
       return r;
@@ -171,7 +175,7 @@ var Models = {
           r[i] = a[i] * t + v[i];
         }
         else {      
-          r[i]  = (a[i] - (a[i] - v[i] * mu[i]) * Math.exp(-mu[i] * t)) / mu[i];
+          r[i] = -((a[i] - v[i]*mu[i]) * Math.exp(-mu[i]*t) - a[i]) / mu[i];
         }
       }
       return r;
@@ -233,7 +237,7 @@ var Models = {
       state.motion_start_tick = tick_count;
       
       for(var i=0; i<3; ++i) {
-        state.motion_forces[i] = r[i];
+        state.motion_friction[i] = r[i];
       }
       return r;    
     },
