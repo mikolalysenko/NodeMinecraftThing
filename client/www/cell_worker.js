@@ -3,8 +3,9 @@
 //Import files
 importScripts('/browserify.js');
 var Voxels = require('./voxels.js'),
-    EventEmitter = require('events').EventEmitter;
-
+    EventEmitter = require('events').EventEmitter,
+    voxel_types = require('./client.js').voxel_types,
+    TEX_SCALE = 1.0/256.0;
 
 //Set up stuff
 var emitter = new EventEmitter(),
@@ -35,12 +36,12 @@ var emitter = new EventEmitter(),
 
 //Checks if a voxel is transparent
 function transparent(value) {
-  return value === 0;
+  return voxel_types[value].transparent;
 }
 
 //Recovers the texture coordinate for a voxel
 function texture(value, dir) {
-  return [0,1/256.0];
+  return voxel_types[value].textures[dir];
 }
 
 //Tangent space vectors for faces
@@ -101,10 +102,10 @@ function buildMesh(lo, hi) {
     
     //Compute texture coordinates
     for(i=0; i<2; ++i) {
-      q[0][i+3] = tc[i];
-      q[1][i+3] = tc[i];
-      q[2][i+3] = tc[i];
-      q[3][i+3] = tc[i];
+      q[0][i+3] = tc[i]*TEX_SCALE;
+      q[1][i+3] = tc[i]*TEX_SCALE;
+      q[2][i+3] = tc[i]*TEX_SCALE;
+      q[3][i+3] = tc[i]*TEX_SCALE;
     }
     var us = (dv[0] ? step : 1),
         vs = (du[0] ? step : 1); 

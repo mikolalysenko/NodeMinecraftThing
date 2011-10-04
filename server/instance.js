@@ -38,7 +38,7 @@ function Entity(instance, state) {
   this.persistent = true;        //If set, entity gets stored to db.  This is done using copy-on-write semantics.
   this.net_replicated = true;    //If set, then the entity gets sent across the network
                                  // Useful for objects that are important for the client or have long lives.
-  this.net_cache  = false;       //If set along with net_replicated, keep track of entity state for each player to delta encode updates.  
+  this.net_cache  = true;       //If set along with net_replicated, keep track of entity state for each player to delta encode updates.  
                                  // Useful for big entities with, small frequently changing variables.
   this.net_one_shot = false;     //If set, only replicate entity creation event.  Do not synchronize after creation.
                                  // Useful for projectiles and other shortly lived objects
@@ -111,8 +111,7 @@ function Player(instance, client, player_rec, entity_rec) {
 
 //Pushes a message out to the client
 Player.prototype.pushMessage = function(action_name, entity_id, params) {
-  console.log("HERE:", action_name, entity_id, params);
-  this.client.rpc.remoteMessage(this.instance.region.tick_count, action_name, entity_id, params);
+  this.client.remoteMessage(this.instance.region.tick_count, action_name, entity_id, params);
 }
 
 //Pushes updates to the player over the network
@@ -126,22 +125,26 @@ Player.prototype.pushUpdates = function() {
   }
   
   //Send update messages
-  // FIXME: Prioritize updates
   var update_buffer = [];
   for(var id in this.pending_entity_updates) {
-    var entity = this.instance.lookupEntity(id);
+    var tick = this.pending_entity_updates[id],
+        entity = this.instance.lookupEntity(id);
     
-    if(entity.net_cached) {
-      
-      if(!(id in cached_entities)) {
-        cached_entities[id] = {};
+    if(entity.net_cache) {      
+      if(!(id in this.cached_entities)) {
+        this.cached_entities[id] = {};
       }
       
-      var patch = patcher.computePatch(known_entities[id], entity.state);
-      patch._id = entity.state._id;
-      update_buffer.push(patch);
+      var patch = patcher.computePatch(this.cached_entities[id], entity.state, true);
+      
+      if(patch) {
+        patch._id = entity.state._id;
+        update_buffer.push(tick);
+        update_buffer.push(patch);
+      }
     }
     else {
+      update_buffer.push(tick);
       update_buffer.push(entity.state);
     }
   }
@@ -168,13 +171,8 @@ Player.prototype.pushUpdates = function() {
   
   //Send updates to client if necessary
   if(update_buffer.length > 0 || removals.length > 0 || voxel_buf.length > 0) {
-    this.client.rpc.updateInstance(this.instance.region.tick_count, update_buffer, removals, voxel_buf);
+    this.client.updateInstance(this.instance.region.tick_count, update_buffer, removals, voxel_buf);
   }
-};
-
-//Just cat directly to player log
-Player.prototype.logHTML = function(html_str) {
-  this.client.rpc.logHTML(html_str);
 };
 
 Player.prototype.deinit = function() {
@@ -203,7 +201,7 @@ Player.prototype.init = function() {
     for(var id in instance.entities) {
       var entity = instance.entities[id];
       if( entity.net_replicated || entity.net_one_shot ) {
-        player.updateEntity(entity);
+        player.updateEntity(entity, instance.region.tick_count);
       }
     }
     
@@ -230,11 +228,11 @@ Player.prototype.init = function() {
     }
     
     util.log("Transmitting chunks....");
-    player.client.rpc.updateChunks(buffer, loadComplete);
+    player.client.updateChunks(buffer, loadComplete);
   };
 
   //Set player to change instance
-  player.client.rpc.changeInstance(player.instance.region);
+  player.client.changeInstance(player.instance.region);
   
   //Set timeout
   setTimeout(executeTransmit, 10);
@@ -259,8 +257,8 @@ Player.prototype.deleteEntity = function(entity) {
 }
 
 //Marks an entity for getting updated
-Player.prototype.updateEntity = function(entity) {
-  this.pending_entity_updates[entity.state._id] = entity.net_priority;
+Player.prototype.updateEntity = function(entity, tick) {
+  this.pending_entity_updates[entity.state._id] = tick;
 }
 
 
@@ -286,6 +284,7 @@ function Instance(region, db, region_set) {
 
 //Called remotely on server from client
 Instance.prototype.remoteMessage = function(action_name, player_id, entity_id, params) {
+
   var player = this.players[player_id];
   if(!player || 
     'game' !== player.net_state ||
@@ -477,8 +476,9 @@ Instance.prototype.updateEntity = function(entity) {
   
   //Mark entity in each player
   if(replicated) {
+    var tc = this.region.tick_count;
     for(var player_id in this.players) {
-      this.players[player_id].updateEntity(entity);
+      this.players[player_id].updateEntity(entity, tc);
     }
     
     //If entity is one-shot, only replicate it once
@@ -642,7 +642,7 @@ Instance.prototype.createEntity = function(state) {
   //Create the entity and register it
   var entity = new Entity(this, state);
   this.entities[entity.state._id] = entity;
-  entity.state.region_id = this.region.region_id;
+  entity.state.region_id = this.region._id;
   
   //Add components to entity
   this.region_set.registerEntity(entity);

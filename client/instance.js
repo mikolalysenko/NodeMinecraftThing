@@ -43,7 +43,7 @@ Entity.prototype.draw = function() {
 //Sends a message to the server on behalf of this entity
 Entity.prototype.message = function(action_name) {
   var args = Array.prototype.slice.call(arguments,1);
-  this.instance.engine.network.rpc.remoteMessage(action_name, this.state._id, args);
+  this.instance.engine.network.remoteMessage(action_name, this.state._id, args);
   this.emitter.emit.apply(this.emitter, ['client_' + action_name].concat(arguments));
 }
 
@@ -52,6 +52,7 @@ Entity.prototype.message = function(action_name) {
 // Client side instance object
 //----------------------------------------------------------------
 function Instance(engine, region) {
+  this.game_module  = engine.game_module;
   this.region       = region;
   this.entities     = {};
   this.running      = false;
@@ -75,13 +76,7 @@ Instance.prototype.addFuture = function(tick, fn) {
 
   if(this.region.tick_count >= tick) {
     console.warn("Ahead of server! (This should never happen)");
-    this.region.tick_count -= 4;
-  }
-  else if(this.region.tick_count <= tick - 30) {
-    console.warn("Client is lagging!");
-    while(this.region.tick_count <= tick - 4) {
-      this.tick();
-    }
+    tick = this.region.tick_count + 1;
   }
 
   var actions = this.pending_actions[tick];
@@ -112,7 +107,7 @@ Instance.prototype.remoteMessage = function(action_name, entity_id, params) {
 //Action (usually from player)
 Instance.prototype.message = function(action_name) {
   var args = Array.prototype.slice.call(arguments, 1);
-  this.engine.network.rpc.remoteMessage(action_name, null, args);
+  this.engine.network.remoteMessage(action_name, null, args);
   this.emitter.emit.apply(this.emitter, ['client_'+action_name].concat(args));
 }
 
@@ -247,11 +242,13 @@ Instance.prototype.updateEntity = function(patch) {
     entity.net_tick = this.region.tick_count;
     
     //Emit net update event only if there is a special handler, otherwise just overwrite state
-    if(emitter.listeners('net_update').length == 0) {
-      patcher.assign(entity.state, entity.net_state);
-    }
-    else {
-      entity.emitter.emit('net_update');
+    var overrides = [];
+    entity.emitter.emit('net_update', entity.net_state, overrides);
+    patcher.assign(entity.state, entity.net_state);
+    
+    //Apply overrides
+    for(var i=0; i<overrides.length; ++i) {
+      overrides[i]();
     }
   }
   else {

@@ -1,5 +1,4 @@
-var dnode = require('dnode'),
-    util  = require('util')
+var util  = require('util')
     AccountManager = require('./accounts.js').AccountManager,
     RegionSet = require('./regions.js').RegionSet;
 
@@ -8,24 +7,45 @@ function sink(err) { if(err) util.log(err); }
 //--------------------------------------------------------------
 // A client connection record
 //--------------------------------------------------------------
-function Client(account, rpc, connection) {
-  this.state      = 'login';
-  this.account    = account;
-  this.rpc        = rpc;
-  this.connection = connection;
-  this.player_id  = null;
-  this.instance   = null;
+function Client(account, socket) {
+  this.state        = 'login';
+  this.account      = account;
+  this.socket       = socket;
+  this.player_id    = null;
+  this.instance     = null;
+  this.callback_id  = -1;
+  this.callbacks    = {};
+}
+
+Client.prototype.makeCallback = function(cb) {
+  this.callbacks[++this.callback_id] = cb;
+  return this.callback_id;
 }
 
 Client.prototype.kick = function() {
   this.connection.disconnect();
 }
 
+Client.prototype.changeInstance = function(region_info) {
+  this.socket.emit('changeInstance', region_info);
+}
+
+Client.prototype.updateInstance = function(tick_count, updates, removals, voxels) {
+  this.socket.emit('updateInstance', tick_count, updates, removals, voxels);
+}
+
+Client.prototype.updateChunks = function(updates, cb) {
+  this.socket.emit('updateChunks', updates, this.makeCallback(cb));
+}
+
+Client.prototype.remoteMessage = function(tick_count, action_name, entity_id, actions) {
+  this.socket.emit('remoteMessage', tick_count, action_name, entity_id, actions);
+}
 
 //--------------------------------------------------------------
 // The RPC interface which is exposed to the client
 //--------------------------------------------------------------
-function Gateway(db, server, sessions, game_module) {
+function Gateway(settings, db, server, sessions, game_module) {
 
   //Set members
   this.db           = db;
@@ -50,19 +70,49 @@ function Gateway(db, server, sessions, game_module) {
   }
 
   //Sets up client interface for gateway
-  var gateway = this;
-  this.client_interface = dnode(function(rpc, connection) {
-
+  var gateway = this,
+      io = require('socket.io').listen(server);
+      
+  io.set('transports', game_module.socket_transports);
+      
+  if(!settings.debug) {
+    io.set('log level', 0);
+  }
+      
+  //Player login event
+  io.sockets.on('connection', function(socket) {
+  
     util.log("Client connected");
 
-    //Don't register client until 
-    var client      = null,
-        account_id  = null,
-        throttle_counter = game_module.client_throttle,
+    //Don't register client until logc
+    var client            = null,
+        account_id        = null,
+        throttle_counter  = game_module.client_throttle,
         throttle_interval = null;
+        
+    //Converts callback into callback num
+    function callback(cb_num) {
+      return function() {
+        socket.emit.apply(socket, ['callback', cb_num].concat(Array.prototype.slice.call(arguments)));
+      }
+    }
+    
+    socket.on('callback', function(cb_num) {
+      if(!client) {
+        return;
+      }
+      var cb = client.callbacks[cb_num];
+      if(!cb) {
+        return;
+      }
+      
+      //Unregister callback, and execute it
+      delete client.callbacks[cb_num];      
+      cb.apply(null, Array.prototype.slice.call(arguments,1));
+    });
     
     //Bind any connection events
-    connection.on('end', function() {
+    socket.on('disconnect', function() {
     
       util.log("Client disconnected");
       if(!client) {
@@ -82,23 +132,20 @@ function Gateway(db, server, sessions, game_module) {
       account_id = null;
     });
     
-    //Reject bad RPC interface
-    if(!validateInterface(rpc, [])) {
-        client.kick();
-        return;
-    }
     
     //Player login event
-    this.login = function(session_id, cb) {
+    socket.on('login', function(session_id, cb_num) {
       if( client ||
           typeof(session_id) != "string" ||
-          typeof(cb) != "function" ) {
+          typeof(cb_num) != "number" ) {
         client.kick();
         return;
-      }    
+      }
+      var cb = callback(cb_num);
+      
       user_id = sessions.getToken(session_id);
       if(!user_id) {
-        cb("Invalid session token", null);
+        cb("Invalid session token");
         client.kick();
         return;
       }
@@ -106,16 +153,15 @@ function Gateway(db, server, sessions, game_module) {
       //Retrieve account
       gateway.accounts.getAccount(user_id, function(err, account) {
         if(err || !account) {
-          cb(err, null);
+          cb(JSON.stringify(err));
           client.kick();
           return;
         }
         
         util.log("Account connected: " + JSON.stringify(account));
-
         
         //Otherwise register client
-        client = new Client(account, rpc, connection);
+        client = new Client(account, socket);
         gateway.clients[account_id] = client;
         account_id = account._id;
         
@@ -127,25 +173,25 @@ function Gateway(db, server, sessions, game_module) {
         //Retrieve players, send to client
         gateway.accounts.listAllPlayers(account_id, function(err, players) {
           if(err) {
-            cb(err, null, null);
+            cb(JSON.stringify(err));
             client.kick();
             return;
           }
           cb(null, account, players);
         });
       });
-    };
+    });
     
     //Creates a player
-    this.createPlayer = function(options, cb) {
-    
+    socket.on('createPlayer', function(options, cb_num) {
       if(--throttle_counter < 0 ||
         !client || client.state != 'login' ||
         typeof(options) != "object" ||
-        typeof(cb) != "function" ) {
+        typeof(cb_num) != "number" ) {
         client.kick();
         return;
       }
+      var cb = callback(cb_num);
       
       util.log("Creating player: " + JSON.stringify(options));
       
@@ -157,29 +203,30 @@ function Gateway(db, server, sessions, game_module) {
         }
         cb(null, player_rec);
       });
-    };
+    });
     
-    this.deletePlayer = function(player_name, cb) {
+    socket.on('deletePlayer', function(player_name, cb_num) {
       if(--throttle_counter < 0 ||
         !client || client.state != 'login' ||
         typeof(player_name) != "string" ||
-        typeof(cb) != "function") {
+        typeof(cb_num) != "number") {
         client.kick();
         return;
       }
       
-      gateway.accounts.deletePlayer(account_id, player_name, cb);
-    };
+      gateway.accounts.deletePlayer(account_id, player_name, callback(cb_num));
+    });
     
     //Joins the game
-    this.joinGame = function(player_name, cb) {
+    socket.on('joinGame', function(player_name, cb_num) {
       if(--throttle_counter < 0 ||
         !client || client.state != 'login' ||
         typeof(player_name) != "string" ||
-        typeof(cb) != "function") {
+        typeof(cb_num) != "number") {
         client.kick();
         return;
       }
+      var cb = callback(cb_num);
       
       gateway.accounts.getPlayer(account_id, player_name, function(err, player_rec) {
         if(err || !player_rec) {
@@ -200,10 +247,10 @@ function Gateway(db, server, sessions, game_module) {
           cb(null, player_rec);
         });
       });
-    };
+    });
     
     //Player action
-    this.remoteMessage = function(action_name, entity_id, args) {
+    socket.on('remoteMessage', function(action_name, entity_id, args) {
     
       if(--throttle_counter < 0 ||
          !client ||
@@ -216,53 +263,17 @@ function Gateway(db, server, sessions, game_module) {
       }
     
       client.instance.remoteMessage(action_name, client.player_id, entity_id, args);
-    };
-    
+    });
   });
-  
-  
-  
-  //Listen for connections on server
-  var tout = this.game_module.socket_timeout;
-  this.client_interface.listen(server, {
-    io:{
-      //'heartbeat timeout': this.game_module.socket_timeout,
-      'transports': this.game_module.socket_transports,
-      
-      /*
-      transportOptions: {
-        'flashsocket': {
-          closeTimeout: tout,
-          timeout: tout
-        }, 'websocket': {
-          closeTimeout: tout,
-          timeout: tout
-        }, 'htmlfile': {
-          closeTimeout: tout,
-          timeout: tout
-        }, 'xhr-multipart': {
-          closeTimeout: tout,
-          timeout: tout
-        }, 'xhr-polling': {
-          closeTimeout: tout,
-          timeout: tout
-        }, 'jsonp-polling': {
-          closeTimeout: tout,
-          timeout: tout
-        }
-      } 
-      */
-    }
-  });
-  
+
   util.log("Gateway listening");
 }
 
 //--------------------------------------------------------------
 // Gateway constructor
 //--------------------------------------------------------------
-exports.createGateway = function(db, server, sessions, game_module, cb) {
-  var gateway = new Gateway(db, server, sessions, game_module);
+exports.createGateway = function(settings, db, server, sessions, game_module, cb) {
+  var gateway = new Gateway(settings, db, server, sessions, game_module);
   gateway.region_set.init(function(err) {
     if(err) {
       cb(err, null);

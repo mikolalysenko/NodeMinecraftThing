@@ -1,7 +1,14 @@
 var path = require('path'),
-    common = require('./common.js');
+    common = require('./common.js'),
+    framework = null;
+
+exports.registerFramework = function(framework_) {
+  framework = framework_;
+  common.registerFramework(framework_);
+}
 
 exports.components        = common.components;
+exports.sprite_classes    = common.sprite_classes;
 exports.entity_types      = common.entity_types;
 exports.voxel_types       = common.voxel_types;
 exports.socket_timeout    = common.socket_timeout;
@@ -43,15 +50,16 @@ exports.createPlayer = function(account, options) {
   }
   
   var player_rec = {
-    'player_name' : options.player_name,
-    'key_bindings' : common.default_bindings,
+    'player_name'   : options.player_name,
+    'key_bindings'  : common.default_bindings,
   };
   var entity_rec = {
-    'player_name' : options.player_name,
-    'type'        : 'player',
-    'position'    : [0,0,0],
-    'velocity'    : [0,0,0],
-    'sprite_class': 'player',
+    'player_name'   : options.player_name,
+    'type'          : 'player',
+    'motion_model'  : 'linear',
+    'position'      : [0,0,0],
+    'velocity'      : [0,0,0],
+    'sprite_class'  : 'player',
   };
   
   return [player_rec, entity_rec, 'Starting Area'];

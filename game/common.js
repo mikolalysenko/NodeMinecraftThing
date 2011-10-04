@@ -2,21 +2,24 @@
 // Game specific logic goes here (specializations for client and server go in respective files)
 //----------------------------------------------------------------
 
+var framework = null;
+
 //Game tick rate
 exports.tick_rate         = 30;
-exports.socket_timeout    = 25;
 exports.socket_transports = ['websocket', 'flashsocket', 'htmlfile', 'xhr-multipart', 'xhr-polling', 'jsonp-polling'];
+
+//Sprite classes
+exports.sprite_classes = require('./sprites.js').sprite_classes;
 
 //Game components
 exports.components = {
   'player' : require('./components/player_component.js'),
-  'sprite' : require('./components/sprite_component.js'),
 };
 
 //Entity type data
 exports.entity_types = {
   'player': {
-    components  : [ 'player', 'sprite' ],
+    components  : [ 'motion', 'player', 'sprite' ],
   },
 };
 
@@ -63,6 +66,16 @@ exports.default_bindings = {
   13 : "chat",
   84 : "chat",
 };
+
+
+//Registers the framework
+exports.registerFramework = function(framework_) {
+  framework = framework_;
+  
+  for(var c in framework.default_components) {
+    exports.components[c] = framework.default_components[c];
+  }
+}
 
 
 //Called when a player joins an instance

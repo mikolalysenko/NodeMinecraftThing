@@ -1,4 +1,3 @@
-
 //Event emitter module
 var EventEmitter = require('events').EventEmitter,
     Instance     = require('./instance.js').Instance;
@@ -76,6 +75,9 @@ Engine.prototype.setState = function(next_state) {
 //Initialize the engine
 Engine.prototype.init = function() {
 
+  //Register framework
+  this.game_module.registerFramework(this.framework);
+
   var engine = this,
       game_module = engine.game_module,
       components = game_module.components;
@@ -99,16 +101,21 @@ Engine.prototype.init = function() {
     //Start voxel database
     engine.voxels.init(engine, function() {
       
-      //Set up login framework
+      //Set up login
       engine.login = new (require('./login.js').LoginHandler)(engine);
       engine.login.init(function() {
       
         //Register game module
         game_module.registerEngine(engine);
         
-        //Initialize second set of modules 
-        engine.render.init(engine);
-        engine.loader.setReady();
+        //Initialize second set of modules
+        try {
+          engine.render.init(engine);
+          engine.loader.setReady();
+        }
+        catch(err) {
+          engine.crash(err);
+        }
       });
     });
   });
@@ -231,7 +238,7 @@ Engine.prototype.crash = function(errMsg) {
   //Shut down subsystems
   try {
     if(this.network) {
-      this.network.connection.end();
+      this.network.disconnect();
       this.network = null;
     }
     if(this.loader) {
@@ -347,13 +354,13 @@ Engine.prototype.listenLoadComplete = function(cb) {
 exports.createEngine = function(game_module, session_id) {
 
   var engine = new Engine(game_module, session_id);
-  
-  window.onload   = function() { engine.init(); };
-  window.onunload = function() { engine.setState(DefaultState); };
-  window.onclose  = function() { engine.setState(DefaultState); };
+
   window.onerror  = function(errMsg, url, lineno) {
     engine.crash("Script error (" + url + ":" + lineno + ") -- " + errMsg);
   };
+  window.onunload = function() { engine.setState(DefaultState); };
+  window.onclose  = function() { engine.setState(DefaultState); };  
+  window.onload   = function() { engine.init(); };
   
   return engine;
 }

@@ -1,9 +1,15 @@
-var framework = null;
-exports.registerFramework = function(f) { framework = f; };
+var CORRECT_THRESHOLD = 2.0;
+
+
+var framework = null,
+    computePosition = null;
+exports.registerFramework = function(f) {
+  framework = f;
+  computePosition = framework.default_components['motion'].computePosition;  
+};
 
 //Registers instance
 exports.registerInstance = function(instance) {
-  console.log("Registered instance");
 };
 
 //Registers an entity
@@ -38,18 +44,9 @@ exports.registerEntity = function(entity) {
                         entity === instance.engine.playerEntity();
   if(is_local_player) {
   
-    console.log("Registering local player");
-        
-    //Apply input here
-    entity.emitter.on('tick', function() {
+    function processInput() {
       var buttons = instance.getButtons();
-
-      for(var i=0; i<3; ++i) {
-        entity.state.position[i] += entity.state.velocity[i];
-      }
-      
       var nx = 0, nz = 0;
-      
       if(buttons['up'] > 0) {
         nz -= 0.125;
       }
@@ -63,29 +60,60 @@ exports.registerEntity = function(entity) {
         nx -= 0.125;
       }
       
-      if(entity.state.velocity[0] != nx ||
-         entity.state.velocity[2] != nz ) {
-         entity.state.velocity[0] = nx;
-         entity.state.velocity[2] = nz;
-         
-         entity.message('input', 
-          entity.instance.region.tick_count + instance.engine.lag, 
-          entity.state.position, 
-          entity.state.velocity);
-      }
+      var v = entity.velocity();
       
+      //Update entity velocity         
+      if(v[0] != nx || v[2] != nz ) {
+         entity.setVelocity([nx, 0, nz]);
+         entity.message('input', 
+            entity.state.motion_start_tick,
+            entity.state.position,
+            entity.state.velocity);
+      }    
+    };
+    
+    function checkPosition() {
+      var net_position = computePosition(instance.region.tick_count, entity.net_state),
+          local_position = entity.position(),
+          d = 0;
+      for(var i=0; i<3; ++i) {
+        d = Math.max(d, Math.abs(net_position[i] - local_position[i]));
+      }
+      return d <= CORRECT_THRESHOLD;
+    }
+    
+  
+    //Apply input here
+    entity.emitter.on('tick', function() {
+      processInput();
       updateAnimation();
     });
     
+    
     //Handle action press here
     instance.emitter.on('press_action', function(button) {
-      var x = entity.state.position;
+      var x = entity.position();
       instance.message('voxel', Math.floor(x[0]), Math.floor(x[1]), Math.floor(x[2]));
     });
-  
+    
     //Correct player's local position
-    entity.emitter.on('net_update', function() {
-      //Disregard
+    entity.emitter.on('net_update', function(net_state, overrides) {
+      
+      //Check if local position is acceptable
+      if(net_state.motion_start_tick <= entity.state.motion_start_tick && checkPosition() ) {
+        //Save motion state and update
+        var params = entity.getMotionParams();
+        overrides.push(function() {
+          entity.setMotionParams(params);
+        });
+      }
+      else {
+        //Otherwise, need to correct player position
+        var v = entity.velocity();
+        overrides.push(function() {
+          entity.setVelocity(v);
+        });
+      }
     });
     
     //Logs a message to the player
@@ -95,17 +123,11 @@ exports.registerEntity = function(entity) {
   }  
   else {
   
-    console.log("Registering networked player");
-
+    //Tick
     entity.emitter.on('tick', function() {
-      var p = entity.state.position,
-          v = entity.state.velocity;
-      for(var i=0; i<3; ++i) {
-        p[i] += v[i];
-      }
       updateAnimation();
     });
-
+    
     //Apply a network packet to update player position  
     entity.emitter.on('remote_input', function(player, ticks, position, velocity) {
     
@@ -116,16 +138,28 @@ exports.registerEntity = function(entity) {
          position.length !== 3 ||
          typeof(velocity) !== 'object' ||
          !(velocity instanceof Array) ||
-         velocity.length !== 3) {
+         velocity.length !== 3 ||
+         ticks <= entity.motion_start_tick) {
          console.log("Bad input packet");
          return;       
       }
-    
-      var dt = entity.instance.region.tick_count - ticks;
+      
+      var p = computePosition(ticks, entity.state),
+          d = 0.0,
+          dt = instance.region.tick_count - ticks;
+          
       for(var i=0; i<3; ++i) {
-        entity.state.position[i] = position[i] + velocity[i]*dt;
-        entity.state.velocity[i] = velocity[i];
+        d = Math.max(d, Math.abs(p[i] - position[i])) ;
       }
+      if(d > CORRECT_THRESHOLD) {
+        console.log("Player is out of sync");
+        entity.setVelocity(velocity);
+        return;
+      }
+
+      entity.state.position = position;
+      entity.state.velocity = velocity;
+      entity.state.motion_start_tick = ticks;
     });
   }  
 };

@@ -10,8 +10,15 @@ exports.init = function(engine) {
   
   createError.innerHTML = "";
   
-  createButton.onclick = function() {
-
+  
+  var submitting = false;
+  
+  function submit() {
+    if(submitting) {
+      return false;
+    }
+    submitting = true;
+  
     //Set status for button
     createError.innerHTML = "Processing";
     createButton.disabled = true;
@@ -30,6 +37,8 @@ exports.init = function(engine) {
     
     //Call out to server
     engine.login.createPlayer(options, function(err, player) {
+    
+      submitting = false;
       if(loadingAnimationInterval) {
         clearInterval(loadingAnimationInterval);
         loadingAnimationInterval = null;
@@ -43,9 +52,14 @@ exports.init = function(engine) {
       
       //Create successful
       engine.setState(engine.game_module.states.login_state);
-    });
+    });  
+    
+    return false;
   };
   
+  
+  createForm.onsubmit  = submit;
+  createButton.onclick = submit;
 }
 
 exports.deinit = function(engine) {

@@ -1,14 +1,19 @@
 var common = require('./common.js'),
     framework = null;
+    
+exports.registerFramework = function(framework_) {
+  framework = framework_;
+  common.registerFramework(framework);
+}
 
 exports.components          = common.components;
+exports.sprite_classes      = common.sprite_classes;
 exports.entity_types        = common.entity_types;
 exports.voxel_types         = common.voxel_types;
 exports.socket_timeout      = common.socket_timeout;
 exports.socket_transports   = common.socket_transports;
 exports.tick_rate           = common.tick_rate;
-exports.client_net_rate     = 50;
-exports.ping_rate           = 4000;
+
 
 //Application states
 exports.states = {
@@ -49,8 +54,8 @@ function setupRender(engine) {
     
     //Set up player camera
     var pos = framework.tools.renderPosition(player_entity, t),
-        eye = [pos[0], pos[1]+10, pos[2]],
-        up  = [0, 0, -1];
+        eye = [pos[0], pos[1]+10, pos[2]+5],
+        up  = [0, 1, -1];
     render.lookAt(eye, pos, up);
   });
   
@@ -66,9 +71,6 @@ function setupRender(engine) {
 
 //Called at start up
 exports.registerEngine = function(engine) {
-  
-  //Application framework
-  framework = engine.framework;
   
   //Set up custom error handler
   engine.error_state = exports.states.error_state;
