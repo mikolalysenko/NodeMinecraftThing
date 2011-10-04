@@ -47,23 +47,23 @@ exports.registerEntity = function(entity) {
       var buttons = instance.getButtons();
       var nx = 0, nz = 0;
       if(buttons['up'] > 0) {
-        nz -= 0.125;
+        nz -= 0.000125;
       }
       if(buttons['down'] > 0) {
-        nz += 0.125;
+        nz += 0.000125;
       }
       if(buttons['right'] > 0) {
-        nx += 0.125;
+        nx += 0.000125;
       }
       if(buttons['left'] > 0) {
-        nx -= 0.125;
+        nx -= 0.000125;
       }
       
       
       //Update entity velocity         
-      var v = entity.velocity;
+      var v = entity.forces;
       if(v[0] != nx || v[2] != nz ) {
-         entity.velocity = [nx, 0, nz];
+         entity.forces = [nx, 0, nz];
          entity.message('input', entity.motion_params);
       }    
     };

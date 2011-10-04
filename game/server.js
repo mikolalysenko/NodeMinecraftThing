@@ -56,7 +56,7 @@ exports.createPlayer = function(account, options) {
   var entity_rec = {
     'player_name'   : options.player_name,
     'type'          : 'player',
-    'motion_model'  : 'linear',
+    'motion_model'  : 'physical',
     'sprite_class'  : 'player',
   };
   
