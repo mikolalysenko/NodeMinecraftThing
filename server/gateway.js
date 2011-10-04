@@ -21,6 +21,7 @@ Client.prototype.kick = function() {
   this.connection.disconnect();
 }
 
+
 //--------------------------------------------------------------
 // The RPC interface which is exposed to the client
 //--------------------------------------------------------------
