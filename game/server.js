@@ -57,8 +57,6 @@ exports.createPlayer = function(account, options) {
     'player_name'   : options.player_name,
     'type'          : 'player',
     'motion_model'  : 'linear',
-    'position'      : [0,0,0],
-    'velocity'      : [0,0,0],
     'sprite_class'  : 'player',
   };
   

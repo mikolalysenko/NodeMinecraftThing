@@ -1,11 +1,8 @@
-var CORRECT_THRESHOLD = 10.0;
-
-
 var framework = null,
-    computePosition = null;
+    motion = null;
 exports.registerFramework = function(f) {
   framework = f;
-  computePosition = framework.default_components['motion'].computePosition;  
+  motion = framework.default_components['motion'];  
 };
 
 //Registers instance
@@ -21,10 +18,12 @@ exports.registerEntity = function(entity) {
   }
 
   function updateAnimation() {
+  
     //Set player animation
-    var vtotal = 0;
+    var vel = entity.velocity,
+        vtotal = 0;
     for(var i=0; i<3; ++i) {
-      vtotal += Math.abs(entity.state.velocity[i]);
+      vtotal += Math.abs(vel[i]);
     }
     if(vtotal > 0.01) {
       if(entity.state.anim == 'idle') {
@@ -60,26 +59,17 @@ exports.registerEntity = function(entity) {
         nx -= 0.125;
       }
       
-      var v = entity.velocity();
       
       //Update entity velocity         
+      var v = entity.velocity;
       if(v[0] != nx || v[2] != nz ) {
-         entity.setVelocity([nx, 0, nz]);
-         entity.message('input', 
-            entity.state.motion_start_tick,
-            entity.state.position,
-            entity.state.velocity);
+         entity.velocity = [nx, 0, nz];
+         entity.message('input', entity.motion_params);
       }    
     };
     
     function checkPosition() {
-      var net_position = computePosition(instance.region.tick_count, entity.net_state),
-          local_position = entity.position(),
-          d = 0;
-      for(var i=0; i<3; ++i) {
-        d = Math.max(d, Math.abs(net_position[i] - local_position[i]));
-      }
-      return d <= CORRECT_THRESHOLD;
+      return true;
     }
     
   
@@ -92,7 +82,7 @@ exports.registerEntity = function(entity) {
     
     //Handle action press here
     instance.emitter.on('press_action', function(button) {
-      var x = entity.position();
+      var x = entity.position;
       instance.message('voxel', Math.floor(x[0]), Math.floor(x[1]), Math.floor(x[2]));
     });
     
@@ -100,18 +90,16 @@ exports.registerEntity = function(entity) {
     entity.emitter.on('net_update', function(net_state, overrides) {
       
       //Check if local position is acceptable
-      if(net_state.motion_start_tick <= entity.state.motion_start_tick && checkPosition() ) {
-        //Save motion state and update
-        var params = entity.getMotionParams();
+      if(checkPosition()) {
+        var motion_params = entity.motion_params;
         overrides.push(function() {
-          entity.setMotionParams(params);
+          entity.motion_params = motion_params;
         });
       }
       else {
-        //Otherwise, need to correct player position
-        var v = entity.velocity();
+        var v = entity.velocity;
         overrides.push(function() {
-          entity.setVelocity(v);
+          entity.velocity = v;
         });
       }
     });
@@ -129,37 +117,8 @@ exports.registerEntity = function(entity) {
     });
     
     //Apply a network packet to update player position  
-    entity.emitter.on('remote_input', function(player, ticks, position, velocity) {
-    
-      if(player.entity !== entity ||
-         typeof(ticks) !== 'number' ||
-         typeof(position) !== 'object' ||
-         !(position instanceof Array) ||
-         position.length !== 3 ||
-         typeof(velocity) !== 'object' ||
-         !(velocity instanceof Array) ||
-         velocity.length !== 3 ||
-         ticks <= entity.motion_start_tick) {
-         console.log("Bad input packet");
-         return;       
-      }
-      
-      var p = computePosition(ticks, entity.state),
-          d = 0.0,
-          dt = instance.region.tick_count - ticks;
-          
-      for(var i=0; i<3; ++i) {
-        d = Math.max(d, Math.abs(p[i] - position[i])) ;
-      }
-      if(d > CORRECT_THRESHOLD) {
-        console.log("Player is out of sync");
-        entity.setVelocity(velocity);
-        return;
-      }
-
-      entity.state.position = position;
-      entity.state.velocity = velocity;
-      entity.state.motion_start_tick = ticks;
+    entity.emitter.on('remote_input', function(player, motion_params) {
+      entity.motion_params = motion_params;
     });
   }  
 };
