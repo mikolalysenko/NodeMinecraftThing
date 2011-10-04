@@ -1,4 +1,4 @@
-var CORRECT_THRESHOLD = 2.0;
+var CORRECT_THRESHOLD = 10.0;
 
 
 var framework = null,
