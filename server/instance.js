@@ -2,7 +2,7 @@
 
 var util = require('util'),
     EventEmitter = require('events').EventEmitter,
-    patcher = require('../client/patcher.js'),
+    patcher = require('patcher'),
     voxels = require('../client/voxels.js');
 
 // A function that just eats events (called when updating the database)

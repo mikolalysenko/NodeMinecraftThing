@@ -1,6 +1,6 @@
 //Miscellaneous library files/data structures
 exports.linalg    = require('./linalg.js');
-exports.patcher   = require('./patcher.js');
+exports.patcher   = require('patcher');
 exports.voxels    = require('./voxels.js');
 exports.tools     = require('./tools.js');
 

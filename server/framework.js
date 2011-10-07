@@ -1,6 +1,6 @@
 //Server side framework
 exports.linalg    = require('../client/linalg.js');
-exports.patcher   = require('../client/patcher.js');
+exports.patcher   = require('patcher');
 exports.voxels    = require('../client/voxels.js');
 exports.tools     = require('../client/tools.js');
 

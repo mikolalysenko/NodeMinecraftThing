@@ -1,4 +1,4 @@
-var patcher = require('./patcher.js'),
+var patcher = require('patcher'),
     EventEmitter = require('events').EventEmitter;
 
 //----------------------------------------------------------------

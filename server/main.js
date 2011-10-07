@@ -189,6 +189,7 @@ function createServer() {
     require: [  path.join(__dirname, '../client/engine.js'),
                 path.join(settings.game_dir, './client.js'),
                 'events',
+                'patcher',
                 'dnode' ],
   };
   if(settings.debug) {
