@@ -35,7 +35,7 @@ fi
 
 #Install npm packages
 echo "Installing NPM packages"
-sudo npm install connect socket.io mongodb dnode optimist browserify openid uglify-js
+npm install connect socket.io mongodb dnode optimist browserify openid uglify-js patcher.js
 
 #Download and unzip mongodb locally
 mongo=`which mongo/mongo 2>&1`

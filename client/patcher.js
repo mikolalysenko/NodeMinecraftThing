@@ -34,7 +34,9 @@ function clone(obj) {
   }
 }
 
-//Assigns an object to another object doing minimal extra copies
+//-------------------------------------------------------------
+// Assigns an object to another object doing minimal extra copies
+//-------------------------------------------------------------
 function assign(target, src) {
   var different = false;
   
@@ -111,7 +113,7 @@ function computePatch(prev, next, update_in_place) {
   //Checks if an element common to prev and next 
   var processElement = function(id) {
   
-    //Add _ to escape ids which start with _
+    //Add $ to escape ids which start with $
     var target_id = (typeof(id) === "string" && id.charAt(0) == "$" ? "$" + id : id);
     
     //First, check if the element exists and types match
@@ -212,10 +214,14 @@ function applyPatch(obj, patch) {
         delete obj[removals];
       }
     }
-    delete patch["$r"];
   }
   
   for(i in patch) {
+  
+    if(i === "$r") {
+      continue;
+    }
+  
     //Unescape underscore
     var t = (typeof(i) === "string" && i.charAt(0) == "$" ? i.substring(1) : i);
     
