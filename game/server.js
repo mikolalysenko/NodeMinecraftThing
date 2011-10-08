@@ -61,7 +61,7 @@ exports.createPlayer = function(account, options) {
     'motion' : {
       'model' : 'physical',
       'friction': 10.0,
-      'air_friction': 0.01,
+      'air_friction': 0.0,
     },
   };
   
