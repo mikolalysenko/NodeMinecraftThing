@@ -58,6 +58,7 @@ exports.createPlayer = function(account, options) {
     'type'          : 'player',
     'motion_model'  : 'physical',
     'sprite_class'  : 'player',
+    'motion_friction': [0.1,0.1,0.1],
   };
   
   return [player_rec, entity_rec, 'Starting Area'];

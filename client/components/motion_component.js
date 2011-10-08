@@ -1,3 +1,5 @@
+var STICK_THRESHOLD = 0.001;
+
 var framework = null;
 exports.registerFramework = function(f) { framework = f; };
 
@@ -26,8 +28,24 @@ function setZeroVec(tick_count, state, v) {
 
 var Models = {
 
+  //Non-moving
+  none: {
+    getPosition: getZeroVec,
+    setPosition: setZeroVec,
+    getVelocity: getZeroVec,
+    setVelocity: setZeroVec,
+    params: [ 'motion_model' ],
+    checkDefaults: function(state) {
+    }
+  },
+
   //Constant model
   constant: {
+  
+    fastForward: function(tick_count, state) {
+      return;
+    },
+  
     getPosition: function(tick_count, state, r) {
       if(!r) {
         return state.slice();
@@ -47,16 +65,10 @@ var Models = {
     
     getVelocity:  getZeroVec,
     setVelocity:  setZeroVec,
-    getForces:    getZeroVec,
-    setForces:    setZeroVec,
-    getFriction:  getZeroVec,
-    setFriction:  setZeroVec,
     
     params: [
       'motion_model',
       'motion_flags',
-      'motion_radius',
-      'motion_height',
       'motion_position',
     ],
     
@@ -67,17 +79,13 @@ var Models = {
       if(!state.motion_flags) {
         state.motion_flags = {};
       }
-      if(!state.motion_radius) {
-        state.motion_radius = 0.5;
-      }
-      if(!state.motion_height) {
-        state.motion_height = 1.0;
-      }
     },
   },
 
 
   linear: {
+  
+    
     getPosition: function(tick_count, state, r) {
       var dt = computeTime(tick_count, state);
       if(!r) {
@@ -115,17 +123,15 @@ var Models = {
       state.motion_start_tick = tick_count;
       return v;
     },
-
-    getForces:    getZeroVec,
-    setForces:    setZeroVec,
-    getFriction:  getZeroVec,
-    setFriction:  setZeroVec,
     
+    fastForward: function(tick_count, state) {
+      Models.linear.getPosition(tick_count, state, state.motion_position);
+      state.motion_tick_start = tick_count;
+    },
+      
     params: [
       'motion_model',
       'motion_flags',
-      'motion_radius',
-      'motion_height',
       'motion_position',
       'motion_velocity',
       'motion_start_tick',
@@ -209,60 +215,27 @@ var Models = {
       if(!r) {
         r = [0.0,0.0,0.0];
       }
+      for(var n in state.motion_forces) {
+        var f = state.motion_forces[n];
+        for(var i=0; i<3; ++i) {
+          r[i] += f[i];
+        }
+      }
       for(var i=0; i<3; ++i) {
-        r[i] = state.motion_forces[i] / state.motion_mass;
+        r[i] /= state.motion_mass;
       }
       return r;
     },
     
-    getForces: function(tick_count, state, r) {
-      if(!r) {
-        return state.motion_forces.slice();
-      }
-      for(var i=0; i<3; ++i) {
-        r[i] = state.motion_forces[i];
-      }
-      return r;
-    },
-    
-    setForces: function(tick_count, state, f) {
+    fastForward: function(tick_count, state) {
       Models.physical.getPosition(tick_count, state, state.motion_position);
       Models.physical.getVelocity(tick_count, state, state.motion_velocity);
       state.motion_start_tick = tick_count;
-      
-      for(var i=0; i<3; ++i) {
-        state.motion_forces[i] = f[i];
-      }
-      return f;
-    },
-    
-    getFriction: function(tick_count, state, r) {
-      if(!r) {
-        return state.motion_friction.slice();
-      }
-      for(var i=0; i<3; ++i) {
-        r[i] = state.motion_friction[i];
-      }
-      return r;
-    },
-    
-    setFriction: function(tick_count, state, r) {
-      Models.physical.getPosition(tick_count, state, state.motion_position);
-      Models.physical.getVelocity(tick_count, state, state.motion_velocity);
-      state.motion_start_tick = tick_count;
-      
-      for(var i=0; i<3; ++i) {
-        state.motion_friction[i] = r[i];
-      }
-      return r;    
     },
     
     params: [
       'motion_model',
       'motion_flags',
-      'motion_radius',
-      'motion_height',
-      'motion_contact',
       'motion_position',
       'motion_velocity',
       'motion_start_tick',
@@ -278,13 +251,10 @@ var Models = {
         state.motion_friction = [0.0,0.0,0.0];
       }
       if(!state.motion_forces) {
-        state.motion_forces = [0.0,0.0,0.0];
+        state.motion_forces = {};
       }
       if(!state.motion_mass) {
         state.motion_mass = 1.0;
-      }
-      if(!state.motion_contact) {
-        state.motion_contact = { type:'none' };
       }
       if(!state.motion_restitution) {
         state.motion_restitution = 1.0;
@@ -307,18 +277,6 @@ function getVelocity(tick_count, state, r) {
 function setVelocity(tick_count, state, r) {
   return Models[state.motion_model].setVelocity(tick_count, state, r);
 }
-function getForces(tick_count, state, r) {
-  return Models[state.motion_model].getForces(tick_count, state, r);
-}
-function setForces(tick_count, state, r) {
-  return Models[state.motion_model].setForces(tick_count, state, r);
-}
-function getFriction(tick_count, state, r) {
-  return Models[state.motion_model].getFriction(tick_count, state, r);
-}
-function setFriction(tick_count, state, r) {
-  return Models[state.motion_model].setFriction(tick_count, state, r);
-}
 function getMotionParams(state) {
   var params = Models[state.motion_model].params,
       res = {};
@@ -334,38 +292,84 @@ function setMotionParams(state, motion_params) {
   }
   return state;
 }
+function fastForward(tick_count, state) {
+  if(state.motion_start_tick < tick_count) {
+    Models[state.motion_model].fastForward(tick_count, state);
+  }
+}
 
 //Exports for motion accessors
 exports.getPosition     = getPosition;
 exports.setPosition     = setPosition;
 exports.getVelocity     = getVelocity;
 exports.setVelocity     = setVelocity;
-exports.getForces       = getForces;
-exports.setForces       = setForces;
-exports.getFriction     = getFriction;
-exports.setFriction     = setFriction;
 exports.getMotionParams = getMotionParams;
 exports.setMotionParams = setMotionParams;
 
 
 function applyCollision(tick_count, state1, state2, constraintPlane) {
 
-  var cr    = Math.min(state1.motion_restitution, state2.motion_restitution),
-      q1    = getPosition(tick_count-1, state1),
-      p1    = getPosition(tick_count, state1),
-      v1    = getVelocity(tick_count, state1),
-      m1    = state1.motion_mass,
-      q1    = getPosition(tick_count-1, state2),
-      p2    = getPosition(tick_count, state2),
-      v2    = getVelocity(tick_count, state2),
-      m2    = state2.motion_mass,
-      t_mu  = Math.max(state1.motion_body_friction, state2.motion_body_friction);
+  var p0    = getPosition(tick_count-1, state1),
+      p1    = getPosition(tick_count,   state1),
+      q0    = getPosition(tick_count-1, state2),
+      q1    = getPosition(tick_count,   state2);
 
-
-  //Compute final position for each body
-
-
+  //Estimate time of intersection
+  var d0 = 0.0, d1 = 0.0;
+  for(var i=0; i<3; ++i) {
+    d0 += (q0[i] - p0[i]) * constraintPlane[i];
+    d1 += (q1[i] - p1[i]) * constraintPlane[i];
+  }
   
+  //Do not apply constraint if it never gets busted
+  if(d1 < d0 || d0 >= constraintPlane[3]) {
+    return;
+  }
+  
+  //Compute new velocities
+  var t   = Math.min(Math.max((constraintPlane[3] - d1) / (d0 - d1), 0.0), 1.0),
+      cr  = Math.min(state1.motion_restitution, state2.motion_restitution),
+      mu  = Math.max(state1.motion_body_friction, state2.motion_body_friction),
+      vp  = getVelocity(tick_count + t, state1),
+      mp  = state1.motion_mass,
+      vq  = getVelocity(tick_count + t, state2),
+      mq  = state2.motion_mass,
+      vc  = [0.0,0,0.0,0.0],
+      mr  = 1.0 / (mp + mq),
+      up  = [0.0,0.0,0.0],
+      np  = 0.0,
+      uq  = [0.0,0.0,0.0],
+      nq  = 0.0;
+
+  //Fast forward position to point of impact
+  getPosition(tick_count+1.0-t, state1, state1.motion_position);
+  getPosition(tick_count+1.0-t, state2, state2.motion_position);
+  
+  for(var i=0; i<3; ++i) {
+    vc[i] =   (mp * vp[i] + mq * vq[i]) * mr;
+    up[i] =   vp[i] - vc[i];
+    np    +=  up[i] * constraintPlane[i];
+    uq[i] =   vq[i] - vc[i];
+    nq    +=  uq[i] * constraintPlane[i];
+  }
+  
+  //Check for sticking
+  if(abs(np - nq) < STICK_THRESHOLD) {
+    np = 0.0;
+    nq = 0.0;
+  }
+  
+  //Compute new velocity
+  for(var i=0; i<3; ++i) {
+    state1.motion_velocity[i] = (1.0 - mu) * up[i] + mu * uq[i] + ( (mu - 1.0 - cr) * np - mu * nq ) * n[i] + vc[i];
+    state2.motion_velocity[i] = (1.0 - mu) * uq[i] + mu * up[i] + ( (mu - 1.0 - cr) * nq - mu * np ) * n[i] + vc[i];
+  }
+  
+  state1.motion_start_tick = tick_count+1.0-t;
+  state2.motion_start_tick = tick_count+1.0-t;
+  
+  fastForward(tick_count, state1);
+  fastForward(tick_count, state2);
 }
 
 
@@ -398,32 +402,24 @@ exports.registerEntity = function(entity) {
   entity.__defineSetter__('velocity', function(p) {
     return setVelocity(instance.region.tick_count, entity.state, p);
   });
-  entity.__defineGetter__('forces', function() {
-    return getForces(instance.region.tick_count, entity.state);
-  });
-  entity.__defineSetter__('forces', function(p) {
-    return setForces(instance.region.tick_count, entity.state, p);
-  });
-  entity.__defineGetter__('friction', function() {
-    return getFriction(instance.region.tick_count, entity.state);
-  });
-  entity.__defineSetter__('friction', function(p) {
-    return setFriction(instance.region.tick_count, entity.state, p);
-  });
   entity.__defineGetter__('motion_params', function() {
     return getMotionParams(entity.state);
   });
   entity.__defineSetter__('motion_params', function(p) {
     return setMotionParams(entity.state, p);
   });
+
+  entity.setForce = function(force_name, vec) {
+    fastForward(instance.region.tick_count, entity.state);
+    entity.state.motion_forces[force_name] = vec;
+  };
   
-  
-  entity.emitter.on('tick', function() {
-    
-    //Check for collisions
-    if(entity.state.motion_flags.collides) {
-    
+  entity.getForce = function(force_name, vec) {
+    var f = entity.state.motion_forces[force_name];
+    if(f) {
+      return f;
     }
-  });
+    return [0.0,0.0,0.0];
+  };
 };
 

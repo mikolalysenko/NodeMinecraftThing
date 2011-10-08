@@ -60,10 +60,10 @@ exports.registerEntity = function(entity) {
       }
       
       //Update entity velocity         
-      var v = entity.forces;
+      var v = entity.getForce('input');
       if(v[0] != nx || v[2] != nz ) {
         entity.friction = [1,0,1];
-        entity.forces = [nx, 0, nz];
+        entity.setForce('input', [nx, 0, nz]);
         entity.message('input', entity.motion_params);
       }   
     };
