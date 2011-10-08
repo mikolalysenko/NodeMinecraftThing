@@ -54,11 +54,15 @@ exports.createPlayer = function(account, options) {
     'key_bindings'  : common.default_bindings,
   };
   var entity_rec = {
-    'player_name'   : options.player_name,
-    'type'          : 'player',
-    'motion_model'  : 'physical',
-    'sprite_class'  : 'player',
-    'motion_friction': [0.1,0.1,0.1],
+    'player_name' : options.player_name,
+    'type' : 'player',
+    'sprite_class' : 'player',    
+    
+    'motion' : {
+      'model' : 'physical',
+      'friction': 10.0,
+      'air_friction': 0.01,
+    },
   };
   
   return [player_rec, entity_rec, 'Starting Area'];

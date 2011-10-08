@@ -59,9 +59,15 @@ exports.registerEntity = function(entity) {
         nx -= 0.125;
       }
       
+      var jumped = false;
+      if(buttons['jump'] === 1) {
+        jumped = true;
+        entity.applyImpulse([0, 1, 0]);
+      }
+      
       //Update entity velocity         
       var v = entity.getForce('input');
-      if(v[0] != nx || v[2] != nz ) {
+      if(jumped || v[0] != nx || v[2] != nz ) {
         entity.setForce('input', [nx, 0, nz]);
         entity.message('input', entity.motion_params);
       }   
@@ -89,18 +95,16 @@ exports.registerEntity = function(entity) {
     entity.emitter.on('net_update', function(net_state, overrides) {
       
       //Check if local position is acceptable
-      if(checkPosition()) {
-        var motion_params = entity.motion_params;
-        overrides.push(function() {
-          entity.motion_params = motion_params;
-        });
-      }
-      else {
-        var v = entity.velocity;
-        overrides.push(function() {
-          entity.velocity = v;
-        });
-      }
+      var p = entity.position,
+          v = entity.velocity,
+          f = entity.getForce('input').slice();
+      
+      overrides.push(function() {
+        entity.position = p;
+        entity.velocity = v;
+        entity.setForce('input', f);
+      });
+      
     });
     
     //Logs a message to the player
@@ -117,6 +121,8 @@ exports.registerEntity = function(entity) {
     
     //Apply a network packet to update player position  
     entity.emitter.on('remote_input', function(player, motion_params) {
+    
+      console.log(JSON.stringify(motion_params));
       entity.motion_params = motion_params;
     });
   }  
