@@ -381,23 +381,26 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     d1 += (p1[i] - q1[i]) * constraintPlane[i];
   }
   
-  console.log("Applying collision", d0, d1, constraintPlane, p0, q0);
+  //console.log("Applying collision", d0, d1, constraintPlane, p0, q0);
   
   
   //If object doesn't collide, then ignore this
   if((d0 + constraintPlane[3] >= 0 && d1 + constraintPlane[3] >= 0)) {
-  
-    console.log("No collision");
+    //console.log("No collision");
     return COLLIDE_NONE;
   }
   
   //Compute time of impact
-  var t = 0.0,
+  var t = -1.0,
       pt = p1, qt = q1;
   
   if(Math.abs(d1 - d0) > TOLERANCE) {
     t = 1.0-(constraintPlane[3] + d1) / (d1 - d0);
+  }
 
+  //console.log("t = ", t);
+  
+  if(0 <= t && t <= 1.0) {
     //Solve for position using linear model :p
     for(var i=0; i<3; ++i) {
       pt[i] = (1.0-t)*p0[i] + t*p1[i];
@@ -405,21 +408,21 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     }
   }
   else {
+
+    //Clamp t to [0,1]
+    t = Math.max(Math.min(t, 1.0), 0.0);
   
     //Fallback: just project p0 to constraint plane
-    console.log("Fallback case: not moving and colliding :P", d0, constraintPlane, p0);
+    //console.log("Fallback case: not moving and colliding :P", d0, constraintPlane, p0);
     
     for(var i=0; i<3; ++i) {
       pt[i] = p0[i] - (d0 + constraintPlane[3]) * constraintPlane[i];
       qt[i] = q0[i];
     }
-    console.log("pt=", pt);
+    //console.log("pt=", pt);
   }
   
-  console.log("t = ", t);
 
-  //Clamp t to [0,1]
-  t = Math.max(Math.min(t, 1.0), 0.0);
   
   //Get parameters
   var cr  = Math.min(state1.restitution, state2.restitution),
@@ -472,17 +475,17 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
       delta_q = Math.max(delta_q, Math.abs(qt[i] - q0[i]));
     }
 
-    console.log("Already moving apart", pt, p0, np, nq, delta_p, delta_q);
+    //console.log("Already moving apart", pt, p0, np, nq, delta_p, delta_q);
 
     //Only update if we are outside tolerance
     if(delta_p > TOLERANCE) {
-      console.log("updating p");
+      //console.log("updating p");
       getVelocity(tick_count, state1, state1.velocity);
       state1.start_tick = tick_count;
       state1.position   = pt;
     }
     if(delta_q > TOLERANCE) {
-      console.log("updating q");
+      //console.log("updating q");
       getVelocity(tick_count, state2, state2.velocity);
       state2.start_tick = tick_count;
       state2.position   = qt;
@@ -497,7 +500,7 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     stick = true;
   }
 
-  console.log("vp=", vp, "np=", np, "cr=", cr);
+  //console.log("vp=", vp, "np=", np, "cr=", cr);
   
   //Compute new velocity
   for(var i=0; i<3; ++i) {
@@ -505,8 +508,7 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     vq[i] = uq[i] - (1.0 + cr) * nq * constraintPlane[i] + vc[i];
   }
   
-  console.log("vpf=", vp);
-  
+  //console.log("vpf=", vp);
   
   var delta_p = 0, delta_q = 0;
   for(var i=0; i<3; ++i) {
@@ -519,7 +521,7 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
               Math.abs(vq[i] - state2.velocity[i]));
   }
   
-  console.log("p0=", p0, "pt=", pt);
+  //console.log("p0=", p0, "pt=", pt);
   
   if(delta_p > TOLERANCE) {
     state1.start_tick = tick_count;
@@ -589,6 +591,16 @@ exports.registerEntity = function(entity) {
       return [0.0,0.0,0.0];
     };
     
+    entity.onGround = function() {
+      var contacts = entity.state.motion.contacts;
+      for(var i in contacts) {
+        if(contacts[i][1] > 0.5) {
+          return true;
+        }
+      }
+      return false;
+    };
+    
     entity.applyImpulse = function(delta_v) {
       var v = getVelocity(instance.region.tick_count, entity.state.motion);
       for(var i=0; i<3; ++i) {
@@ -625,7 +637,9 @@ exports.registerEntity = function(entity) {
       var air_friction = 0.0,
           delta  = [1,9,3],
           center = 1+3+9,
-          ground_contacts = {};
+          ground_contacts = {},
+          active_axes = [0,0,0],
+          v = entity.velocity;
 
       instance.voxelForeach(lo, hi, 1, function(x, y, z, wind, step) {
       
@@ -639,7 +653,9 @@ exports.registerEntity = function(entity) {
               sep_axis = 0, sep_sign = 1, sep_dist = -1e6;
               
           for(var i=0; i<3; ++i) {
-            if(!voxel_types[wind[center - delta[i]]].solid) {
+            if(active_axes[i] <= 0 &&
+              v[i] >= -TOLERANCE &&
+              !voxel_types[wind[center - delta[i]]].solid) {
               var d = vlo[i] - phi[i];
               if( d > sep_dist ) {
                 sep_axis = i;
@@ -647,7 +663,9 @@ exports.registerEntity = function(entity) {
                 sep_dist = d;
               }
             }
-            if(!voxel_types[wind[center + delta[i]]].solid) {
+            if(active_axes[i] >= 0 && 
+              v[i] <= TOLERANCE &&
+              !voxel_types[wind[center + delta[i]]].solid) {
               var d = plo[i] - vhi[i];
               if( d > sep_dist ) {
                 sep_axis = i;
@@ -658,7 +676,7 @@ exports.registerEntity = function(entity) {
           }
           
           //No collision
-          if(sep_dist > TOLERANCE || sep_dist < -aabb[sep_axis]) {
+          if(sep_dist > TOLERANCE || sep_dist < plo[sep_axis] - phi[sep_axis]) {
             return;
           }
           
@@ -672,14 +690,14 @@ exports.registerEntity = function(entity) {
             return;
           }
 
-          console.log("Collision!", plo, phi, vlo, vhi, aabb, sep_axis, sep_sign, sep_dist);
+          //console.log("Collision!", plo, phi, vlo, vhi, aabb, sep_axis, sep_sign, sep_dist);
           
           //Construct separator
           var pl = [0,0,0,-sep_sign*pldist, mu];
           pl[sep_axis] = sep_sign;
           pl[3] -= 0.5 * aabb[sep_axis];
           
-          console.log("pl=",pl);
+          //console.log("pl=",pl);
           
           //Apply collision
           var res = applyCollision(instance.region.tick_count, entity.state.motion, {
@@ -693,15 +711,17 @@ exports.registerEntity = function(entity) {
             }, pl);
           
           if(res === COLLIDE_STICK) {
-            console.log("Adding contact,", contact_name, "pl=",pl);
+            //console.log("Adding contact,", contact_name, "pl=",pl);
             ground_contacts[contact_name] = true;
             entity.state.motion.contacts[contact_name] = pl;
+            active_axes[sep_axis] = sep_sign;
           }
           else if(res === COLLIDE_BOUNCE) {
-            console.log("Bounced");
+            //console.log("Bounced");
+            active_axes[sep_axis] = sep_sign;
           }
           else {
-            console.log("No hit");
+            //console.log("No hit");
           }
         }
         else {
@@ -734,7 +754,7 @@ exports.registerEntity = function(entity) {
       if(broken_contacts.length > 0) {
         fastForward(instance.region.tick_count, entity.state.motion);
         for(var i=0; i<broken_contacts.length; ++i) {
-          console.log("Removing contact,", broken_contacts[i]);
+          //console.log("Removing contact,", broken_contacts[i]);
           delete entity.state.motion.contacts[broken_contacts[i]];
         }
       }

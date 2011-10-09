@@ -45,30 +45,45 @@ exports.registerEntity = function(entity) {
   
     function processInput() {
       var buttons = instance.getButtons();
-      var nx = 0, nz = 0;
-      if(buttons['up'] > 0) {
-        nz -= 0.125;
-      }
-      if(buttons['down'] > 0) {
-        nz += 0.125;
-      }
-      if(buttons['right'] > 0) {
-        nx += 0.125;
-      }
-      if(buttons['left'] > 0) {
-        nx -= 0.125;
-      }
+      var nx = 0, ny = 0, nz = 0, jumped=false;
       
-      var jumped = false;
-      if(buttons['jump'] === 1) {
-        jumped = true;
-        entity.applyImpulse([0, 1, 0]);
+      if(entity.onGround()) {
+        if(buttons['up'] > 0) {
+          nz -= 0.125;
+        }
+        if(buttons['down'] > 0) {
+          nz += 0.125;
+        }
+        if(buttons['right'] > 0) {
+          nx += 0.125;
+        }
+        if(buttons['left'] > 0) {
+          nx -= 0.125;
+        }
+        if(buttons['jump'] > 0) {
+          entity.applyImpulse([0,2,0]);
+          jumped = true
+        }
+      }
+      else {
+        if(buttons['up'] > 0) {
+          nz -= 0.01;
+        }
+        if(buttons['down'] > 0) {
+          nz += 0.01;
+        }
+        if(buttons['right'] > 0) {
+          nx += 0.01;
+        }
+        if(buttons['left'] > 0) {
+          nx -= 0.01;
+        }
       }
       
       //Update entity velocity         
       var v = entity.getForce('input');
-      if(jumped || v[0] != nx || v[2] != nz ) {
-        entity.setForce('input', [nx, 0, nz]);
+      if(v[0] != nx || v[1] != ny || v[2] != nz || jumped) {
+        entity.setForce('input', [nx, ny, nz]);
         entity.message('input', entity.motion_params);
       }   
     };
