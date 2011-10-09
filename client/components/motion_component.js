@@ -1,4 +1,5 @@
 var STICK_THRESHOLD = 1.0,
+    PRECISION       = 65536.0,
     TOLERANCE       = 1e-6,
     COLLIDE_NONE    = 0,
     COLLIDE_STICK   = 1,
@@ -26,6 +27,15 @@ function setZeroVec(tick_count, state, v) {
   return [0.0,0.0,0.0];
 };
 
+function quantize(f) {
+  return Math.round(f*PRECISION) / PRECISION;
+}
+
+function quantize_vec(f) {
+  for(var i=0; i<3; ++i) {
+    f[i] = quantize(f[i]);
+  }
+}
 
 var Models = {
 
@@ -382,21 +392,31 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
   }
   
   //Compute time of impact
-  var t = 0.0;
+  var t = 0.0,
+      pt = p1, qt = q1;
   
   if(Math.abs(d1 - d0) > TOLERANCE) {
     t = 1.0-(constraintPlane[3] + d1) / (d1 - d0);
-  }
 
-  //Solve for position using linear model :p
-  var pt = p1, qt = q1;
-  for(var i=0; i<3; ++i) {
-    pt[i] = (1.0-t)*p0[i] + t*p1[i];
-    qt[i] = (1.0-t)*q0[i] + t*q1[i];
+    //Solve for position using linear model :p
+    for(var i=0; i<3; ++i) {
+      pt[i] = (1.0-t)*p0[i] + t*p1[i];
+      qt[i] = (1.0-t)*q0[i] + t*q1[i];
+    }
+  }
+  else {
+  
+    //Fallback: just project p0 to constraint plane
+    console.log("Fallback case: not moving and colliding :P", d0, constraintPlane, p0);
+    
+    for(var i=0; i<3; ++i) {
+      pt[i] = p0[i] - (d0 + constraintPlane[3]) * constraintPlane[i];
+      qt[i] = q0[i];
+    }
+    console.log("pt=", pt);
   }
   
-  console.log("pt=", pt);
-  
+  console.log("t = ", t);
 
   //Clamp t to [0,1]
   t = Math.max(Math.min(t, 1.0), 0.0);
@@ -452,13 +472,17 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
       delta_q = Math.max(delta_q, Math.abs(qt[i] - q0[i]));
     }
 
+    console.log("Already moving apart", pt, p0, np, nq, delta_p, delta_q);
+
     //Only update if we are outside tolerance
     if(delta_p > TOLERANCE) {
+      console.log("updating p");
       getVelocity(tick_count, state1, state1.velocity);
       state1.start_tick = tick_count;
       state1.position   = pt;
     }
     if(delta_q > TOLERANCE) {
+      console.log("updating q");
       getVelocity(tick_count, state2, state2.velocity);
       state2.start_tick = tick_count;
       state2.position   = qt;
@@ -473,12 +497,15 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     stick = true;
   }
 
+  console.log("vp=", vp, "np=", np, "cr=", cr);
   
   //Compute new velocity
   for(var i=0; i<3; ++i) {
     vp[i] = up[i] - (1.0 + cr) * np * constraintPlane[i] + vc[i];
     vq[i] = uq[i] - (1.0 + cr) * nq * constraintPlane[i] + vc[i];
   }
+  
+  console.log("vpf=", vp);
   
   
   var delta_p = 0, delta_q = 0;
@@ -491,6 +518,8 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
               Math.abs(qt[i] - q0[i])),
               Math.abs(vq[i] - state2.velocity[i]));
   }
+  
+  console.log("p0=", p0, "pt=", pt);
   
   if(delta_p > TOLERANCE) {
     state1.start_tick = tick_count;
@@ -610,7 +639,7 @@ exports.registerEntity = function(entity) {
               sep_axis = 0, sep_sign = 1, sep_dist = -1e6;
               
           for(var i=0; i<3; ++i) {
-            if(!voxel_types[wind[center + delta[i]]].solid) {
+            if(!voxel_types[wind[center - delta[i]]].solid) {
               var d = vlo[i] - phi[i];
               if( d > sep_dist ) {
                 sep_axis = i;
@@ -618,7 +647,7 @@ exports.registerEntity = function(entity) {
                 sep_dist = d;
               }
             }
-            if(!voxel_types[wind[center-delta[i]]].solid) {
+            if(!voxel_types[wind[center + delta[i]]].solid) {
               var d = plo[i] - vhi[i];
               if( d > sep_dist ) {
                 sep_axis = i;
@@ -629,7 +658,7 @@ exports.registerEntity = function(entity) {
           }
           
           //No collision
-          if(sep_dist > TOLERANCE) {
+          if(sep_dist > TOLERANCE || sep_dist < -aabb[sep_axis]) {
             return;
           }
           
@@ -704,8 +733,8 @@ exports.registerEntity = function(entity) {
       }
       if(broken_contacts.length > 0) {
         fastForward(instance.region.tick_count, entity.state.motion);
-        console.log("Removing contact,", broken_contacts[id]);
         for(var i=0; i<broken_contacts.length; ++i) {
+          console.log("Removing contact,", broken_contacts[i]);
           delete entity.state.motion.contacts[broken_contacts[i]];
         }
       }
