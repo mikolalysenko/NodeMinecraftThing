@@ -187,6 +187,11 @@ exports.setVoxel = function(x, y, z, v) {
   return p;
 };
 
+//Iterates over all voxels
+exports.rangeForeach = function(lo, hi, n, cb) {
+  voxel_set.rangeForeach(lo, hi, n, cb);
+};
+
 //Called when a server confirms that a voxel has been set
 exports.setVoxelAuthoritative = function(x, y, z, v) {
 

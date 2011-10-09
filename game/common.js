@@ -34,14 +34,16 @@ exports.voxel_types = [
     textures:     [ [0,0], [0,0], [0,0], [0,0], [0,0], [0,0] ],
     transparent:  true, 
     solid:        false,
-    friction:     0.2,
+    friction:     0,
+    restitution:  0,
   },
   
   { name:         'Stone', 
     textures:     [ [0,1], [0,1], [0,1], [0,1], [0,1], [0,1] ],
     transparent:  false, 
     solid:        true,
-    friction:     1.0,
+    friction:     10.0,
+    restitution:  0.5,
   },  
 ];
 

@@ -361,6 +361,11 @@ Instance.prototype.getVoxel = function(x,y,z) {
   return this.chunk_set.get(x,y,z);
 };
 
+//Iterates over all voxels in a range
+Instance.prototype.voxelForeach = function(lo, hi, n, cb) {
+  this.chunk_set.rangeForeach(lo, hi, n, cb);
+};
+
 //Start the instance server
 Instance.prototype.start = function(cb) {  
 

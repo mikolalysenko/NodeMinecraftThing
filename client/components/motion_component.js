@@ -274,6 +274,7 @@ var Models = {
     params: [
       'model',
       'flags',
+      'aabb',
       'position',
       'velocity',
       'start_tick',
@@ -304,6 +305,9 @@ var Models = {
       }
       if(!state.air_friction) {
         state.air_friction = 1.0;
+      }
+      if(!state.aabb) {
+        state.aabb = [0.5,0.5,0.5];
       }
     },
   },
@@ -367,8 +371,13 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     d1 += (p1[i] - q1[i]) * constraintPlane[i];
   }
   
+  console.log("Applying collision", d0, d1, constraintPlane, p0, q0);
+  
+  
   //If object doesn't collide, then ignore this
   if((d0 + constraintPlane[3] >= 0 && d1 + constraintPlane[3] >= 0)) {
+  
+    console.log("No collision");
     return COLLIDE_NONE;
   }
   
@@ -385,6 +394,8 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     pt[i] = (1.0-t)*p0[i] + t*p1[i];
     qt[i] = (1.0-t)*q0[i] + t*q1[i];
   }
+  
+  console.log("pt=", pt);
   
 
   //Clamp t to [0,1]
@@ -532,52 +543,173 @@ exports.registerEntity = function(entity) {
   entity.__defineSetter__('motion_params', function(p) {
     return setMotionParams(entity.state.motion, p);
   });
-
-  entity.setForce = function(force_name, vec) {
-    fastForward(instance.region.tick_count, entity.state.motion);
-    entity.state.motion.forces[force_name] = vec;
-  };
   
-  entity.getForce = function(force_name, vec) {
-    var f = entity.state.motion.forces[force_name];
-    if(f) {
-      return f;
-    }
-    return [0.0,0.0,0.0];
-  };
+  //Add stuff for physical entities
+  if(entity.state.motion.model === 'physical') {
   
-  entity.applyImpulse = function(delta_v) {
-    var v = getVelocity(instance.region.tick_count, entity.state.motion);
-    for(var i=0; i<3; ++i) {
-      v[i] += delta_v[i];
-    }
-    setVelocity(instance.region.tick_count, entity.state.motion, v);
-  };
-
-  if(!('gravity' in entity.state.motion.forces)) {
-    entity.setForce('gravity', [0,-0.1,0]);
-  }
-  
-  entity.emitter.on('tick', function() {
-  
-    var res = applyCollision(instance.region.tick_count, entity.state.motion, {
-      model: 'constant',
-      position: [0,0,0],
-      velocity: [0,0,0],
-      restitution: 0.5,
-      friction: 1.0,
-      mass: 10000.0,
-    },
-    [0, 1, 0, 4]);
+    entity.setForce = function(force_name, vec) {
+      fastForward(instance.region.tick_count, entity.state.motion);
+      entity.state.motion.forces[force_name] = vec;
+    };
     
-    if(res !== COLLIDE_STICK) {
-      if('level' in entity.state.motion.contacts) {
-        delete entity.state.motion.contacts['level'];
+    entity.getForce = function(force_name, vec) {
+      var f = entity.state.motion.forces[force_name];
+      if(f) {
+        return f;
       }
+      return [0.0,0.0,0.0];
+    };
+    
+    entity.applyImpulse = function(delta_v) {
+      var v = getVelocity(instance.region.tick_count, entity.state.motion);
+      for(var i=0; i<3; ++i) {
+        v[i] += delta_v[i];
+      }
+      setVelocity(instance.region.tick_count, entity.state.motion, v);
+    };
+
+    if(!('gravity' in entity.state.motion.forces)) {
+      entity.setForce('gravity', [0,-0.1,0]);
     }
-    else if(res === COLLIDE_STICK && !('level' in entity.state.motion.contacts)) {
-      entity.state.motion.contacts['level'] = [0, 1, 0, 4, 1.0];
-    }
-  });
+    
+    var voxel_types = instance.game_module.voxel_types;
+    
+    entity.emitter.on('tick', function() {
+    
+      //Check for level collisions
+      var p = entity.position,
+          pfut = getPosition(instance.region.tick_count+1, entity.state.motion),
+          aabb = entity.state.motion.aabb,
+          plo = [0,0,0],
+          phi = [0,0,0],
+          lo = [0,0,0],
+          hi = [0,0,0];
+          
+    
+      for(var i=0; i<3; ++i) {
+        plo[i] = Math.min(p[i], pfut[i]) - 0.5*aabb[i];
+        phi[i] = Math.max(p[i], pfut[i]) + 0.5*aabb[i];
+        lo[i] = Math.floor(plo[i] - 1);
+        hi[i] = Math.ceil(phi[i] + 1);
+      }
+      
+      var air_friction = 0.0,
+          delta  = [1,9,3],
+          center = 1+3+9,
+          ground_contacts = {};
+
+      instance.voxelForeach(lo, hi, 1, function(x, y, z, wind, step) {
+      
+        var voxel = voxel_types[wind[center]],
+            cr = voxel.restitution,
+            mu = voxel.friction;
+        
+        if(voxel.solid) {
+          var vlo = [x,y,z],
+              vhi = [x+step, y+1, z+1],
+              sep_axis = 0, sep_sign = 1, sep_dist = -1e6;
+              
+          for(var i=0; i<3; ++i) {
+            if(!voxel_types[wind[center + delta[i]]].solid) {
+              var d = vlo[i] - phi[i];
+              if( d > sep_dist ) {
+                sep_axis = i;
+                sep_sign = -1;
+                sep_dist = d;
+              }
+            }
+            if(!voxel_types[wind[center-delta[i]]].solid) {
+              var d = plo[i] - vhi[i];
+              if( d > sep_dist ) {
+                sep_axis = i;
+                sep_sign = 1;
+                sep_dist = d;
+              }
+            }
+          }
+          
+          //No collision
+          if(sep_dist > TOLERANCE) {
+            return;
+          }
+          
+          var pldist = sep_sign < 0 ? vlo[sep_axis] : vhi[sep_axis],
+              contact_name = 'l'+(sep_axis + 3*(sep_sign+1))+':'+pldist;
+          
+
+          //Check if contact is already active
+          if(contact_name in entity.state.motion.contacts) {
+            ground_contacts[contact_name] = true;
+            return;
+          }
+
+          console.log("Collision!", plo, phi, vlo, vhi, aabb, sep_axis, sep_sign, sep_dist);
+          
+          //Construct separator
+          var pl = [0,0,0,-sep_sign*pldist, mu];
+          pl[sep_axis] = sep_sign;
+          pl[3] -= 0.5 * aabb[sep_axis];
+          
+          console.log("pl=",pl);
+          
+          //Apply collision
+          var res = applyCollision(instance.region.tick_count, entity.state.motion, {
+              model: 'constant',
+              position: [0,0,0],
+              velocity: [0,0,0],
+              restitution: cr,
+              friction: mu,
+              forces: {},
+              mass: 10000.0,
+            }, pl);
+          
+          if(res === COLLIDE_STICK) {
+            console.log("Adding contact,", contact_name, "pl=",pl);
+            ground_contacts[contact_name] = true;
+            entity.state.motion.contacts[contact_name] = pl;
+          }
+          else if(res === COLLIDE_BOUNCE) {
+            console.log("Bounced");
+          }
+          else {
+            console.log("No hit");
+          }
+        }
+        else {
+          air_friction = Math.max(air_friction, mu);
+        }
+      });
+      entity.state.motion.air_friction = air_friction;
+      
+      //Prune out broken contacts (need 2 passes)
+      var contacts = entity.state.motion.contacts,
+          p = entity.position,
+          v = entity.velocity,
+          broken_contacts = [];
+      for(var id in contacts) {
+        if(id.charAt(0) === 'l' && !(id in ground_contacts)) {
+          broken_contacts.push(id);
+          continue;
+        }
+      
+        var contact = contacts[id],
+            contact_dist = contact[3];
+        for(var i=0; i<3; ++i) {
+          contact_dist += p[i] * contact[i];
+        }
+        
+        if(Math.abs(contact_dist) > 0.01) {
+          broken_contacts.push(id);
+        }
+      }
+      if(broken_contacts.length > 0) {
+        fastForward(instance.region.tick_count, entity.state.motion);
+        console.log("Removing contact,", broken_contacts[id]);
+        for(var i=0; i<broken_contacts.length; ++i) {
+          delete entity.state.motion.contacts[broken_contacts[i]];
+        }
+      }
+    });
+  }    
 };
 

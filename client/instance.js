@@ -182,6 +182,11 @@ Instance.prototype.getVoxel = function(x,y,z) {
   return this.engine.voxels.getVoxel(x,y,z);
 };
 
+//Iterates over a set of voxels
+Instance.prototype.voxelForeach = function(lo, hi, n, cb) {
+  this.engine.voxels.rangeForeach(lo, hi, n, cb);
+};
+
 //Looks up an entity in the database
 Instance.prototype.lookupEntity = function(id) {
   return this.entities[id];
