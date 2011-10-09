@@ -1,4 +1,4 @@
-var STICK_THRESHOLD = 0.01,
+var STICK_THRESHOLD = 1.0,
     TOLERANCE       = 1e-6,
     COLLIDE_NONE    = 0,
     COLLIDE_STICK   = 1,
@@ -366,17 +366,11 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     d0 += (p0[i] - q0[i]) * constraintPlane[i];
     d1 += (p1[i] - q1[i]) * constraintPlane[i];
   }
-
-  if(Math.abs(d1 + constraintPlane[3]) < STICK_THRESHOLD) {
-    console.log("DEGENERATE CASE");
-    return COLLIDE_STICK;
-  }
   
   //If object doesn't collide, then ignore this
   if((d0 + constraintPlane[3] >= 0 && d1 + constraintPlane[3] >= 0)) {
     return COLLIDE_NONE;
   }
-  
   
   //Compute time of impact
   var t = 0.0;
@@ -384,8 +378,6 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
   if(Math.abs(d1 - d0) > TOLERANCE) {
     t = 1.0-(constraintPlane[3] + d1) / (d1 - d0);
   }
-
-  console.log("COLLIDING!", d0, d1, t, "p=",p0, p1, "q=",q0, q1, state1.start_tick);
 
   //Solve for position using linear model :p
   var pt = p1, qt = q1;
@@ -397,9 +389,6 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
 
   //Clamp t to [0,1]
   t = Math.max(Math.min(t, 1.0), 0.0);
-
-  console.log("pt=", pt, "qt=", qt, "t_clamp=", t);
-
   
   //Get parameters
   var cr  = Math.min(state1.restitution, state2.restitution),
@@ -412,10 +401,27 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
       up  = [0.0,0.0,0.0],
       np  = 0.0,
       uq  = [0.0,0.0,0.0],
-      nq  = 0.0;
+      nq  = 0.0,
+      fp  = 0.0,
+      fq  = 0.0;
   
-  console.log("cr = ", cr, "vp=", vp, "vq=", vq);
-  
+  //Accumulate forces
+  for(var id in state1.forces) {
+    var f = state1.forces[id];
+    for(var i=0; i<3; ++i) {
+      fp += constraintPlane[i] * f[i];
+    }
+  }
+  fp /= mp;
+  for(var id in state2.forces) {
+    var f = state2.forces[id];
+    for(var i=0; i<3; ++i) {
+      fq += constraintPlane[i] * f[i];
+    }
+  }
+  fq /= mq;
+
+  //Compute velocity in center-of-momentum frame
   for(var i=0; i<3; ++i) {
     vc[i] =   (mp * vp[i] + mq * vq[i]) * mr;
     up[i] =   vp[i] - vc[i];
@@ -423,16 +429,12 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     uq[i] =   vq[i] - vc[i];
     nq    +=  uq[i] * constraintPlane[i];
   }
-  
+    
   //Check for sticking
   var stick = false;
-  console.log("np=", np, "nq=", nq);
 
   //Check if moving towards separation already
   if(np - nq > 0) {
-  
-    console.log("MOVING APART");
-  
     var delta_p = 0, delta_q = 0;
     for(var i=0; i<3; ++i) {
       delta_p = Math.max(delta_p, Math.abs(pt[i] - p0[i]));
@@ -455,8 +457,7 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     return COLLIDE_NONE;
   }
 
-  if(Math.abs(np - nq)*cr < STICK_THRESHOLD) {
-    console.log("STUCK");
+  if(Math.abs(np - nq)*cr < STICK_THRESHOLD * (Math.abs(fp) + Math.abs(fq))) {
     cr = 0.0;
     stick = true;
   }
@@ -480,17 +481,13 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
               Math.abs(vq[i] - state2.velocity[i]));
   }
   
-  console.log("vpf=", vp, "vqf=", vq);
-  
   if(delta_p > TOLERANCE) {
-    console.log("updating p");
     state1.start_tick = tick_count;
     state1.position = pt;
     state1.velocity = vp;
   }
   
   if(delta_q > TOLERANCE) {
-    console.log("updating q");
     state2.start_tick = tick_count;
     state2.position = qt;
     state2.velocity = vq;
