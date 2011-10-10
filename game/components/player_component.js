@@ -138,7 +138,7 @@ exports.registerEntity = function(entity) {
     //Apply a network packet to update player position  
     entity.emitter.on('remote_input', function(player, motion_params) {
     
-      console.log(JSON.stringify(motion_params));
+      //console.log(JSON.stringify(motion_params));
       entity.motion_params = motion_params;
     });
   }  
