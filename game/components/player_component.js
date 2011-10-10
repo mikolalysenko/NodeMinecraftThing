@@ -104,10 +104,12 @@ exports.registerEntity = function(entity) {
     //Handle action press here
     instance.emitter.on('press_action', function(button) {
       var x = entity.position;
-      instance.message('voxel', Math.floor(x[0]), Math.floor(x[1]), Math.floor(x[2]));
+      instance.message('voxel', Math.ceil(x[0])+1, Math.floor(x[1]), Math.floor(x[2]));
       
+      /*
       entity.applyImpulse([0, 1, 0]);
       entity.message('input', entity.motion_params);
+      */
     });
     
     //Correct player's local position

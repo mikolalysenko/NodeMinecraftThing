@@ -247,7 +247,7 @@ var Models = {
         var contact = state.contacts[c],
             nf = 0.0;
         
-        friction += contact[4];
+        friction = Math.max(friction, contact[4]);
          
         for(var i=0; i<3; ++i) {
           nf += f_total[i] * contact[i];
@@ -410,11 +410,14 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     //Clamp t to [0,1]
     t = Math.max(Math.min(t, 1.0), 0.0);
   
+  
+    console.log("Fallback contact resolution");
+  
     //Fallback: just project p0 to constraint plane
     //console.log("Fallback case: not moving and colliding :P", d0, constraintPlane, p0);
     
     for(var i=0; i<3; ++i) {
-      pt[i] = p0[i] - (d0 + constraintPlane[3]) * constraintPlane[i];
+      pt[i] = p0[i]; //- (d0 + constraintPlane[3]) * constraintPlane[i];
       qt[i] = q0[i];
     }
     //console.log("pt=", pt);
@@ -469,8 +472,9 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     stick = true;
   }
   
+  //Don't bounce if already separated
   if(!stick && np - nq > 0) {
-    cr = -2.0;
+    cr = -1.0;
   }
 
   //console.log("vp=", vp, "np=", np, "cr=", cr);
@@ -498,7 +502,6 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
   
   if(delta_p > TOLERANCE) {
     state1.start_tick = tick_count;
-    console.log("Updating p", delta_p, pt, p0, vp, up);
     state1.position = pt;
     state1.velocity = up;
   }
@@ -660,6 +663,11 @@ exports.registerEntity = function(entity) {
               pl = [0,0,0,-sep_sign*pldist, mu];
           pl[sep_axis] = sep_sign;
           pl[3] -= 0.5 * aabb[sep_axis];
+          
+          //If bbox crosses, but constraint is not violated, then ignore it
+          if( pl[0]*pfut[0] + pl[1]*pfut[1] + pl[2]*pfut[2] + pl[3] > CONTACT_THRESHOLD ) {
+            return;
+          }
 
           var d = pl[0]*p[0] + pl[1]*p[1] + pl[2]*p[2] + pl[3];
           contact_list.push([d, pl, 'l'+(sep_sign*(sep_axis+1))+':'+pldist, cr, sep_axis])
@@ -670,10 +678,10 @@ exports.registerEntity = function(entity) {
       });
       
 
-      var ground_contacts = {},
-          active_axes = [0,0,0];
-      
+      var ground_contacts = {};
+          
       if(contact_list.length > 0) {
+        var active_axes = [0,0,0];
       
         console.log("Processing contacts", contact_list);
         
@@ -688,6 +696,7 @@ exports.registerEntity = function(entity) {
               pl = cont[1],
               contact_name = cont[2],
               cr = cont[3],
+              mu = pl[4],
               sep_axis = cont[4],
               sep_dir = pl[sep_axis];
               
@@ -702,7 +711,7 @@ exports.registerEntity = function(entity) {
           var p = entity.position,
               d = pl[0] * p[0] + pl[1] * p[1] + pl[2] * p[2] + pl[3];
 
-          if( Math.abs(d) < CONTACT_THRESHOLD && contact_name in entity.state.motion.contacts ) {
+          if( Math.abs(d) <= CONTACT_THRESHOLD && contact_name in entity.state.motion.contacts ) {
             console.log("Constraint active");
             ground_contacts[contact_name] = true;
             active_axes[sep_axis] = sep_dir;
@@ -715,7 +724,7 @@ exports.registerEntity = function(entity) {
               position: [0,0,0],
               velocity: [0,0,0],
               restitution: cr,
-              friction: pl[4],
+              friction: mu,
               forces: {},
               mass: 10000.0,
             }, pl);
