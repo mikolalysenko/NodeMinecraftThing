@@ -42,7 +42,7 @@ exports.voxel_types = [
     textures:     [ [0,1], [0,1], [0,1], [0,1], [0,1], [0,1] ],
     transparent:  false, 
     solid:        true,
-    friction:     10.0,
+    friction:     1.0,
     restitution:  0.5,
   },  
 ];

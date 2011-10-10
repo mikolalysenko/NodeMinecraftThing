@@ -47,6 +47,7 @@ exports.registerEntity = function(entity) {
       var buttons = instance.getButtons();
       var nx = 0, ny = 0, nz = 0, jumped=false;
       
+      
       if(entity.onGround()) {
         if(buttons['up'] > 0) {
           nz -= 0.125;
@@ -61,7 +62,7 @@ exports.registerEntity = function(entity) {
           nx -= 0.125;
         }
         if(buttons['jump'] > 0) {
-          entity.applyImpulse([0,2,0]);
+          entity.applyImpulse([0,3,0]);
           jumped = true
         }
       }
@@ -77,9 +78,9 @@ exports.registerEntity = function(entity) {
         }
         if(buttons['left'] > 0) {
           nx -= 0.01;
-        }
+        }      
       }
-      
+            
       //Update entity velocity         
       var v = entity.getForce('input');
       if(v[0] != nx || v[1] != ny || v[2] != nz || jumped) {
@@ -104,22 +105,20 @@ exports.registerEntity = function(entity) {
     instance.emitter.on('press_action', function(button) {
       var x = entity.position;
       instance.message('voxel', Math.floor(x[0]), Math.floor(x[1]), Math.floor(x[2]));
+      
+      entity.applyImpulse([0, 1, 0]);
+      entity.message('input', entity.motion_params);
     });
     
     //Correct player's local position
     entity.emitter.on('net_update', function(net_state, overrides) {
       
       //Check if local position is acceptable
-      var p = entity.position,
-          v = entity.velocity,
-          f = entity.getForce('input').slice();
+      var m = framework.patcher.clone(entity.state.motion);
       
       overrides.push(function() {
-        entity.position = p;
-        entity.velocity = v;
-        entity.setForce('input', f);
-      });
-      
+        entity.state.motion = m;
+      });      
     });
     
     //Logs a message to the player
