@@ -411,7 +411,7 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     t = Math.max(Math.min(t, 1.0), 0.0);
   
   
-    console.log("Fallback contact resolution");
+    //console.log("Fallback contact resolution");
   
     //Fallback: just project p0 to constraint plane
     //console.log("Fallback case: not moving and colliding :P", d0, constraintPlane, p0);
@@ -683,7 +683,7 @@ exports.registerEntity = function(entity) {
       if(contact_list.length > 0) {
         var active_axes = [0,0,0];
       
-        console.log("Processing contacts", contact_list);
+        //console.log("Processing contacts", contact_list);
         
         //Sort contacts by distance
         contact_list.sort(function(a,b) {
@@ -700,11 +700,11 @@ exports.registerEntity = function(entity) {
               sep_axis = cont[4],
               sep_dir = pl[sep_axis];
               
-          console.log(cont);    
+          //console.log(cont);    
           
           if((i>0 && contact_name === contact_list[i-1][2]) ||
             sep_dir * active_axes[sep_axis] < 0 ) {
-            console.log("Invalid");
+            //console.log("Invalid");
             continue;
           }
           
@@ -712,7 +712,7 @@ exports.registerEntity = function(entity) {
               d = pl[0] * p[0] + pl[1] * p[1] + pl[2] * p[2] + pl[3];
 
           if( Math.abs(d) <= CONTACT_THRESHOLD && contact_name in entity.state.motion.contacts ) {
-            console.log("Constraint active");
+            //console.log("Constraint active");
             ground_contacts[contact_name] = true;
             active_axes[sep_axis] = sep_dir;
             continue;
@@ -730,17 +730,17 @@ exports.registerEntity = function(entity) {
             }, pl);
           
           if(res === COLLIDE_STICK) {
-            console.log("Adding contact,", contact_name, "pl=",pl);
+            //console.log("Adding contact,", contact_name, "pl=",pl);
             ground_contacts[contact_name] = true;
             entity.state.motion.contacts[contact_name] = pl;
             active_axes[sep_axis] = sep_dir;
           }
           else if(res === COLLIDE_BOUNCE) {
-            console.log("Bounced");
+            //console.log("Bounced");
             active_axes[sep_axis] = sep_dir;
           }
           else {
-            console.log("Constraint not active");
+            //console.log("Constraint not active");
           }
           /*
           else if(contact_name in ground_contacts) {
@@ -767,7 +767,7 @@ exports.registerEntity = function(entity) {
         }
       }
       if(broken_contacts.length > 0) {
-        console.log("Removing contacts:", broken_contacts);
+        //console.log("Removing contacts:", broken_contacts);
         //console.log(p, pfut, entity.position, getPosition(instance.region.tick_count, entity.state.motion));
         fastForward(instance.region.tick_count+1, entity.state.motion);
         for(var i=0; i<broken_contacts.length; ++i) {
@@ -775,6 +775,10 @@ exports.registerEntity = function(entity) {
           delete entity.state.motion.contacts[broken_contacts[i]];
         }
       }
+      
+      //Quantize state
+      quantize_vec(entity.state.motion.position);
+      quantize_vec(entity.state.motion.velocity);
       
       //console.log("Predicted p = ", pfut, getPosition(instance.region.tick_count+1, entity.state.motion));
       //console.log("Final state=", JSON.stringify(entity.state.motion));
