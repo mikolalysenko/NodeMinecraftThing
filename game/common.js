@@ -19,7 +19,7 @@ exports.components = {
 //Entity type data
 exports.entity_types = {
   'player': {
-    components  : [ 'motion', 'player', 'sprite' ],
+    components  : [ 'physics', 'player', 'sprite' ],
   },
 };
 

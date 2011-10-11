@@ -59,8 +59,6 @@ exports.createPlayer = function(account, options) {
     'sprite_class' : 'player',    
     
     'motion' : {
-      'model' : 'physical',
-      'friction': 10.0,
       'air_friction': 0.0,
     },
   };
