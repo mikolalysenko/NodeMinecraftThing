@@ -31,7 +31,6 @@ exports.init = function(e_) {
   gamePane.style.display = 'block';
   window.onresize();
 
-
   engine.input.emitter.on('press', chatListener);
   
   chatbox.onfocus = function() {
