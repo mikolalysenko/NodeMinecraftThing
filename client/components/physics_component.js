@@ -249,16 +249,21 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
   }
   
   //Compute time of impact
-  var t = -1.0,
-      pt = p1, qt = q1;
+  var t = -1e6,
+      pt = p1, 
+      qt = q1;
   
   if(Math.abs(d1 - d0) > TOLERANCE) {
-    t = 1.0-(constraintPlane[3] + d1) / (d1 - d0);
+    t = -(constraintPlane[3] + d0) / (d1 - d0);
   }
 
   //console.log("t = ", t);
+  console.log("t="+t+",p0="
+    +p0[0]+','+p0[1]+','+p0[2]+",p1="
+    +p1[0]+','+p1[1]+','+p1[2]);
   
-  if(0 <= t && t <= 1.0) {
+  if(Math.abs(t) < 100.0) {
+  
     //Solve for position using linear model :p
     for(var i=0; i<3; ++i) {
       pt[i] = (1.0-t)*p0[i] + t*p1[i];
@@ -266,21 +271,11 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     }
   }
   else {
-
-    //Clamp t to [0,1]
-    t = Math.max(Math.min(t, 1.0), 0.0);
-  
-  
-    //console.log("Fallback contact resolution");
-  
-    //Fallback: just project p0 to constraint plane
-    //console.log("Fallback case: not moving and colliding :P", d0, constraintPlane, p0);
     
     for(var i=0; i<3; ++i) {
       pt[i] = p0[i]; //- (d0 + constraintPlane[3]) * constraintPlane[i];
       qt[i] = q0[i];
     }
-    //console.log("pt=", pt);
   }
   
   //Get parameters
@@ -310,7 +305,7 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
     var f = state2.forces[id];
     for(var i=0; i<3; ++i) {
       fq += constraintPlane[i] * f[i];
-    }(active_axes[i] >= 0)
+    }
   }
   fq /= mq;
 
@@ -362,14 +357,22 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
   
   if(delta_p > TOLERANCE) {
     state1.start_tick = tick_count;
-    state1.position = pt;
-    state1.velocity = up;
+    
+    for(var i=0; i<3; ++i) {
+      state1.position[i] = pt[i];
+      state1.velocity[i] = up[i];
+    }
+    
+    console.log("updated:"+pt[0]+","+pt[1]+","+pt[2]);
   }
   
   if(delta_q > TOLERANCE) {
     state2.start_tick = tick_count;
-    state2.position = qt;
-    state2.velocity = uq;
+    
+    for(var i=0; i<3; ++i) {
+      state2.position[i] = qt[i];
+      state2.velocity[i] = uq[i];
+    }
   }
   
   return stick ? COLLIDE_STICK : COLLIDE_BOUNCE;
@@ -396,13 +399,19 @@ exports.registerEntity = function(entity) {
   
   console.log("entity state = ", entity.state.motion);
   
+  var predicted_p = [0.0,0.0,0.0];
+  
   
   //Add getters/setters
   entity.__defineGetter__('position', function() {
     return getPosition(instance.region.tick_count, entity.state.motion);
   });
   entity.__defineSetter__('position', function(p) {
-    return setPosition(instance.region.tick_count, entity.state.motion, p);
+    var r = setPosition(instance.region.tick_count, entity.state.motion, p);
+    for(var i=0; i<3; ++i) {
+      predicted_p[i] = p[i];
+    }
+    return r;
   });
   entity.__defineGetter__('velocity', function() {
     return getVelocity(instance.region.tick_count, entity.state.motion);
@@ -414,7 +423,12 @@ exports.registerEntity = function(entity) {
     return getMotionParams(entity.state.motion);
   });
   entity.__defineSetter__('motion_params', function(p) {
-    return setMotionParams(entity.state.motion, p);
+    var r = setMotionParams(entity.state.motion, p),
+        pos = entity.position;
+    for(var i=0; i<3; ++i) {
+      predicted_p[i] = pos[i];
+    }
+    return r;
   });
   
   entity.setForce = function(force_name, vec) {
@@ -464,12 +478,14 @@ exports.registerEntity = function(entity) {
         lo = [0,0,0],
         hi = [0,0,0];
     
+    //console.log("tick: c=" + p[0] + ',' + p[1] + ',' + p[2] + ", n=" +pfut[0]  + ',' + pfut[1]  + ',' + pfut[2]);
+    
     //console.log("tick_count = ", instance.region.tick_count);
     //console.log("Initial state", JSON.stringify(entity.state.motion));
     //console.log("Collide start", p, pfut);
     for(var i=0; i<3; ++i) {
-      plo[i] = Math.min(p[i], pfut[i]) - 0.5*aabb[i];
-      phi[i] = Math.max(p[i], pfut[i]) + 0.5*aabb[i];
+      plo[i] = Math.min(Math.min(predicted_p[i], p[i]), pfut[i]) - 0.5*aabb[i];
+      phi[i] = Math.max(Math.max(predicted_p[i], p[i]), pfut[i]) + 0.5*aabb[i];
       lo[i] = Math.floor(plo[i] - 1);
       hi[i] = Math.ceil(phi[i] + 1);
     }
@@ -494,30 +510,40 @@ exports.registerEntity = function(entity) {
           cross_dist = Math.max(cross_dist, 
                        Math.max(vlo[i] - phi[i],
                                 plo[i] - vhi[i]));
-          if(!voxel_types[wind[center - delta[i]]].solid) {
-            d = vlo[i] - p[i];
-            if(d > sep_dist) {
-              sep_dist = d;
-              sep_axis = i;
-              sep_sign = -1;
+                                
+          var d0 = vlo[i] - predicted_p[i] - 0.5 * aabb[i],
+              d1 = predicted_p[i] - vhi[i] - 0.5 * aabb[i];
+          
+          //console.log(i +","+ d0 +","+ d1 +","+ vlo[i] +","+ cross_dist);
+          
+          if(d0 > d1) {
+            if(!voxel_types[wind[center - delta[i]]].solid) {
+              if(d0 > sep_dist) {
+                sep_dist = d0;
+                sep_axis = i;
+                sep_sign = -1;
+              }
             }
           }
-          if(!voxel_types[wind[center + delta[i]]].solid) {
-            d = p[i] - vhi[i];
-            if(d > sep_dist) {
-              sep_dist = d;
-              sep_axis = i;
-              sep_sign = 1;
+          else {
+            if(!voxel_types[wind[center + delta[i]]].solid) {
+              if(d1 > sep_dist) {
+                sep_dist = d1;
+                sep_axis = i;
+                sep_sign = 1;
+              }
             }
           }
         }
         
         //Check if box crosses
-        if(cross_dist > CONTACT_THRESHOLD) {
+        if(cross_dist > CONTACT_THRESHOLD ||
+           cross_dist <= -1e5 ||
+           sep_dist   <= -1e5) {
           return;
         }
         
-        //console.log("Possible collision:", p, x, y, z, sep_axis, sep_sign, sep_dist);
+        console.log("Possible collision:", x, y, z, sep_axis, sep_sign, sep_dist, cross_dist);
 
         //Construct separator
         var pldist = sep_sign < 0 ? vlo[sep_axis] : vhi[sep_axis],
@@ -525,28 +551,32 @@ exports.registerEntity = function(entity) {
         pl[sep_axis] = sep_sign;
         pl[3] -= 0.5 * aabb[sep_axis];
         
+        var d = pl[0]*predicted_p[0] + pl[1]*predicted_p[1] + pl[2]*predicted_p[2] + pl[3];
+        
         //If bbox crosses, but constraint is not violated, then ignore it
-        if( pl[0]*pfut[0] + pl[1]*pfut[1] + pl[2]*pfut[2] + pl[3] > CONTACT_THRESHOLD ) {
+        if( d > CONTACT_THRESHOLD && 
+            pl[0]*p[0] + pl[1]*p[1] + pl[2]*p[2] + pl[3] > CONTACT_THRESHOLD &&
+            pl[0]*pfut[0] + pl[1]*pfut[1] + pl[2]*pfut[2] + pl[3] > CONTACT_THRESHOLD ) {
           return;
         }
 
-        var d = pl[0]*p[0] + pl[1]*p[1] + pl[2]*p[2] + pl[3];
-        contact_list.push([d, pl, 'l'+(sep_sign*(sep_axis+1))+':'+pldist, cr, sep_axis])
+        contact_list.push([d, pl, 'l'+(sep_sign*(sep_axis+1))+':'+pldist, cr])
       }
       else {
         air_friction = Math.max(air_friction, mu);
       }
     });
     
+    
     var ground_contacts = {};
         
     if(contact_list.length > 0) {
-      var active_axes = [0,0,0];
-    
       //Sort contacts by distance
       contact_list.sort(function(a,b) {
         return a[0] < b[0];
       });
+      
+      console.log("Processing contacts:", contact_list, p);
       
       //Process contacts in order
       for(var i=0; i<contact_list.length; ++i) {
@@ -554,15 +584,11 @@ exports.registerEntity = function(entity) {
             pl = cont[1],
             contact_name = cont[2],
             cr = cont[3],
-            mu = pl[4],
-            sep_axis = cont[4],
-            sep_dir = pl[sep_axis];
+            mu = pl[4];
             
         //console.log(cont);    
         
-        if((i>0 && contact_name === contact_list[i-1][2]) ||
-          sep_dir * active_axes[sep_axis] < 0 ) {
-          //console.log("Invalid");
+        if(i>0 && contact_name === contact_list[i-1][2]) {
           continue;
         }
         
@@ -570,9 +596,8 @@ exports.registerEntity = function(entity) {
             d = pl[0] * p[0] + pl[1] * p[1] + pl[2] * p[2] + pl[3];
 
         if( Math.abs(d) <= CONTACT_THRESHOLD && contact_name in entity.state.motion.contacts ) {
-          //console.log("Constraint active");
+          console.log("Contact active", d, cont);
           ground_contacts[contact_name] = true;
-          active_axes[sep_axis] = sep_dir;
           continue;
         }
         
@@ -588,17 +613,15 @@ exports.registerEntity = function(entity) {
           }, pl);
         
         if(res === COLLIDE_STICK) {
-          console.log("Adding contact,", cont);
+          console.log("Adding contact,", d, cont);
           ground_contacts[contact_name] = true;
           entity.state.motion.contacts[contact_name] = pl;
-          active_axes[sep_axis] = sep_dir;
         }
         else if(res === COLLIDE_BOUNCE) {
-          console.log("Bounced", cont);
-          active_axes[sep_axis] = sep_dir;
+          console.log("Bounced", d, cont);
         }
         else {
-          console.log("Constraint not active", cont);
+          console.log("Constraint not active", d, cont);
         }
         /*
         else if(contact_name in ground_contacts) {
@@ -614,10 +637,8 @@ exports.registerEntity = function(entity) {
       entity.state.motion.air_friction = air_friction;
     }
     
-    //Prune out broken contacts (need 2 passes)
-    var contacts = entity.state.motion.contacts,
-        p = entity.position,
-        v = entity.velocity,
+    //Prune out broken contacts
+    var contacts = entity.state.motion.contacts
         broken_contacts = [];
     for(var id in contacts) {
       if(id.charAt(0) === 'l' && !(id in ground_contacts)) {
@@ -625,14 +646,14 @@ exports.registerEntity = function(entity) {
       }
     }
     if(broken_contacts.length > 0) {
-      //console.log("Removing contacts:", broken_contacts);
-      //console.log(p, pfut, entity.position, getPosition(instance.region.tick_count, entity.state.motion));
       fastForward(instance.region.tick_count+1, entity.state.motion);
       for(var i=0; i<broken_contacts.length; ++i) {
-        //console.log("Removing contact,", broken_contacts[i]);
         delete entity.state.motion.contacts[broken_contacts[i]];
       }
     }
+    
+    //Get predicted position
+    getPosition(instance.region.tick_count+1, entity.state.motion, predicted_p);
     
     //Quantize state
     quantize_vec(entity.state.motion.position);
@@ -641,5 +662,9 @@ exports.registerEntity = function(entity) {
     //console.log("Predicted p = ", pfut, getPosition(instance.region.tick_count+1, entity.state.motion));
     //console.log("Final state=", JSON.stringify(entity.state.motion));
   });
+  
+  
+  //Retrieve latest position
+  getPosition(instance.region.tick_count, entity.state.motion, predicted_p);
 };
 
