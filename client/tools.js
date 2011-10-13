@@ -1,8 +1,8 @@
 var linalg = require('./linalg.js'),
-    motion = require('./components/motion_component.js');
+    physics = require('./components/physics_component.js');
 
-var getPosition = motion.getPosition,
-    getVelocity = motion.getVelocity;
+var getPosition = physics.getPosition,
+    getVelocity = physics.getVelocity;
 
 exports.renderPosition = function(entity, t) {
   var tc  = entity.instance.region.tick_count,

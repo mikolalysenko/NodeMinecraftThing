@@ -1,8 +1,7 @@
-//Miscellaneous library files/data structures
-exports.linalg    = require('./linalg.js');
-exports.patcher   = require('patcher');
-exports.voxels    = require('./voxels.js');
-exports.tools     = require('./tools.js');
+var common = require('./common_framework.js');
+for(var i in common) {
+  exports[i] = common[i];
+}
 
 //Rendering stuff
 exports.RenderGL     = require('./rendergl.js').RenderGL,
@@ -10,8 +9,3 @@ exports.StandardPass = require('./standard_pass.js').StandardPass;
 exports.VoxelPass    = require('./voxel_pass.js').VoxelPass;
 exports.SpritePass   = require('./sprite_pass.js').SpritePass;
 
-//Components
-exports.default_components = {
-  'motion' : require('./components/motion_component.js'),
-  'sprite' : require('./components/sprite_component.js'),
-};

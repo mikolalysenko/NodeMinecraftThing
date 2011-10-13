@@ -1,8 +1,6 @@
-var framework = null,
-    motion = null;
+var framework = null;
 exports.registerFramework = function(f) {
   framework = f;
-  motion = framework.default_components['motion'];  
 };
 
 //Registers instance
