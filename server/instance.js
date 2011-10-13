@@ -631,6 +631,9 @@ Instance.prototype.tick = function() {
   for(id in this.entities) {
     this.updateEntity(this.entities[id]);
   }
+  
+  //Called at end of frame
+  this.emitter.emit('post_tick');
 
   //Increment region tick_count
   ++this.region.tick_count;

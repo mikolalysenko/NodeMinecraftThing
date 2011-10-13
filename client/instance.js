@@ -14,6 +14,8 @@ function Entity(instance, state) {
   this.last_state   = patcher.clone(state);
   this.net_state    = {};
   this.net_tick     = 0;
+  this.net_delay    = 0;    //Additional network delay for this entity
+  this.net_relevant = true;
   this.type         = null;
   this.emitter      = new EventEmitter();
   this.instance     = instance;
@@ -156,6 +158,7 @@ Instance.prototype.tick = function() {
     var entity = this.entities[id];
     this.entities[id].tick();
   }
+  this.emitter.emit('post_tick');
 
   //Increment tick counter
   var tc = ++this.region.tick_count;

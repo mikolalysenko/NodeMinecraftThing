@@ -84,9 +84,16 @@ exports.connectToServer = function(engine, cb) {
         function addUpdate(i) {
           var tc = updates[i],
               patch = updates[i+1];
-          if(patch.motion_start_tick && patch.motion_start_tick < tc) {
-            tc = Math.max(instance.region.tick_count+1, patch.motion_start_tick);
+          if(patch.motion && patch.motion < tc) {
+            tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);
           }
+          
+          //Add network delay
+          var entity = instance.lookupEntity(patch._id);
+          if(entity && entity.net_delay) {
+            tc -= entity.net_delay;
+          }
+          
           instance.addFuture(tc, function() {
             instance.updateEntity(updates[i+1]);
           });

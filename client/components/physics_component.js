@@ -1,3 +1,5 @@
+"use strict";
+
 var STICK_THRESHOLD = 1.0,
     CONTACT_THRESHOLD = 0.01,
     PRECISION       = 65536.0,
@@ -217,12 +219,19 @@ function setMotionParams(state, motion_params) {
 
 
 //Exports for motion accessors
-exports.getPosition     = function(t, s, r) { return getPosition(t, s.motion, r); };
-exports.setPosition     = function(t, s, r) { return setPosition(t, s.motion, r); };
+exports.getPosition     = function(t, s, r) {
+  if(s.motion.local_position) {
+    if(!r) {
+      r = [0,0,0];
+    }
+    for(var i=0; i<3; ++i) {
+      r[i] = s.motion.local_position[i];
+    }
+    return r;
+  }
+  return getPosition(t, s.motion, r);
+};
 exports.getVelocity     = function(t, s, r) { return getVelocity(t, s.motion, r); };
-exports.setVelocity     = function(t, s, r) { return setVelocity(t, s.motion, r); }
-exports.getMotionParams = function(s) { return getMotionParams(s.motion); }
-exports.setMotionParams = function(s) { return setMotionParams(s.motion); }
 
 
 function applyCollision(tick_count, state1, state2, constraintPlane) {
@@ -258,9 +267,6 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
   }
 
   //console.log("t = ", t);
-  console.log("t="+t+",p0="
-    +p0[0]+','+p0[1]+','+p0[2]+",p1="
-    +p1[0]+','+p1[1]+','+p1[2]);
   
   if(Math.abs(t) < 100.0) {
   
@@ -397,9 +403,12 @@ exports.registerEntity = function(entity) {
   }
   checkDefaults(entity.state.motion);
   
+  
+  
   console.log("entity state = ", entity.state.motion);
   
-  var predicted_p = [0.0,0.0,0.0];
+  var predicted_p = [0.0,0.0,0.0],
+      interpolate_time = -1;
   
   
   //Add getters/setters
@@ -410,6 +419,9 @@ exports.registerEntity = function(entity) {
     var r = setPosition(instance.region.tick_count, entity.state.motion, p);
     for(var i=0; i<3; ++i) {
       predicted_p[i] = p[i];
+    }
+    for(var i in entity.state.motion.contacts) {
+      delete entity.state.motion.contacts[i];
     }
     return r;
   });
@@ -461,13 +473,48 @@ exports.registerEntity = function(entity) {
     }
     setVelocity(instance.region.tick_count, entity.state.motion, v);
   };
+  
+  if(instance.client && entity.net_relevant) {
+  
+  
+    entity.state.motion.local_position = [0,0,0];
+  
+    var engine = instance.engine;
+    entity.emitter.on('net_update', function(net_state, overrides) {
+    
+      if(entity.net_delay < 0) {
+        //FIXME: Check if local position is acceptable
+        var m = framework.patcher.clone(entity.state.motion);
+        overrides.push(function() {
+          entity.state.motion = m;
+        });      
+      }
+      else {
+        interpolate_time = engine.lag + entity.net_delay;
+        
+        var r = [0,0,0];
+        for(var i=0; i<3; ++i) {
+          r[i] = entity.state.motion.local_position[i];
+        }
+        
+        
+        overrides.push(function() {
+          getPosition(instance.region.tick_count, entity.state.motion, predicted_p);
+          entity.state.motion.local_position = r;
+        });
+      }
+    });
+  }        
+
 
   if(!('gravity' in entity.state.motion.forces)) {
     entity.setForce('gravity', [0,-0.1,0]);
   }
   
+    
   var voxel_types = instance.game_module.voxel_types;
   entity.emitter.on('tick', function() {
+  
   
     //Check for level collisions
     var p     = getPosition(instance.region.tick_count, entity.state.motion),
@@ -477,6 +524,7 @@ exports.registerEntity = function(entity) {
         phi = [0,0,0],
         lo = [0,0,0],
         hi = [0,0,0];
+
     
     //console.log("tick: c=" + p[0] + ',' + p[1] + ',' + p[2] + ", n=" +pfut[0]  + ',' + pfut[1]  + ',' + pfut[2]);
     
@@ -543,7 +591,7 @@ exports.registerEntity = function(entity) {
           return;
         }
         
-        console.log("Possible collision:", x, y, z, sep_axis, sep_sign, sep_dist, cross_dist);
+        //console.log("Possible collision:", x, y, z, sep_axis, sep_sign, sep_dist, cross_dist);
 
         //Construct separator
         var pldist = sep_sign < 0 ? vlo[sep_axis] : vhi[sep_axis],
@@ -576,7 +624,7 @@ exports.registerEntity = function(entity) {
         return a[0] < b[0];
       });
       
-      console.log("Processing contacts:", contact_list, p);
+      //console.log("Processing contacts:", contact_list, p);
       
       //Process contacts in order
       for(var i=0; i<contact_list.length; ++i) {
@@ -592,11 +640,12 @@ exports.registerEntity = function(entity) {
           continue;
         }
         
+        
         var p = entity.position,
             d = pl[0] * p[0] + pl[1] * p[1] + pl[2] * p[2] + pl[3];
 
         if( Math.abs(d) <= CONTACT_THRESHOLD && contact_name in entity.state.motion.contacts ) {
-          console.log("Contact active", d, cont);
+          //console.log("Contact active", d, cont);
           ground_contacts[contact_name] = true;
           continue;
         }
@@ -613,15 +662,15 @@ exports.registerEntity = function(entity) {
           }, pl);
         
         if(res === COLLIDE_STICK) {
-          console.log("Adding contact,", d, cont);
+          //console.log("Adding contact,", d, cont);
           ground_contacts[contact_name] = true;
           entity.state.motion.contacts[contact_name] = pl;
         }
         else if(res === COLLIDE_BOUNCE) {
-          console.log("Bounced", d, cont);
+          //console.log("Bounced", d, cont);
         }
         else {
-          console.log("Constraint not active", d, cont);
+          //console.log("Constraint not active", d, cont);
         }
         /*
         else if(contact_name in ground_contacts) {
@@ -638,7 +687,7 @@ exports.registerEntity = function(entity) {
     }
     
     //Prune out broken contacts
-    var contacts = entity.state.motion.contacts
+    var contacts = entity.state.motion.contacts,
         broken_contacts = [];
     for(var id in contacts) {
       if(id.charAt(0) === 'l' && !(id in ground_contacts)) {
@@ -654,10 +703,38 @@ exports.registerEntity = function(entity) {
     
     //Get predicted position
     getPosition(instance.region.tick_count+1, entity.state.motion, predicted_p);
-    
+        
     //Quantize state
     quantize_vec(entity.state.motion.position);
     quantize_vec(entity.state.motion.velocity);
+    
+    //Client side interpolation
+    if( instance.client ) {
+    
+      if(interpolate_time > 0) {
+        var p = getPosition(instance.region.tick_count+1, entity.state.motion);
+        var local_pos = entity.state.motion.local_position;
+        var t = interpolate_time/(instance.engine.lag + entity.net_delay);
+        var delta = 0;
+        
+        console.log(p, local_pos, t);
+        for(var i=0; i<3; ++i) {
+          local_pos[i] = t * local_pos[i] + (1.0 - t) * p[i];
+          delta = Math.max(delta, Math.abs(local_pos[i] - p[i]));
+        }
+        
+        if(delta < 0.1) {
+          interpolate_time = 0;
+        }
+        --interpolate_time;
+      }
+      
+      if(interpolate_time <= 0) {
+        getPosition(instance.region.tick_count+1, entity.state.motion, entity.state.motion.local_position);
+      }
+    }
+
+
     
     //console.log("Predicted p = ", pfut, getPosition(instance.region.tick_count+1, entity.state.motion));
     //console.log("Final state=", JSON.stringify(entity.state.motion));

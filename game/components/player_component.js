@@ -41,6 +41,9 @@ exports.registerEntity = function(entity) {
                         entity === instance.engine.playerEntity();
   if(is_local_player) {
   
+    //HACK: Set entity control to local authoritative
+    entity.net_delay = -1;
+  
     function processInput() {
       var buttons = instance.getButtons();
       var nx = 0, ny = 0, nz = 0, jumped=false;
@@ -109,24 +112,18 @@ exports.registerEntity = function(entity) {
       entity.message('input', entity.motion_params);
       */
     });
-    
-    //Correct player's local position
-    entity.emitter.on('net_update', function(net_state, overrides) {
-      
-      //Check if local position is acceptable
-      var m = framework.patcher.clone(entity.state.motion);
-      
-      overrides.push(function() {
-        entity.state.motion = m;
-      });      
-    });
-    
+        
     //Logs a message to the player
     entity.emitter.on('server_log', function(html_str) {
       instance.logHTML(html_str);
     });
   }  
   else {
+  
+    //Add network delay for player input
+    if('engine' in instance) {
+      entity.net_delay = instance.engine.lag;
+    }
   
     //Tick
     entity.emitter.on('tick', function() {
