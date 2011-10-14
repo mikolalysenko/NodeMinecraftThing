@@ -132,14 +132,35 @@ exports.registerEntity = function(entity) {
     //Tick
     entity.emitter.on('tick', function() {
       updateAnimation();
+      
+      var input_force = entity.getForce('input');
+      
+      if(entity.onGround()) {
+        for(var i=0; i<3; ++i) {
+          if(input_force[i] > 1e-6) {
+            input_force[i] = 0.125;
+          }
+          if(input_force[i] < -1e-6) {
+            input_force[i] = -0.125;
+          }
+        }
+      }
+      else {
+        for(var i=0; i<3; ++i) {
+          if(input_force[i] > 1e-6) {
+            input_force[i] = 0.01;
+          }
+          if(input_force[i] < -1e-6) {
+            input_force[i] = -0.01;
+          }
+        }
+      }
     });
     
     //Apply a network packet to update player position  
     entity.emitter.on('remote_input', function(player, motion_params) {
-    
-      motion_params.start_tick++;
-    
       //console.log(JSON.stringify(motion_params));
+      motion_params.start_tick += 10;
       entity.motion_params = motion_params;
     });
   }  

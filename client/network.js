@@ -84,15 +84,11 @@ exports.connectToServer = function(engine, cb) {
         function addUpdate(i) {
           var tc = updates[i],
               patch = updates[i+1];
-          
-          var entity = engine.instance.lookupEntity(patch._id);
-          if(entity) {
-            if(patch.motion && patch.motion < tc) {
-              tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);
-            }
+
+          if(patch.motion && patch.motion < tc) {
+            tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);
           }
-              
-          
+                    
           //Add network delay
           instance.addFuture(tc, function() {
             instance.updateEntity(updates[i+1]);
