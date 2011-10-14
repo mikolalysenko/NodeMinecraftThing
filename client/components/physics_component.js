@@ -238,7 +238,6 @@ exports.getPosition     = function(t, s, r) {
     }
     return r;
   }
-  console.log("here!!!");
   return getPosition(t, s.motion, r);
 };
 

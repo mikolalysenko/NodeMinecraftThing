@@ -1,6 +1,8 @@
-var framework = null;
+var framework = null,
+    physics = null;
 exports.registerFramework = function(f) {
   framework = f;
+  physics = framework.default_components.physics;
 };
 
 //Registers instance
@@ -91,9 +93,7 @@ exports.registerEntity = function(entity) {
       var v = entity.getForce('input');
       if(v[0] != nx || v[1] != ny || v[2] != nz || jumped) {
         entity.setForce('input', [nx, ny, nz]);
-        
-        var m = entity.motion_params;
-        entity.message('input', [m.start_tick, m.position, m.velocity, m.forces.input]);
+        entity.message('input', [instance.region.tick_count, entity.position, entity.velocity, entity.getForce('input')]);
       }   
     };
     
@@ -108,9 +108,7 @@ exports.registerEntity = function(entity) {
       updateAnimation();
       
       if(instance.region.tick_count % 3*instance.engine.lag == 0) {
-
-        var m = entity.motion_params;
-        entity.message('input', [m.start_tick, m.position, m.velocity, m.forces.input]);
+        entity.message('input', instance.region.tick_count, entity.position, entity.velocity, entity.getForce('input'));
       }
     });
     
@@ -162,21 +160,57 @@ exports.registerEntity = function(entity) {
     });
     
     //Apply a network packet to update player position  
-    entity.emitter.on('remote_input', function(player, motion_params) {
+    entity.emitter.on('remote_input', function(player, tick_count, pos, vel, f) {
     
-      var start_tick = motion_params[0],
-          pos = motion_params[1],
-          vel = motion_params[2],
-          f = motion_params[3];
+      if(typeof(tick_count) != 'number' ||
+         typeof(pos) != 'object' ||
+         !(pos instanceof Array) ||
+         pos.length < 3 ||
+         typeof(vel) != 'object' ||
+         !(vel instanceof Array) ||
+         vel.length < 3 ||
+         typeof(f) != 'object' ||
+         !(f instanceof Array) ||
+         f.length < 3) {
+         
+         return;
+      }
+         
+         
     
-      //console.log(JSON.stringify(motion_params));
-      start_tick += 10;
+      tick_count += 10;
       
-      //Validate position
-      entity.state.motion.position = pos;
-      entity.state.motion.velocity = vel;
-      entity.state.motion.forces.input = f;
-      entity.state.motion.start_tick = start_tick;
+      var p = physics.getPosition(tick_count, entity.state),
+          v = physics.getVelocity(tick_count, entity.state),
+          cf = entity.getForce('input'),
+          delta = 0,
+          v_delta = 0,
+          f_delta = 0,
+          vmag = 0;
+          
+      for(var i=0; i<3; ++i) {
+        delta = Math.max(delta, Math.abs(p[i] - pos[i]));
+        v_delta = Math.max(v_delta, Math.abs(v[i] - vel[i]));
+        f_delta = Math.max(f_delta, Math.abs(f[i] - cf[i]));
+        vmag = Math.max(vmag, Math.max(Math.abs(v[i]), Math.abs(vel[i])));
+      }
+      
+      if(delta > 2.0*(tick_count - entity.state.motion.start_tick + 1) * (vmag + 1) ||
+        tick_count < entity.state.motion.start_tick) {
+        
+        if(f_delta > 1e-4) {
+          entity.setForce('input', f);
+        }
+        return;
+      }
+      
+      if(Math.max(delta, Math.max(v_delta, f_delta)) > 1e-4) {        
+        //Otherwise, just update the position
+        entity.state.motion.position = pos;
+        entity.state.motion.velocity = vel;
+        entity.state.motion.forces.input = f;
+        entity.state.motion.start_tick = tick_count;
+      }
     });
   }  
 };
