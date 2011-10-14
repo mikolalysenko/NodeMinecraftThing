@@ -93,7 +93,7 @@ exports.registerEntity = function(entity) {
       var v = entity.getForce('input');
       if(v[0] != nx || v[1] != ny || v[2] != nz || jumped) {
         entity.setForce('input', [nx, ny, nz]);
-        entity.message('input', [instance.region.tick_count, entity.position, entity.velocity, entity.getForce('input')]);
+        entity.message('input', [instance.region.tick_count, entity.position, entity.velocity, [nx,ny,nz] ]);
       }   
     };
     
@@ -214,14 +214,11 @@ exports.registerEntity = function(entity) {
         tick_count < entity.state.motion.start_tick - 10) {
         
         if(f_delta > 1e-4) {
-          console.log("UPDATING FORCE");
           entity.setForce('input', f);
         }
       }
       else if(Math.max(delta, Math.max(v_delta, f_delta)) > 1e-4) {        
         //Otherwise, just update the position
-        
-        console.log("UPDATING POSITION:", delta, v_delta, f_delta);
         entity.state.motion.position = pos;
         entity.state.motion.velocity = vel;
         entity.state.motion.forces.input = f;
