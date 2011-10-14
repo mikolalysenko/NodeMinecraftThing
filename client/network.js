@@ -82,7 +82,7 @@ exports.connectToServer = function(engine, cb) {
       }
       else {
         function addUpdate(i) {
-          var tc = updates[i],
+          var tc = updates[i] - entity.net_delay,
               patch = updates[i+1];
           if(patch.motion && patch.motion < tc) {
             tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);

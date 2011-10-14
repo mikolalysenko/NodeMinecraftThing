@@ -390,8 +390,6 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
       state1.position[i] = pt[i];
       state1.velocity[i] = up[i];
     }
-    
-    console.log("updated:"+pt[0]+","+pt[1]+","+pt[2]);
   }
   
   if(delta_q > TOLERANCE) {
