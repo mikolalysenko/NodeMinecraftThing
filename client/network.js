@@ -89,11 +89,6 @@ exports.connectToServer = function(engine, cb) {
           }
           
           //Add network delay
-          var entity = instance.lookupEntity(patch._id);
-          if(entity && entity.net_delay) {
-            tc -= entity.net_delay;
-          }
-          
           instance.addFuture(tc, function() {
             instance.updateEntity(updates[i+1]);
           });

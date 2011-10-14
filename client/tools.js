@@ -9,8 +9,8 @@ exports.renderPosition = function(entity, t) {
       p   = entity.last_state,
       pp  = getPosition(tc-1, p), 
       pv  = getVelocity(tc-1, p), 
-      np  = entity.position, 
-      nv  = entity.velocity;
+      np  = getPosition(tc, p), 
+      nv  = getVelocity(tc, p);
   return linalg.hermite(pp, pv, np, nv, t);
 };
 

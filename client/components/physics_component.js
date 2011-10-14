@@ -1,5 +1,9 @@
 "use strict";
 
+var linalg = require('../linalg.js'),
+    patcher = require('patcher');
+
+
 var STICK_THRESHOLD = 1.0,
     CONTACT_THRESHOLD = 0.01,
     PRECISION       = 65536.0,
@@ -212,7 +216,12 @@ function getMotionParams(state) {
 
 function setMotionParams(state, motion_params) {
   for(var i=0; i<parameter_names.length; ++i) {
-    state[parameter_names[i]] = motion_params[parameter_names[i]];
+    if(typeof(state[parameter_names[i]]) == 'object') {
+      patcher.assign(state[parameter_names[i]], motion_params[parameter_names[i]]);
+    }
+    else {
+      state[parameter_names[i]] = motion_params[parameter_names[i]];
+    }
   }
   return state;
 }
@@ -229,9 +238,22 @@ exports.getPosition     = function(t, s, r) {
     }
     return r;
   }
+  console.log("here!!!");
   return getPosition(t, s.motion, r);
 };
-exports.getVelocity     = function(t, s, r) { return getVelocity(t, s.motion, r); };
+
+exports.getVelocity     = function(t, s, r) {
+  if(s.motion.local_velocity) {
+    if(!r) {
+      r = [0,0,0];
+    }
+    for(var i=0; i<3; ++i) {
+      r[i] = s.motion.local_velocity[i];
+    }
+    return r;
+  }
+  return getVelocity(t, s.motion, r);  
+};
 
 
 function applyCollision(tick_count, state1, state2, constraintPlane) {
@@ -408,6 +430,8 @@ exports.registerEntity = function(entity) {
   console.log("entity state = ", entity.state.motion);
   
   var predicted_p = [0.0,0.0,0.0],
+      last_position = [0.0,0.0,0.0],
+      last_velocity = [0.0,0.0,0.0],
       interpolate_time = -1;
   
   
@@ -435,11 +459,13 @@ exports.registerEntity = function(entity) {
     return getMotionParams(entity.state.motion);
   });
   entity.__defineSetter__('motion_params', function(p) {
-    var r = setMotionParams(entity.state.motion, p),
+    var r = setMotionParams(entity.state.motion, p);
+    /*
         pos = entity.position;
     for(var i=0; i<3; ++i) {
       predicted_p[i] = pos[i];
     }
+    */
     return r;
   });
   
@@ -476,9 +502,10 @@ exports.registerEntity = function(entity) {
   
   if(instance.client && entity.net_relevant) {
   
-  
     entity.state.motion.local_position = [0,0,0];
-  
+    entity.state.motion.local_velocity = [0,0,0];
+
+    
     var engine = instance.engine;
     entity.emitter.on('net_update', function(net_state, overrides) {
     
@@ -490,17 +517,30 @@ exports.registerEntity = function(entity) {
         });      
       }
       else {
-        interpolate_time = engine.lag + entity.net_delay;
-        
-        var r = [0,0,0];
+      
+        //HACK:  Fix net state clearing out local variable
+        entity.net_state.motion.local_position = [0,0,0];
+        entity.net_state.motion.local_velocity = [0,0,0];
         for(var i=0; i<3; ++i) {
-          r[i] = entity.state.motion.local_position[i];
+          entity.net_state.motion.local_position[i] = entity.state.motion.local_position[i];
+          entity.net_state.motion.local_velocity[i] = entity.state.motion.local_velocity[i];
         }
         
+        if(interpolate_time <= 0) {
+          getPosition(instance.region.tick_count, entity.state.motion, last_position);
+          getVelocity(instance.region.tick_count, entity.state.motion, last_velocity);
+        }
+        else {
+          for(var i=0; i<3; ++i) {
+            last_position[i] = entity.state.motion.local_position[i];
+            last_velocity[i] = entity.state.motion.local_velocity[i];
+          }
+        }
+        interpolate_time = engine.lag;
         
         overrides.push(function() {
-          getPosition(instance.region.tick_count, entity.state.motion, predicted_p);
-          entity.state.motion.local_position = r;
+          entity.state.motion.start_tick += entity.net_delay;
+          //getPosition(instance.region.tick_count, entity.state.motion, predicted_p);
         });
       }
     });
@@ -524,6 +564,33 @@ exports.registerEntity = function(entity) {
         phi = [0,0,0],
         lo = [0,0,0],
         hi = [0,0,0];
+        
+    
+    //Check for position correction
+    if(instance.client) {
+    
+      var net_p = getPosition(instance.region.tick_count, entity.net_state.motion),
+          delta = 0.0;
+      
+      for(var i=0; i<3; ++i) {
+        delta = Math.max(delta, Math.abs(net_p[i] - p[i]));
+      }
+      
+      //Correct position if out of sync
+      if(delta > 20.0) {
+      
+        if(entity.net_delay >= 0) {
+          console.log("Correcting position");
+          setMotionParams(entity.state.motion, entity.net_state.motion);
+          
+          getPosition(instance.region.tick_count+1, entity.state.motion, pfut);
+          for(var i=0; i<3; ++i) {
+            p[i] = net_p[i];
+            predicted_p[i] = net_p[i];
+          }
+        }
+      }
+    }    
 
     
     //console.log("tick: c=" + p[0] + ',' + p[1] + ',' + p[2] + ", n=" +pfut[0]  + ',' + pfut[1]  + ',' + pfut[2]);
@@ -711,26 +778,28 @@ exports.registerEntity = function(entity) {
     //Client side interpolation
     if( instance.client ) {
     
+    
+      --interpolate_time;   
       if(interpolate_time > 0) {
-        var p = getPosition(instance.region.tick_count+1, entity.state.motion);
-        var local_pos = entity.state.motion.local_position;
-        var t = interpolate_time/(instance.engine.lag + entity.net_delay);
-        var delta = 0;
-        
-        console.log(p, local_pos, t);
-        for(var i=0; i<3; ++i) {
-          local_pos[i] = t * local_pos[i] + (1.0 - t) * p[i];
-          delta = Math.max(delta, Math.abs(local_pos[i] - p[i]));
-        }
-        
-        if(delta < 0.1) {
-          interpolate_time = 0;
-        }
-        --interpolate_time;
-      }
-      
-      if(interpolate_time <= 0) {
+        var p = getPosition(instance.region.tick_count+1, entity.state.motion),
+            v = getVelocity(instance.region.tick_count+1, entity.state.motion),
+            t = 1.0 - interpolate_time/(instance.engine.lag);
+
+        linalg.hermite(last_position, last_velocity, p, v, t, entity.state.motion.local_position);
+        linalg.dhermite(last_position, last_velocity, p, v, t, entity.state.motion.local_velocity);
+      } 
+      else {
         getPosition(instance.region.tick_count+1, entity.state.motion, entity.state.motion.local_position);
+        getVelocity(instance.region.tick_count+1, entity.state.motion, entity.state.motion.local_velocity);
+        
+        for(var i=0; i<3; ++i) {
+          last_position[i] = entity.state.motion.local_position[i];
+          last_velocity[i] = entity.state.motion.local_velocity[i];
+        }
+      }
+
+      if(interpolate_time > -10) {
+        console.log(interpolate_time, last_position[0], p[0], entity.state.motion.local_position[0]);
       }
     }
 
