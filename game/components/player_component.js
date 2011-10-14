@@ -208,8 +208,6 @@ exports.registerEntity = function(entity) {
         vmag = Math.max(vmag, Math.max(Math.abs(v[i]), Math.abs(vel[i])));
       }
       
-      console.log(f, cf, f_delta);
-      
       if(delta > 10.0 * (vmag + 1)) {
         if(f_delta > 1e-6) {
           entity.setForce('input', f);
