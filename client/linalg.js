@@ -47,8 +47,6 @@ exports.dhermite = function(p0, v0, p1, v1, t, f) {
       dh01 = -6*t*t+6*t,
       dh11 = 3*t*t-2*t;
       
-  console.log(t, dh00, dh10, dh01, dh11);
-      
   for(var i=p0.length-1; i>=0; --i) {
     f[i] = dh00*p0[i] + dh10*v0[i] + dh01*p1[i] + dh11*v1[i];
   }

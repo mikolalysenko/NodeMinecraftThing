@@ -82,11 +82,17 @@ exports.connectToServer = function(engine, cb) {
       }
       else {
         function addUpdate(i) {
-          var tc = updates[i] - entity.net_delay,
+          var tc = updates[i],
               patch = updates[i+1];
-          if(patch.motion && patch.motion < tc) {
-            tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);
+          
+          var entity = engine.instance.lookupEntity(patch._id);
+          if(entity) {
+            tc -= entity.net_delay;
+            if(patch.motion && patch.motion < tc) {
+              tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);
+            }
           }
+              
           
           //Add network delay
           instance.addFuture(tc, function() {

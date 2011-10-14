@@ -785,6 +785,15 @@ exports.registerEntity = function(entity) {
 
         linalg.hermite(last_position, last_velocity, p, v, t, entity.state.motion.local_position);
         linalg.dhermite(last_position, last_velocity, p, v, t, entity.state.motion.local_velocity);
+        
+        
+        var delta = 0.0;
+        for(var i=0; i<3; ++i) {
+          delta = Math.max(delta, Math.abs(entity.state.motion.local_position[i] - p[i]));
+        }
+        if(delta < 0.02) {
+          interpolate_time = 0;
+        }
       } 
       else {
         getPosition(instance.region.tick_count+1, entity.state.motion, entity.state.motion.local_position);
@@ -794,10 +803,6 @@ exports.registerEntity = function(entity) {
           last_position[i] = entity.state.motion.local_position[i];
           last_velocity[i] = entity.state.motion.local_velocity[i];
         }
-      }
-
-      if(interpolate_time > -10) {
-        console.log(interpolate_time, last_position[0], p[0], entity.state.motion.local_position[0]);
       }
     }
 
