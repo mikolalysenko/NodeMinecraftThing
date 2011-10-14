@@ -99,6 +99,10 @@ exports.registerEntity = function(entity) {
     entity.emitter.on('tick', function() {
       processInput();
       updateAnimation();
+      
+      if(instance.region.tick_count % 15 == 0) {
+        entity.message('input', entity.motion_params);
+      }
     });
     
     
@@ -132,6 +136,8 @@ exports.registerEntity = function(entity) {
     
     //Apply a network packet to update player position  
     entity.emitter.on('remote_input', function(player, motion_params) {
+    
+      motion_params.start_tick++;
     
       //console.log(JSON.stringify(motion_params));
       entity.motion_params = motion_params;

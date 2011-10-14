@@ -89,7 +89,7 @@ exports.connectToServer = function(engine, cb) {
           if(entity) {
             tc -= entity.net_delay;
             if(patch.motion && patch.motion < tc) {
-              tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);
+              tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick - entity.net_delay);
             }
           }
               

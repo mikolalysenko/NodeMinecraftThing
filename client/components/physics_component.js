@@ -152,7 +152,7 @@ function getVelocity(tick_count, state, r) {
 };
 
 function setVelocity(tick_count, state, v) {
-  setPosition(tick_count, state, state.position);
+  getPosition(tick_count, state, state.position);
   for(var i=0; i<3; ++i) {
     state.velocity[i] = v[i];
   }
@@ -491,11 +491,17 @@ exports.registerEntity = function(entity) {
   };
   
   entity.applyImpulse = function(delta_v) {
-    var v = getVelocity(instance.region.tick_count+1, entity.state.motion);
+  
+    console.log("applying impulse:", getPosition(instance.region.tick_count, entity.state.motion));
+  
+    var v = getVelocity(instance.region.tick_count, entity.state.motion);
     for(var i=0; i<3; ++i) {
       v[i] += delta_v[i];
     }
     setVelocity(instance.region.tick_count, entity.state.motion, v);
+
+    console.log("new position:", getPosition(instance.region.tick_count, entity.state.motion));
+
   };
   
   if(instance.client && entity.net_relevant) {
@@ -511,7 +517,7 @@ exports.registerEntity = function(entity) {
         //FIXME: Check if local position is acceptable
         var m = framework.patcher.clone(entity.state.motion);
         overrides.push(function() {
-          entity.state.motion = m;
+          framework.patcher.assign(entity.state.motion, m);
         });      
       }
       else {
@@ -537,7 +543,6 @@ exports.registerEntity = function(entity) {
         interpolate_time = engine.lag;
         
         overrides.push(function() {
-          entity.state.motion.start_tick += entity.net_delay;
           //getPosition(instance.region.tick_count, entity.state.motion, predicted_p);
         });
       }
@@ -548,6 +553,9 @@ exports.registerEntity = function(entity) {
   if(!('gravity' in entity.state.motion.forces)) {
     entity.setForce('gravity', [0,-0.1,0]);
   }
+  
+  
+  var desync_frames = 0;
   
     
   var voxel_types = instance.game_module.voxel_types;
@@ -568,25 +576,29 @@ exports.registerEntity = function(entity) {
     if(instance.client) {
     
       var net_p = getPosition(instance.region.tick_count, entity.net_state.motion),
-          delta = 0.0;
+          v = entity.velocity,
+          delta = 0.0,
+          vmag = 0.0;
       
       for(var i=0; i<3; ++i) {
         delta = Math.max(delta, Math.abs(net_p[i] - p[i]));
+        vmag = Math.max(vmag, Math.abs(v[i]));
       }
       
       //Correct position if out of sync
-      if(delta > 20.0) {
-      
-        if(entity.net_delay >= 0) {
-          console.log("Correcting position");
-          setMotionParams(entity.state.motion, entity.net_state.motion);
+      if(delta > 10.0 * (vmag + 0.1)) {
+        ++desync_frames;
+        if(desync_frames > 3*instance.engine.lag) {
+        
+          getPosition(instance.region.tick_count, entity.state.motion, last_position);
+          getVelocity(instance.region.tick_count, entity.state.motion, last_velocity);
+          patcher.assign(entity.state.motion, entity.net_state.motion);
           
-          getPosition(instance.region.tick_count+1, entity.state.motion, pfut);
-          for(var i=0; i<3; ++i) {
-            p[i] = net_p[i];
-            predicted_p[i] = net_p[i];
-          }
+          interpolate_time = instance.engine.lag;
         }
+      }
+      else {
+        desync_frames = 0;
       }
     }    
 
@@ -704,7 +716,6 @@ exports.registerEntity = function(entity) {
         if(i>0 && contact_name === contact_list[i-1][2]) {
           continue;
         }
-        
         
         var p = entity.position,
             d = pl[0] * p[0] + pl[1] * p[1] + pl[2] * p[2] + pl[3];
