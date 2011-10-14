@@ -103,11 +103,12 @@ exports.registerEntity = function(entity) {
     
   
     //Apply input here
+    var tick_num = Math.floor(Math.random() * 15)
     entity.emitter.on('tick', function() {
       processInput();
       updateAnimation();
       
-      if(instance.region.tick_count % 30 == 0) {
+      if(instance.region.tick_count % 15 == tick_num) {
         entity.message('input', instance.region.tick_count, entity.position, entity.velocity, entity.getForce('input'));
       }
     });
@@ -192,7 +193,7 @@ exports.registerEntity = function(entity) {
       
       fixupForce(f);
     
-      tick_count += 20;
+      tick_count += 10;
       
       var p = physics.getPosition(tick_count, entity.state),
           v = physics.getVelocity(tick_count, entity.state),
@@ -210,7 +211,7 @@ exports.registerEntity = function(entity) {
       }
       
       if(delta > 10.0 * (vmag + 1) ||
-        tick_count < entity.state.motion.start_tick - 5) {
+        tick_count < entity.state.motion.start_tick - 10) {
         
         if(f_delta > 1e-4) {
           console.log("UPDATING FORCE");
