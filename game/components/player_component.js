@@ -100,7 +100,7 @@ exports.registerEntity = function(entity) {
       processInput();
       updateAnimation();
       
-      if(instance.region.tick_count % 15 == 0) {
+      if(instance.region.tick_count % engine.lag == 0) {
         entity.message('input', entity.motion_params);
       }
     });
