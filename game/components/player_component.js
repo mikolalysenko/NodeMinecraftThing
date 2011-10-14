@@ -209,8 +209,8 @@ exports.registerEntity = function(entity) {
         vmag = Math.max(vmag, Math.max(Math.abs(v[i]), Math.abs(vel[i])));
       }
       
-      if(delta > 5.0 * (vmag + 1) ||
-        Math.abs(tick_count - entity.state.motion.start_tick) > 10) {
+      if(delta > 10.0 * (vmag + 1) ||
+        tick_count < entity.state.motion.start_tick - 5) {
         
         if(f_delta > 1e-4) {
           console.log("UPDATING FORCE");

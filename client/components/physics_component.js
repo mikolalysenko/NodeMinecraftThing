@@ -598,7 +598,7 @@ exports.registerEntity = function(entity) {
       //Correct position if out of sync
       if(delta > 5.0 * (vmag + 1)) {
         ++desync_frames;
-        if(desync_frames > 6*instance.engine.lag) {
+        if(desync_frames > 80) {
         
           getPosition(instance.region.tick_count, entity.state.motion, last_position);
           getVelocity(instance.region.tick_count, entity.state.motion, last_velocity);
