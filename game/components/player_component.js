@@ -10,6 +10,7 @@ exports.registerInstance = function(instance) {
 //Registers an entity
 exports.registerEntity = function(entity) {
 
+
   var instance = entity.instance;
   if(!instance) {
     return;
@@ -35,6 +36,10 @@ exports.registerEntity = function(entity) {
     }
   }
 
+
+  entity.emitter.on('init', function() {
+    entity.setForce('input', [0,0,0]);
+  });
 
   //Use different event handlers for local player
   var is_local_player = instance.client && 
@@ -86,7 +91,9 @@ exports.registerEntity = function(entity) {
       var v = entity.getForce('input');
       if(v[0] != nx || v[1] != ny || v[2] != nz || jumped) {
         entity.setForce('input', [nx, ny, nz]);
-        entity.message('input', entity.motion_params);
+        
+        var m = entity.motion_params;
+        entity.message('input', [m.start_tick, m.position, m.velocity, m.forces.input]);
       }   
     };
     
@@ -100,8 +107,10 @@ exports.registerEntity = function(entity) {
       processInput();
       updateAnimation();
       
-      if(instance.region.tick_count % engine.lag == 0) {
-        entity.message('input', entity.motion_params);
+      if(instance.region.tick_count % instance.engine.lag == 0) {
+
+        var m = entity.motion_params;
+        entity.message('input', [m.start_tick, m.position, m.velocity, m.forces.input]);
       }
     });
     
@@ -159,9 +168,20 @@ exports.registerEntity = function(entity) {
     
     //Apply a network packet to update player position  
     entity.emitter.on('remote_input', function(player, motion_params) {
+    
+      var start_tick = motion_params[0],
+          pos = motion_params[1],
+          vel = motion_params[2],
+          f = motion_params[3];
+    
       //console.log(JSON.stringify(motion_params));
-      motion_params.start_tick += 10;
-      entity.motion_params = motion_params;
+      start_tick += 10;
+      
+      //Validate position
+      entity.state.motion.position = pos;
+      entity.state.motion.velocity = vel;
+      entity.state.motion.forces.input = f;
+      entity.state.motion.start_tick = start_tick;
     });
   }  
 };
