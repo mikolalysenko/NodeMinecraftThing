@@ -107,7 +107,7 @@ exports.registerEntity = function(entity) {
       processInput();
       updateAnimation();
       
-      if(instance.region.tick_count % 3*instance.engine.lag == 0) {
+      if(instance.region.tick_count % 30 == 0) {
         entity.message('input', instance.region.tick_count, entity.position, entity.velocity, entity.getForce('input'));
       }
     });
@@ -126,6 +126,38 @@ exports.registerEntity = function(entity) {
   }  
   else {
   
+    function fixupForce(input_force) {
+      var need_fixup = false;
+    
+      if(entity.onGround()) {
+        for(var i=0; i<3; ++i) {
+          if(input_force[i] > 1e-6) {
+            input_force[i] = 0.125;
+            need_fixup = true;
+          }
+          if(input_force[i] < -1e-6) {
+            input_force[i] = -0.125;
+            need_fixup = true;
+          }
+        }
+      }
+      else {
+        for(var i=0; i<3; ++i) {
+          if(input_force[i] > 1e-6) {
+            input_force[i] = 0.01;
+            need_fixup = true;
+          }
+          if(input_force[i] < -1e-6) {
+            input_force[i] = -0.01;
+            need_fixup = true;
+          }
+        }
+      }
+      
+      return need_fixup;
+    };
+  
+  
     //Add network delay for player input
     if('engine' in instance) {
       entity.net_delay = instance.engine.lag;
@@ -136,26 +168,8 @@ exports.registerEntity = function(entity) {
       updateAnimation();
       
       var input_force = entity.getForce('input');
-      
-      if(entity.onGround()) {
-        for(var i=0; i<3; ++i) {
-          if(input_force[i] > 1e-6) {
-            input_force[i] = 0.125;
-          }
-          if(input_force[i] < -1e-6) {
-            input_force[i] = -0.125;
-          }
-        }
-      }
-      else {
-        for(var i=0; i<3; ++i) {
-          if(input_force[i] > 1e-6) {
-            input_force[i] = 0.01;
-          }
-          if(input_force[i] < -1e-6) {
-            input_force[i] = -0.01;
-          }
-        }
+      if(fixupForce(input_force)) {
+        entity.setForce('input', input_force);
       }
     });
     
@@ -175,8 +189,8 @@ exports.registerEntity = function(entity) {
          
          return;
       }
-         
-         
+      
+      fixupForce(f);
     
       tick_count += 10;
       
@@ -195,17 +209,18 @@ exports.registerEntity = function(entity) {
         vmag = Math.max(vmag, Math.max(Math.abs(v[i]), Math.abs(vel[i])));
       }
       
-      if(delta > 2.0*(tick_count - entity.state.motion.start_tick + 1) * (vmag + 1) ||
-        tick_count < entity.state.motion.start_tick) {
+      if(delta > 5.0 * (vmag + 1) ||
+        Math.abs(tick_count - entity.state.motion.start_tick) > 10) {
         
         if(f_delta > 1e-4) {
+          console.log("UPDATING FORCE");
           entity.setForce('input', f);
         }
-        return;
       }
-      
-      if(Math.max(delta, Math.max(v_delta, f_delta)) > 1e-4) {        
+      else if(Math.max(delta, Math.max(v_delta, f_delta)) > 1e-4) {        
         //Otherwise, just update the position
+        
+        console.log("UPDATING POSITION:", delta, v_delta, f_delta);
         entity.state.motion.position = pos;
         entity.state.motion.velocity = vel;
         entity.state.motion.forces.input = f;

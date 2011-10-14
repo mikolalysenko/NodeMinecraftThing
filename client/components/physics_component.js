@@ -472,11 +472,21 @@ exports.registerEntity = function(entity) {
   };
   
   entity.getForce = function(force_name, vec) {
+    if(!vec) {
+      vec = [0,0,0];
+    }
     var f = entity.state.motion.forces[force_name];
     if(f) {
-      return f;
+      for(var i=0; i<3; ++i) {
+        vec[i] = f[i];
+      }
     }
-    return [0.0,0.0,0.0];
+    else {
+      for(var i=0; i<3; ++i) {
+        vec[i] = 0;
+      }
+    }
+    return vec;
   };
   
   entity.onGround = function() {
