@@ -87,9 +87,8 @@ exports.connectToServer = function(engine, cb) {
           
           var entity = engine.instance.lookupEntity(patch._id);
           if(entity) {
-            tc -= entity.net_delay;
             if(patch.motion && patch.motion < tc) {
-              tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick - entity.net_delay);
+              tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);
             }
           }
               
