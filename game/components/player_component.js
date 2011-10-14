@@ -192,7 +192,7 @@ exports.registerEntity = function(entity) {
       
       fixupForce(f);
     
-      tick_count += 10;
+      tick_count += 20;
       
       var p = physics.getPosition(tick_count, entity.state),
           v = physics.getVelocity(tick_count, entity.state),
