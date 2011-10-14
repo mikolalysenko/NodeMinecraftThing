@@ -576,17 +576,18 @@ exports.registerEntity = function(entity) {
     if(instance.client) {
     
       var net_p = getPosition(instance.region.tick_count, entity.net_state.motion),
+          net_v = getVelocity(instance.region.tick_count, entity.net_state.motion),
           v = entity.velocity,
           delta = 0.0,
           vmag = 0.0;
       
       for(var i=0; i<3; ++i) {
         delta = Math.max(delta, Math.abs(net_p[i] - p[i]));
-        vmag = Math.max(vmag, Math.abs(v[i]));
+        vmag = Math.max(vmag, Math.max(Math.abs(v[i]), Math.abs(net_v[i])));
       }
       
       //Correct position if out of sync
-      if(delta > 10.0 * (vmag + 0.1)) {
+      if(delta > 5.0 * (vmag + 1)) {
         ++desync_frames;
         if(desync_frames > 3*instance.engine.lag) {
         
