@@ -119,11 +119,6 @@ exports.registerEntity = function(entity) {
     instance.emitter.on('press_action', function(button) {
       var x = entity.position;
       instance.message('voxel', Math.ceil(x[0])+1, Math.floor(x[1]), Math.floor(x[2]));
-      
-      /*
-      entity.applyImpulse([0, 1, 0]);
-      entity.message('input', entity.motion_params);
-      */
     });
         
     //Logs a message to the player
