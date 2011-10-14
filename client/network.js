@@ -85,13 +85,22 @@ exports.connectToServer = function(engine, cb) {
           var tc = updates[i],
               patch = updates[i+1];
 
-          if(patch.motion && patch.motion < tc) {
+          var entity = instance.lookupEntity(patch._id);
+          if(entity) {
+            tc += entity.net_delay;
+            if(patch.motion && patch.motion.start_tick) {
+              patch.motion.start_tick += entity.net_delay;
+            }
+          }
+
+          if(patch.motion && patch.motion.start_tick && patch.motion.start_tick < tc) {
             tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);
           }
-                    
+          
+          
           //Add network delay
           instance.addFuture(tc, function() {
-            instance.updateEntity(updates[i+1]);
+            instance.updateEntity(patch);
           });
         }
         for(var i=0; i<updates.length; i+=2) {

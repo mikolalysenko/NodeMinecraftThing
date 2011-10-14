@@ -429,7 +429,8 @@ exports.registerEntity = function(entity) {
   var predicted_p = [0.0,0.0,0.0],
       last_position = [0.0,0.0,0.0],
       last_velocity = [0.0,0.0,0.0],
-      interpolate_time = -1;
+      interpolate_time = -1,
+      interpolate_max_time = 1;
   
   
   //Add getters/setters
@@ -549,10 +550,29 @@ exports.registerEntity = function(entity) {
             last_velocity[i] = entity.state.motion.local_velocity[i];
           }
         }
-        interpolate_time = engine.lag;
+        interpolate_max_time = engine.lag;
+        interpolate_time = interpolate_max_time;
         
         overrides.push(function() {
           //getPosition(instance.region.tick_count, entity.state.motion, predicted_p);
+          
+          var p = entity.position,
+              v = entity.velocity,
+              p_delta = 0,
+              v_delta = 0;
+              
+          for(var i=0; i<3; ++i) {
+            p_delta = Math.max(p_delta, Math.abs(p[i] - last_position[i]));
+            v_delta = Math.max(v_delta, Math.abs(v[i]));
+          }
+          
+          if(p_delta < 0.01) {
+            interpolate_time = 0;
+          }
+          else if(v_delta > 0.01) {
+            interpolate_max_time = 1+Math.round(p_delta / v_delta);
+            interpolate_time = interpolate_max_time;
+          }
         });
       }
     });
@@ -604,7 +624,8 @@ exports.registerEntity = function(entity) {
           getVelocity(instance.region.tick_count, entity.state.motion, last_velocity);
           patcher.assign(entity.state.motion, entity.net_state.motion);
           
-          interpolate_time = instance.engine.lag;
+          interpolate_max_time = 5;
+          interpolate_time = interpolate_max_time;
         }
       }
       else {
@@ -802,7 +823,7 @@ exports.registerEntity = function(entity) {
       if(interpolate_time > 0) {
         var p = getPosition(instance.region.tick_count+1, entity.state.motion),
             v = getVelocity(instance.region.tick_count+1, entity.state.motion),
-            t = 1.0 - interpolate_time/(instance.engine.lag);
+            t = 1.0 - interpolate_time/(interpolate_max_time);
 
         linalg.hermite(last_position, last_velocity, p, v, t, entity.state.motion.local_position);
         linalg.dhermite(last_position, last_velocity, p, v, t, entity.state.motion.local_velocity);

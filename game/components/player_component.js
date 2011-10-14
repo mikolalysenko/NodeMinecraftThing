@@ -49,7 +49,7 @@ exports.registerEntity = function(entity) {
   if(is_local_player) {
   
     //HACK: Set entity control to local authoritative
-    entity.net_delay = -1;
+    entity.net_delay = -instance.engine.lag;
   
     function processInput() {
       var buttons = instance.getButtons();
@@ -93,7 +93,9 @@ exports.registerEntity = function(entity) {
       var v = entity.getForce('input');
       if(v[0] != nx || v[1] != ny || v[2] != nz || jumped) {
         entity.setForce('input', [nx, ny, nz]);
-        entity.message('input', [instance.region.tick_count + instance.engine.lag, entity.position, entity.velocity, [nx,ny,nz] ]);
+        
+        
+        entity.message('input', instance.region.tick_count + instance.engine.lag, entity.position, entity.velocity, [nx,ny,nz] );
       }   
     };
     
@@ -127,30 +129,17 @@ exports.registerEntity = function(entity) {
   else {
   
     function fixupForce(input_force) {
-      var need_fixup = false;
+      var need_fixup = false,
+          fmag = entity.onGround ? 0.125 : 0.01;
     
-      if(entity.onGround()) {
-        for(var i=0; i<3; ++i) {
-          if(input_force[i] > 1e-6) {
-            input_force[i] = 0.125;
-            need_fixup = true;
-          }
-          if(input_force[i] < -1e-6) {
-            input_force[i] = -0.125;
-            need_fixup = true;
-          }
+      for(var i=0; i<3; ++i) {
+        if(input_force[i] > 1e-6 && input_force[i] != fmag) {
+          input_force[i] = fmag;
+          need_fixup = true;
         }
-      }
-      else {
-        for(var i=0; i<3; ++i) {
-          if(input_force[i] > 1e-6) {
-            input_force[i] = 0.01;
-            need_fixup = true;
-          }
-          if(input_force[i] < -1e-6) {
-            input_force[i] = -0.01;
-            need_fixup = true;
-          }
+        if(input_force[i] < -1e-6 && input_force[i] != -fmag) {
+          input_force[i] = -fmag;
+          need_fixup = true;
         }
       }
       
@@ -162,18 +151,11 @@ exports.registerEntity = function(entity) {
     if('engine' in instance) {
       entity.net_delay = instance.engine.lag;
     }
-  
-    //Tick
-    entity.emitter.on('tick', function() {
-      var input_force = entity.getForce('input');
-      if(fixupForce(input_force)) {
-        entity.setForce('input', input_force);
-      }    
-      updateAnimation();
-      
-    });
     
-    //Apply a network packet to update player position  
+    
+    var movement_buffer = [];
+    
+    //Apply a network packet to update player position
     entity.emitter.on('remote_input', function(player, tick_count, pos, vel, f) {
     
       if(typeof(tick_count) != 'number' ||
@@ -190,37 +172,71 @@ exports.registerEntity = function(entity) {
          return;
       }
       
-      //fixupForce(f);
-      
-      var p = physics.getPosition(tick_count, entity.state),
-          v = physics.getVelocity(tick_count, entity.state),
-          cf = entity.getForce('input'),
-          delta = 0,
-          v_delta = 0,
-          f_delta = 0,
-          vmag = 0;
+      movement_buffer.push([tick_count, pos, vel, f]);
+    });
 
+    
+  
+    //Tick
+    entity.emitter.on('tick', function() {
+    
+      for(var j=0; j<movement_buffer.length; ++j) {
+        if(movement_buffer[j][0] <= instance.region.tick_count) {
+        
+          var cmd = movement_buffer[j];
+          movement_buffer[j] = movement_buffer[movement_buffer.length - 1];
+          --movement_buffer.length;
+          --j;
+
+          var tick_count = cmd[0],
+              pos = cmd[1],
+              vel = cmd[2],
+              f = cmd[3],
+              p = entity.position,
+              v = entity.velocity,
+              cf = entity.getForce('input'),
+              delta = 0,
+              v_delta = 0,
+              f_delta = 0,
+              vmag = 0;
+              
+          fixupForce(f);
+              
+          for(var i=0; i<3; ++i) {
+            delta = Math.max(delta, Math.abs(p[i] - pos[i]));
+            v_delta = Math.max(v_delta, Math.abs(v[i] - vel[i]));
+            f_delta = Math.max(f_delta, Math.abs(f[i] - cf[i]));
+            vmag = Math.max(vmag, Math.max(Math.abs(v[i]), Math.abs(vel[i])));
+          }
           
-      for(var i=0; i<3; ++i) {
-        delta = Math.max(delta, Math.abs(p[i] - pos[i]));
-        v_delta = Math.max(v_delta, Math.abs(v[i] - vel[i]));
-        f_delta = Math.max(f_delta, Math.abs(f[i] - cf[i]));
-        vmag = Math.max(vmag, Math.max(Math.abs(v[i]), Math.abs(vel[i])));
-      }
-      
-      if(delta > 10.0 * (vmag + 1)) {
-        if(f_delta > 1e-6) {
-          entity.setForce('input', f);
+          if(delta > 10.0 * (vmag + 1) || cmd[0] < entity.state.motion.start_tick) {
+            console.log("HERE1");
+            if(f_delta > 1e-6) {
+              entity.setForce('input', f);
+            }
+          }
+          else if(Math.max(delta, Math.max(v_delta, f_delta)) > 0.01) {
+          
+            console.log("HERE2");
+
+            //Otherwise, just update the position
+            entity.state.motion.position = pos;
+            entity.state.motion.velocity = vel;
+            entity.state.motion.forces.input = f;
+            entity.state.motion.start_tick = tick_count;
+          }
         }
       }
-      else if(Math.max(delta, Math.max(v_delta, f_delta)) > 1e-6) {
-        //Otherwise, just update the position
-        entity.state.motion.position = pos;
-        entity.state.motion.velocity = vel;
-        entity.state.motion.forces.input = f;
-        entity.state.motion.start_tick = tick_count;
-      }
+    
+      var input_force = entity.getForce('input');
+      if(fixupForce(input_force)) {
+        console.log("FIXING FORCE VECTOR");
+        entity.setForce('input', input_force);
+      }    
+      updateAnimation();
+      
     });
+    
   }  
 };
 
