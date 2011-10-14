@@ -43,7 +43,7 @@ exports.voxel_types = [
     transparent:  false, 
     solid:        true,
     friction:     1.0,
-    restitution:  0.5,
+    restitution:  0.01,
   },  
 ];
 

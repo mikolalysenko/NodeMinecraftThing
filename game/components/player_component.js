@@ -93,7 +93,7 @@ exports.registerEntity = function(entity) {
       var v = entity.getForce('input');
       if(v[0] != nx || v[1] != ny || v[2] != nz || jumped) {
         entity.setForce('input', [nx, ny, nz]);
-        entity.message('input', [instance.region.tick_count, entity.position, entity.velocity, [nx,ny,nz] ]);
+        entity.message('input', [instance.region.tick_count + instance.engine.lag, entity.position, entity.velocity, [nx,ny,nz] ]);
       }   
     };
     
@@ -101,7 +101,6 @@ exports.registerEntity = function(entity) {
       return true;
     }
     
-  
     //Apply input here
     var tick_num = Math.floor(Math.random() * 15)
     entity.emitter.on('tick', function() {
@@ -109,7 +108,7 @@ exports.registerEntity = function(entity) {
       updateAnimation();
       
       if(instance.region.tick_count % 15 == tick_num) {
-        entity.message('input', instance.region.tick_count, entity.position, entity.velocity, entity.getForce('input'));
+        entity.message('input', instance.region.tick_count + instance.engine.lag, entity.position, entity.velocity, entity.getForce('input'));
       }
     });
     
@@ -166,12 +165,12 @@ exports.registerEntity = function(entity) {
   
     //Tick
     entity.emitter.on('tick', function() {
-      updateAnimation();
-      
       var input_force = entity.getForce('input');
       if(fixupForce(input_force)) {
         entity.setForce('input', input_force);
-      }
+      }    
+      updateAnimation();
+      
     });
     
     //Apply a network packet to update player position  
@@ -191,9 +190,7 @@ exports.registerEntity = function(entity) {
          return;
       }
       
-      fixupForce(f);
-    
-      tick_count += 10;
+      //fixupForce(f);
       
       var p = physics.getPosition(tick_count, entity.state),
           v = physics.getVelocity(tick_count, entity.state),
@@ -202,6 +199,7 @@ exports.registerEntity = function(entity) {
           v_delta = 0,
           f_delta = 0,
           vmag = 0;
+
           
       for(var i=0; i<3; ++i) {
         delta = Math.max(delta, Math.abs(p[i] - pos[i]));
@@ -210,14 +208,14 @@ exports.registerEntity = function(entity) {
         vmag = Math.max(vmag, Math.max(Math.abs(v[i]), Math.abs(vel[i])));
       }
       
-      if(delta > 10.0 * (vmag + 1) ||
-        tick_count < entity.state.motion.start_tick - 10) {
-        
-        if(f_delta > 1e-4) {
+      console.log(f, cf, f_delta);
+      
+      if(delta > 10.0 * (vmag + 1)) {
+        if(f_delta > 1e-6) {
           entity.setForce('input', f);
         }
       }
-      else if(Math.max(delta, Math.max(v_delta, f_delta)) > 1e-4) {        
+      else if(Math.max(delta, Math.max(v_delta, f_delta)) > 1e-6) {
         //Otherwise, just update the position
         entity.state.motion.position = pos;
         entity.state.motion.velocity = vel;
