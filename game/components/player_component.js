@@ -107,7 +107,7 @@ exports.registerEntity = function(entity) {
       processInput();
       updateAnimation();
       
-      if(instance.region.tick_count % instance.engine.lag == 0) {
+      if(instance.region.tick_count % 3*instance.engine.lag == 0) {
 
         var m = entity.motion_params;
         entity.message('input', [m.start_tick, m.position, m.velocity, m.forces.input]);
