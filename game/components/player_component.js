@@ -216,13 +216,11 @@ exports.registerEntity = function(entity) {
           }
 
           if(delta > 20.0 * (vmag + 1)) {
-            console.log("Position mismatch");
             if(f_delta > 1e-6) {
               entity.setForce('input', f);
             }
           }
           else if(Math.max(delta, 20*v_delta, 1000*f_delta) > 0.01) {
-            console.log("Position sync ok");
             entity.state.motion.position = pos;
             entity.state.motion.velocity = vel;
             entity.state.motion.forces.input = f;

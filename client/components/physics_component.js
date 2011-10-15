@@ -502,15 +502,11 @@ exports.registerEntity = function(entity) {
   
   entity.applyImpulse = function(delta_v) {
   
-    console.log("applying impulse:", getPosition(instance.region.tick_count, entity.state.motion));
-  
     var v = getVelocity(instance.region.tick_count, entity.state.motion);
     for(var i=0; i<3; ++i) {
       v[i] += delta_v[i];
     }
     setVelocity(instance.region.tick_count, entity.state.motion, v);
-
-    console.log("new position:", getPosition(instance.region.tick_count, entity.state.motion));
 
   };
   
