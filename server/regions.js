@@ -151,7 +151,9 @@ RegionSet.prototype.addClient = function(client, player_rec, cb) {
       instance.activatePlayer(client, player_rec, entity_rec, function(err) {
         if(err) {
           util.log("Player activation failed");
-          client.kick();
+          if(client) {
+            client.kick();
+          }
           return;
         }
       });

@@ -73,7 +73,7 @@ function Gateway(settings, db, server, sessions, game_module) {
   var gateway = this,
       io = require('socket.io').listen(server);
       
-  //io.set('transports', game_module.socket_transports);
+  io.set('transports', game_module.socket_transports);
       
   if(!settings.debug) {
     io.set('log level', 0);
@@ -137,8 +137,10 @@ function Gateway(settings, db, server, sessions, game_module) {
     socket.on('login', function(session_id, cb_num) {
       if( client ||
           typeof(session_id) != "string" ||
-          typeof(cb_num) != "number" ) {
-        client.kick();
+          typeof(cb_num) != "number" ) { 
+        if(client) {
+          client.kick();
+        }
         return;
       }
       var cb = callback(cb_num);
@@ -146,7 +148,9 @@ function Gateway(settings, db, server, sessions, game_module) {
       user_id = sessions.getToken(session_id);
       if(!user_id) {
         cb("Invalid session token");
-        client.kick();
+        if(client) {
+          client.kick();
+        }
         return;
       }
       
@@ -154,7 +158,9 @@ function Gateway(settings, db, server, sessions, game_module) {
       gateway.accounts.getAccount(user_id, function(err, account) {
         if(err || !account) {
           cb(JSON.stringify(err));
-          client.kick();
+          if(client) {
+            client.kick();
+          }
           return;
         }
         
@@ -174,7 +180,10 @@ function Gateway(settings, db, server, sessions, game_module) {
         gateway.accounts.listAllPlayers(account_id, function(err, players) {
           if(err) {
             cb(JSON.stringify(err));
-            client.kick();
+            
+            if(client) {
+              client.kick();
+            }
             return;
           }
           cb(null, account, players);
@@ -188,7 +197,9 @@ function Gateway(settings, db, server, sessions, game_module) {
         !client || client.state != 'login' ||
         typeof(options) != "object" ||
         typeof(cb_num) != "number" ) {
-        client.kick();
+        if(client) {
+          client.kick();
+        }
         return;
       }
       var cb = callback(cb_num);
@@ -210,7 +221,10 @@ function Gateway(settings, db, server, sessions, game_module) {
         !client || client.state != 'login' ||
         typeof(player_name) != "string" ||
         typeof(cb_num) != "number") {
-        client.kick();
+        
+        if(client) {
+          client.kick();
+        }
         return;
       }
       
@@ -223,7 +237,10 @@ function Gateway(settings, db, server, sessions, game_module) {
         !client || client.state != 'login' ||
         typeof(player_name) != "string" ||
         typeof(cb_num) != "number") {
-        client.kick();
+        
+        if(client) {
+          client.kick();
+        }
         return;
       }
       var cb = callback(cb_num);
