@@ -12,6 +12,8 @@ exports.registerInstance = function(instance) {
 //Registers an entity
 exports.registerEntity = function(entity) {
 
+  var jumping = false;
+
 
   var instance = entity.instance;
   if(!instance) {
@@ -69,10 +71,6 @@ exports.registerEntity = function(entity) {
         if(buttons['left'] > 0) {
           nx -= 0.125;
         }
-        if(buttons['jump'] > 0) {
-          entity.applyImpulse([0,3,0]);
-          jumped = true
-        }
       }
       else {
         if(buttons['up'] > 0) {
@@ -86,17 +84,23 @@ exports.registerEntity = function(entity) {
         }
         if(buttons['left'] > 0) {
           nx -= 0.01;
-        }      
+        }
       }
-            
+      
+      
+      jumped = buttons['jump'] > 0;
+           
       //Update entity velocity         
       var v = entity.getForce('input');
-      if(v[0] != nx || v[1] != ny || v[2] != nz || jumped) {
+      if(v[0] != nx || v[1] != ny || v[2] != nz || jumped != jumping) {
+        jumping = jumped;
         entity.setForce('input', [nx, ny, nz]);
-        
-        
-        entity.message('input', instance.region.tick_count + instance.engine.lag, entity.position, entity.velocity, [nx,ny,nz] );
-      }   
+        entity.message('input', instance.region.tick_count + instance.engine.lag, entity.position, entity.velocity, [nx,ny,nz], jumping);
+      }
+      
+      if(entity.onGround() && jumping) {
+        entity.applyImpulse([0,3,0]);
+      }
     };
     
     function checkPosition() {
@@ -110,7 +114,7 @@ exports.registerEntity = function(entity) {
       updateAnimation();
       
       if(instance.region.tick_count % 15 == tick_num) {
-        entity.message('input', instance.region.tick_count + instance.engine.lag, entity.position, entity.velocity, entity.getForce('input'));
+        entity.message('input', instance.region.tick_count + instance.engine.lag, entity.position, entity.velocity, entity.getForce('input'), jumping);
       }
     });
     
@@ -130,7 +134,7 @@ exports.registerEntity = function(entity) {
   
     function fixupForce(input_force) {
       var need_fixup = false,
-          fmag = entity.onGround ? 0.125 : 0.01;
+          fmag = entity.onGround() ? 0.125 : 0.01;
     
       for(var i=0; i<3; ++i) {
         if(input_force[i] > 1e-6 && input_force[i] != fmag) {
@@ -156,7 +160,7 @@ exports.registerEntity = function(entity) {
     var movement_buffer = [];
     
     //Apply a network packet to update player position
-    entity.emitter.on('remote_input', function(player, tick_count, pos, vel, f) {
+    entity.emitter.on('remote_input', function(player, tick_count, pos, vel, f, jump_state) {
     
       if(typeof(tick_count) != 'number' ||
          typeof(pos) != 'object' ||
@@ -168,11 +172,10 @@ exports.registerEntity = function(entity) {
          typeof(f) != 'object' ||
          !(f instanceof Array) ||
          f.length < 3) {
-         
          return;
       }
       
-      movement_buffer.push([tick_count, pos, vel, f]);
+      movement_buffer.push([tick_count, pos, vel, f, jump_state]);
     });
 
     
@@ -192,6 +195,7 @@ exports.registerEntity = function(entity) {
               pos = cmd[1],
               vel = cmd[2],
               f = cmd[3],
+              jump_state = cmd[4],
               p = entity.position,
               v = entity.velocity,
               cf = entity.getForce('input'),
@@ -199,7 +203,8 @@ exports.registerEntity = function(entity) {
               v_delta = 0,
               f_delta = 0,
               vmag = 0;
-              
+           
+          jumping = jump_state;
           fixupForce(f);
               
           for(var i=0; i<3; ++i) {
@@ -208,18 +213,13 @@ exports.registerEntity = function(entity) {
             f_delta = Math.max(f_delta, Math.abs(f[i] - cf[i]));
             vmag = Math.max(vmag, Math.max(Math.abs(v[i]), Math.abs(vel[i])));
           }
-          
-          if(delta > 10.0 * (vmag + 1) || cmd[0] < entity.state.motion.start_tick) {
-            console.log("HERE1");
+
+          if(delta > 20.0 * (vmag + 1) || cmd[0] < entity.state.motion.start_tick) {
             if(f_delta > 1e-6) {
               entity.setForce('input', f);
             }
           }
-          else if(Math.max(delta, Math.max(v_delta, f_delta)) > 0.01) {
-          
-            console.log("HERE2");
-
-            //Otherwise, just update the position
+          else if(Math.max(delta, 20*v_delta, 1000*f_delta) > 0.01) {
             entity.state.motion.position = pos;
             entity.state.motion.velocity = vel;
             entity.state.motion.forces.input = f;
@@ -228,9 +228,13 @@ exports.registerEntity = function(entity) {
         }
       }
     
+    
+      if(jumping && entity.onGround()) {
+        entity.applyImpulse([0,3,0]);
+      }
+    
       var input_force = entity.getForce('input');
       if(fixupForce(input_force)) {
-        console.log("FIXING FORCE VECTOR");
         entity.setForce('input', input_force);
       }    
       updateAnimation();
