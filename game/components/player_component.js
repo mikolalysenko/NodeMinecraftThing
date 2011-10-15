@@ -156,7 +156,6 @@ exports.registerEntity = function(entity) {
       entity.net_delay = instance.engine.lag;
     }
     
-    
     var movement_buffer = [],
         last_packet = 0;
     
@@ -181,8 +180,6 @@ exports.registerEntity = function(entity) {
       last_packet = tick_count+1;
       movement_buffer.push([tick_count, pos, vel, f, jump_state]);
     });
-
-    
   
     //Tick
     entity.emitter.on('tick', function() {
@@ -218,16 +215,18 @@ exports.registerEntity = function(entity) {
             vmag = Math.max(vmag, Math.max(Math.abs(v[i]), Math.abs(vel[i])));
           }
 
-          if(delta > 20.0 * (vmag + 1) || cmd[0] < entity.state.motion.start_tick) {
+          if(delta > 20.0 * (vmag + 1)) {
+            console.log("Position mismatch");
             if(f_delta > 1e-6) {
               entity.setForce('input', f);
             }
           }
           else if(Math.max(delta, 20*v_delta, 1000*f_delta) > 0.01) {
+            console.log("Position sync ok");
             entity.state.motion.position = pos;
             entity.state.motion.velocity = vel;
             entity.state.motion.forces.input = f;
-            entity.state.motion.start_tick = tick_count;
+            entity.state.motion.start_tick = instance.region.tick_count;
           }
         }
       }
@@ -244,7 +243,6 @@ exports.registerEntity = function(entity) {
       updateAnimation();
       
     });
-    
   }  
 };
 
