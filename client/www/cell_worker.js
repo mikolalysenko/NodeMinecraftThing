@@ -76,6 +76,8 @@ function buildMesh(lo, hi) {
   }
   
   function addFace(x, y, z, type, dir, step) {
+
+    var tc = texture(type, dir);
   
     //Compute center of face
     p[0] = x;
@@ -83,12 +85,12 @@ function buildMesh(lo, hi) {
     p[2] = z;
     if(dir&1) {
       p[dir>>1] += 1;
+      dir ^= 1;
     }
     
     //Compute quad vertices
     var du = tangent[dir], 
-        dv = tangent[dir^1],
-        tc = texture(type, dir);
+        dv = tangent[dir^1];
     q[0][0] = p[0];
     q[1][0] = p[0] + step*dv[0];
     q[2][0] = p[0] + step*du[0];
@@ -107,12 +109,12 @@ function buildMesh(lo, hi) {
       q[2][i+3] = tc[i]*TEX_SCALE;
       q[3][i+3] = tc[i]*TEX_SCALE;
     }
-    var us = (dv[0] ? step : 1),
-        vs = (du[0] ? step : 1); 
-    q[1][3] += us;
-    q[2][4] += vs;
-    q[3][3] += us;
-    q[3][4] += vs;
+    var us = -(du[0] ? step : 1),
+        vs = (dv[0] ? step : 1); 
+    q[1][3] += vs;
+    q[2][4] += us;
+    q[3][3] += vs;
+    q[3][4] += us;
     
     //Append vertices
     var vv = vertices[dir];

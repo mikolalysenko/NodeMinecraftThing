@@ -37,7 +37,7 @@ exports.voxel_types = [
     friction:     0,
     restitution:  0,
   },
-  
+
   { name:         'Stone', 
     textures:     [ [0,1], [0,1], [0,1], [0,1], [0,1], [0,1] ],
     transparent:  false, 
@@ -45,6 +45,15 @@ exports.voxel_types = [
     friction:     1.0,
     restitution:  0.01,
   },  
+
+  { name:         'Grass', 
+    textures:     [ [3,0], [3,0], [2,0], [0,0], [3,0], [3,0] ],
+    transparent:  false, 
+    solid:        true,
+    friction:     1.25,
+    restitution:  0.25,
+  },  
+
 ];
 
 //Buttons + default bindings
