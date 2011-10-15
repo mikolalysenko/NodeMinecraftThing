@@ -41,7 +41,7 @@ function Engine(game_module, session_id) {
   
   //Pause/ticker
   this.fast_forward_threshold   = 60;
-  this.lag            = 12;
+  this.lag            = 10;
   this.frame_skip     = 0;
   this.server_tick_count = 0;
   this.last_tick      = 0;
