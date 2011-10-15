@@ -6,7 +6,7 @@ var framework = null;
 
 //Game tick rate
 exports.tick_rate         = 30;
-exports.socket_transports = ['websocket'];
+exports.socket_transports = ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling'];
 
 //Sprite classes
 exports.sprite_classes = require('./sprites.js').sprite_classes;
