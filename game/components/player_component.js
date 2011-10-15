@@ -157,12 +157,14 @@ exports.registerEntity = function(entity) {
     }
     
     
-    var movement_buffer = [];
+    var movement_buffer = [],
+        last_packet = 0;
     
     //Apply a network packet to update player position
     entity.emitter.on('remote_input', function(player, tick_count, pos, vel, f, jump_state) {
     
       if(typeof(tick_count) != 'number' ||
+         tick_count < last_packet ||
          typeof(pos) != 'object' ||
          !(pos instanceof Array) ||
          pos.length < 3 ||
@@ -171,10 +173,12 @@ exports.registerEntity = function(entity) {
          vel.length < 3 ||
          typeof(f) != 'object' ||
          !(f instanceof Array) ||
-         f.length < 3) {
+         f.length < 3 ||
+         typeof(jump_state) != 'boolean') {
          return;
       }
       
+      last_packet = tick_count+1;
       movement_buffer.push([tick_count, pos, vel, f, jump_state]);
     });
 
