@@ -21,7 +21,7 @@ exports.client_throttle   = 100;  //Max number of (messages per second) per clie
 //Message of the day
 var motd = 
 '<h4>Welcome to the node.js MMO test!</h4>\
-To chat, press "t", tab or enter.  Use WASD for movement. Left click to place a block!<br>\
+To chat, press "t", tab or enter.  Use WASD for movement. Spacebar jumps, and left click to place a block!<br>\
 <br>'
 
 //Path to client HTML
