@@ -338,7 +338,16 @@ function applyCollision(tick_count, state1, state2, constraintPlane) {
 
   //Compute velocity in center-of-momentum frame
   for(var i=0; i<3; ++i) {
-    vc[i] =   (mp * vp[i] + mq * vq[i]) * mr;
+  
+    if( mp > 1e6 * mq) {
+      vc[i] = vp[i];
+    }
+    else if(mq > 1e6 * mq) {
+      vc[i] = vq[i];
+    }
+    else {
+      vc[i] = (mp * vp[i] + mq * vq[i]) * mr;
+    }
     up[i] =   vp[i] - vc[i];
     np    +=  up[i] * constraintPlane[i];
     uq[i] =   vq[i] - vc[i];
@@ -761,13 +770,24 @@ exports.registerEntity = function(entity) {
             restitution: cr,
             air_friction: 0,
             forces: {},
-            mass: 10000.0,
+            mass: 1e10,
           }, pl);
         
         if(res === COLLIDE_STICK) {
           //console.log("Adding contact,", d, cont);
           ground_contacts[contact_name] = true;
           entity.state.motion.contacts[contact_name] = pl;
+
+          /*
+          var p = entity.position,
+              d = pl[0] * p[0] + pl[1] * p[1] + pl[2] * p[2] + pl[3];      
+          if(d < 0) {
+            for(var i=0; i<3; ++i) {
+              p[i] -= d * pl[i];
+            }
+            setPosition(instance.region.tick_count, entity.state.motion, p);
+          }
+          */
         }
         else if(res === COLLIDE_BOUNCE) {
           //console.log("Bounced", d, cont);

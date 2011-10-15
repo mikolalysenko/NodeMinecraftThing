@@ -14,6 +14,8 @@ exports.registerEntity = function(entity) {
 
   var jumping = false;
 
+  entity.state.motion.aabb = [0.5, 1.5, 0.5];
+
 
   var instance = entity.instance;
   if(!instance) {

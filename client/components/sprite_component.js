@@ -90,5 +90,18 @@ exports.registerEntity = function(entity) {
       pass.drawSprite(pos, animation.seq[frame_num]);
     });
   }  
+  
+  entity.emitter.on('net_update', function(net_state, overrides) {
+
+    if(entity.net_delay < 0) {  
+      var anim = entity.state.anim,
+          start = entity.state.anim_start;
+          
+      overrides.push(function() {
+        entity.state.anim = anim;
+        entity.state.anim_start = start;
+      });
+    }
+  });
 };
 
