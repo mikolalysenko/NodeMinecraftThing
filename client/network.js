@@ -19,7 +19,7 @@ function Connection(socket) {
     conn.socket.emit('ping', makeCallback(function() {
       conn.ping = 0.2 * conn.ping + 0.8 * (Date.now() - n);
     }));
-  }, 5000);
+  }, 2500);
 }
 
 Connection.prototype.login = function(session_id, cb) {

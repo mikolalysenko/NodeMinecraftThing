@@ -66,7 +66,7 @@ exports.init = function(e_) {
   
   update_ping_interval = setInterval(function() {
   
-    if(engine.network.ping > 600) {
+    if(engine.network.ping > 500) {
       uiPing.innerHTML = '<b style="color:red;">'+Math.round(engine.network.ping)+'</b>';
     }
     else {
