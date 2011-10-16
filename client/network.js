@@ -17,7 +17,7 @@ function Connection(socket) {
   this.ping_timeout = setInterval(function() {
     var n = Date.now();
     conn.socket.emit('ping', makeCallback(function() {
-      conn.ping = 0.5 * (conn.ping + Date.now() - n);
+      conn.ping = 0.2 * conn.ping + 0.8 * (Date.now() - n);
     }));
   }, 5000);
 }
