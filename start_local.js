@@ -5,8 +5,8 @@ var settings = {
 
   //Web configuration
   web_domain  : 'localhost',
-  web_port    : 8080,
-  web_url     : 'http://localhost:8080',
+  web_port    : 8000,
+  web_url     : 'http://localhost:8000',
   
   //Session token name
   session_token  : '$SESSION_TOKEN',
@@ -20,7 +20,7 @@ var settings = {
   game_dir    : path.join(__dirname, 'game'),
   
   //If this flag is set, then reset the entire game state (useful for testing)
-  RESET       : true,
+  RESET       : false,
   
   //If this flag is set, don't compress the client
   debug       : true,

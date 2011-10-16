@@ -168,6 +168,7 @@ function attachOpenID(server, login) {
 }
 
 
+
 //Create web server
 function createServer() {
 
@@ -177,8 +178,8 @@ function createServer() {
       
   //Parse out client document
   var token_loc     = client_html.indexOf(settings.session_token),
-      client_start  = client_html.substr(0, token_loc),
-      client_end    = client_html.substr(token_loc + settings.session_token.length);
+      client_start  = new Buffer(client_html.substr(0, token_loc), 'utf-8'),
+      client_end    = new Buffer(client_html.substr(token_loc + settings.session_token.length), 'utf-8');
 
   //Mount extra, non-browserify files
   server.use(connect.static(path.join(settings.game_dir, './www/')));

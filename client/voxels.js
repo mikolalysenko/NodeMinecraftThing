@@ -1,3 +1,4 @@
+"use strict";
 
 var CHUNK_SHIFT_X = 8,
     CHUNK_SHIFT_Y = 4,
@@ -49,6 +50,8 @@ function hashCode(i,j,k) {
 };
 
 function Chunk(x, y, z, data) {
+  this.region_id = null;
+  this._id = null;
   this.x = x;
   this.y = y;
   this.z = z;
@@ -58,6 +61,7 @@ function Chunk(x, y, z, data) {
   else {
     this.data = [0,0];
   }
+  Object.seal(this);
 };
 
 Chunk.prototype.isEmpty = function() {
@@ -145,8 +149,9 @@ Chunk.prototype.set = function(i, j, k, v) {
 };
 
 //Keeps track of voxel data
-ChunkSet = function() {
+function ChunkSet() {
   this.chunks       = {};
+  Object.seal(this);
 };
 
 ChunkSet.prototype.insertChunk = function(chunk) {
@@ -411,7 +416,7 @@ ChunkSet.prototype.rangeForeach = function(lo, hi, n, cb) {
   }
 };
 
-ChunkIterator = function(chunk_set, x, y, z) {
+function ChunkIterator(chunk_set, x, y, z) {
   this.chunk_set  =chunk_set;
   
   this.cx = x >> CHUNK_SHIFT_X;
@@ -422,6 +427,8 @@ ChunkIterator = function(chunk_set, x, y, z) {
   this.iz = z &  CHUNK_MASK_Z;
  
   this.recompute(); 
+  
+  Object.seal(this);
 };
 
 ChunkIterator.prototype.recompute = function() {
@@ -508,7 +515,7 @@ ChunkIterator.prototype.move = function(dx, dy, dz) {
   
     //Optimization: For moving at most 1 run forward/backward, don't do a full binary search
     // Makes rangeForeach amortized constant cost.
-    var p0  = this.data_pos + 2;
+    var p0  = this.data_pos + 2,
         N   = this.chunk.data.length;
     if(p0 >= N) {
       return;

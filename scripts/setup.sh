@@ -10,9 +10,9 @@ if [ $ret -ne 0 ] || ! [ -x "$node" ]; then
   echo "Installing node"
   mkdir -p node
   cd node
-  curl http://nodejs.org/dist/node-v0.4.11.tar.gz > node.tgz
+  curl http://nodejs.org/dist/node-v0.4.12.tar.gz > node.tgz
   tar xzf node.tgz
-  cd node-v0.4.11
+  cd node-v0.4.12
   ./configure
   make
   sudo make install
@@ -23,7 +23,7 @@ fi
 #Check if npm exists
 npm=`which npm 2>&1`
 ret=$?
-if [ $ret -ne 0 ] || ! [ -x "$npm" ]; then
+#if [ $ret -ne 0 ] || ! [ -x "$npm" ]; then
   echo "Installing npm"
   mkdir -p npm
   cd npm
@@ -31,7 +31,7 @@ if [ $ret -ne 0 ] || ! [ -x "$npm" ]; then
   sudo sh install.sh
   cd ..
   rm -rf npm
-fi
+#fi
 
 #Install npm packages
 echo "Installing NPM packages"

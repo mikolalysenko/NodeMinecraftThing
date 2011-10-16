@@ -335,7 +335,7 @@ Instance.prototype.setVoxel = function(x, y, z, v) {
       
   //Retrieve _id value for database update
   var chunk = this.chunk_set.chunks[key];
-  if(chunk && '_id' in chunk) {
+  if(chunk) {
     id = chunk._id;
   }
 
@@ -445,7 +445,10 @@ Instance.prototype.start = function(cb) {
         if(err !== null) {
           cb(err);
         } else if(chunk !== null) {
-          inst.chunk_set.insertChunk(chunk);
+          var c = new voxels.Chunk(chunk.x, chunk.y, chunk.z, chunk.data);
+          c.region_id = inst.region._id;
+          c._id = chunk._id;
+          inst.chunk_set.insertChunk(c);
         } else {
           thawEntities();
         }
