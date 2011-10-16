@@ -1,5 +1,6 @@
 
-var engine = null;
+var engine = null,
+    update_ping_interval = null;
 
 function chatListener(button) {
   if(button !== 'chat') {
@@ -18,7 +19,8 @@ exports.init = function(e_) {
 
   var canvas = document.getElementById('renderCanvas'),
       gamePane = document.getElementById('gamePane'),
-      chatbox = document.getElementById('uiChatBox');
+      chatbox = document.getElementById('uiChatBox'),
+      ping_ui = document.getElementById('uiPing');
   
   
   window.onresize = function() {
@@ -61,6 +63,10 @@ exports.init = function(e_) {
     }
     return true;
   }
+  
+  update_ping_interval = setInterval(function() {
+    uiPing.innerHTML = engine.network.ping;
+  });
 }
 
 exports.deinit = function(engine) {
@@ -71,5 +77,7 @@ exports.deinit = function(engine) {
   engine.render.setActive(false);
   document.getElementById('gamePane').style.display = 'none';
   document.getElementById('renderCanvas').style.display = 'none';
+  
+  clearInterval(update_ping_interval);
 }
 

@@ -11,6 +11,15 @@ function makeCallback(cb) {
 
 function Connection(socket) {
   this.socket = socket;
+  this.ping   = 100;
+  
+  var conn = this;
+  this.ping_timeout = setInterval(function() {
+    var n = Date.now();
+    conn.socket.emit('ping', makeCallback(function() {
+      conn.ping = 0.5 * (conn.ping + Date.now() - n);
+    }));
+  }, 5000);
 }
 
 Connection.prototype.login = function(session_id, cb) {
@@ -33,8 +42,10 @@ Connection.prototype.remoteMessage = function(action_name, entity_id, args) {
   this.socket.emit('remoteMessage', action_name, entity_id, args);
 }
 
+
 Connection.prototype.disconnect = function() {
   this.socket.disconnect();
+  clearInterval(this.ping_interval);
 }
 
 exports.connectToServer = function(engine, cb) {

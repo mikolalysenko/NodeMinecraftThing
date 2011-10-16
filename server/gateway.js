@@ -97,6 +97,7 @@ function Gateway(settings, db, server, sessions, game_module) {
       }
     }
     
+    
     socket.on('callback', function(cb_num) {
       if(!client) {
         return;
@@ -132,6 +133,14 @@ function Gateway(settings, db, server, sessions, game_module) {
       account_id = null;
     });
     
+    
+    //Pings server
+    socket.on('ping', function(cb_num) {
+      var cb = callback(cb_num);
+      cb();
+      return;
+    });
+
     
     //Player login event
     socket.on('login', function(session_id, cb_num) {
