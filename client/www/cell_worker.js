@@ -271,3 +271,5 @@ emitter.on('reset', function() {
   voxel_set.chunks = {};
   dirty_cells = {};
 });
+
+

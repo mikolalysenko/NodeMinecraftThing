@@ -116,7 +116,7 @@ exports.connectToServer = function(engine, cb) {
     
     //Schedule removals
     for(var i=0; i<removals.length; i+=2) {
-      instance.addFuture(removals[i], instance.prototype.destroyEntity.bind(instance, removals[i+1]));
+      instance.addFuture(removals[i], instance.destroyEntity.bind(instance, removals[i+1]));
     }
     
     //Handles voxel updates (these are processed separately from normal messages, due to large volume)
