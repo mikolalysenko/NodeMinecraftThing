@@ -65,7 +65,13 @@ exports.init = function(e_) {
   }
   
   update_ping_interval = setInterval(function() {
-    uiPing.innerHTML = engine.network.ping;
+  
+    if(engine.network.ping > 600) {
+      uiPing.innerHTML = '<b style="color:red;">'+Math.round(engine.network.ping)+'</b>';
+    }
+    else {
+      uiPing.innerHTML = Math.round(engine.network.ping);
+    }
   });
 }
 
