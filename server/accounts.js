@@ -1,9 +1,12 @@
+"use strict";
+
 var util = require('util');
 
 function AccountManager(db, game_module, region_set) {
   this.db = db;
   this.game_module = game_module;
   this.region_set = region_set;
+  Object.seal(this);
 }
 
 AccountManager.prototype.getAccount = function(user_id, cb) {
@@ -165,3 +168,5 @@ AccountManager.prototype.deletePlayer = function(account_id, player_name, cb) {
 }
 
 exports.AccountManager = AccountManager;
+Object.freeze(exports);
+

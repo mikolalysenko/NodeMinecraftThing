@@ -1,3 +1,5 @@
+"use strict";
+
 //This module is a terrible, thoughtlessly constructed mess.  On the other hand,
 // I also have better things to do in life than endlessly rewrite linear algebra
 // codes.  So it will do for now.
@@ -248,4 +250,5 @@ exports.mtransp4 = function(M, res) {
 	return res;
 };
 
-
+Object.freeze(exports);
+Object.freeze(this);

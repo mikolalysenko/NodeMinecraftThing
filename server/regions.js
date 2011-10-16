@@ -1,3 +1,5 @@
+"use strict";
+
 var util = require('util'),
     Instance = require('./instance.js').Instance;
 
@@ -7,6 +9,7 @@ function RegionSet(db, game_module) {
   this.game_module  = game_module;
   this.instances    = {};
   this.region_index = {};   //Index of instances keyed by region name
+  Object.seal(this);
 }
 
 //Looks up a region name
@@ -40,6 +43,8 @@ RegionSet.prototype.startInstance = function(region_rec, cb) {
   
   //Finally, register with the game module itself
   this.game_module.registerInstance(instance);
+  
+  Object.seal(instance);
 
   //Now we can start the instance
   instance.start(function(err) {
@@ -126,9 +131,12 @@ RegionSet.prototype.addClient = function(client, player_rec, cb) {
 
   var db = this.db,
       region_set = this;
-      
+  
+  
   db.entities.findOne({_id:player_rec.entity_id}, function(err, entity_rec) {
+    util.log("Here!");
     if(err) {
+      util.log("Error adding player:" + JSON.stringify(player_rec) + " -- " + err);
       cb(err);
     }
     else if(!entity_rec || !entity_rec.region_id) {
@@ -136,6 +144,8 @@ RegionSet.prototype.addClient = function(client, player_rec, cb) {
       cb("Player missing entity", null);
     }
     else {
+    
+      util.log("HERE I AM");
     
       var instance = region_set.instances[entity_rec.region_id];
       if(!instance) {
@@ -146,7 +156,10 @@ RegionSet.prototype.addClient = function(client, player_rec, cb) {
       //Tell client to get ready to load map
       client.player = player_rec;
       client.instance = instance;
+      
+      util.log("Starting cb");
       cb(null, player_rec);
+      util.log("Now here");
 
       instance.activatePlayer(client, player_rec, entity_rec, function(err) {
         if(err) {
@@ -167,3 +180,5 @@ RegionSet.prototype.removeClient = function(client, cb) {
 }
 
 exports.RegionSet = RegionSet;
+
+Object.freeze(exports);

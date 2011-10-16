@@ -1,3 +1,5 @@
+"use strict";
+
 var Voxels = require('./voxels.js');
 
 var callback_id = -1,
@@ -7,7 +9,6 @@ function makeCallback(cb) {
   callbacks[++callback_id] = cb;
   return callback_id;
 }
-
 
 function Connection(socket) {
   this.socket = socket;
@@ -20,6 +21,8 @@ function Connection(socket) {
       conn.ping = 0.2 * conn.ping + 0.8 * (Date.now() - n);
     }));
   }, 2500);
+  
+  Object.seal(this);
 }
 
 Connection.prototype.login = function(session_id, cb) {
@@ -58,7 +61,6 @@ exports.connectToServer = function(engine, cb) {
     }
   }
 
-
   socket.on('callback', function(cb_num) {
     var args = Array.prototype.slice.call(arguments, 1),
         cb = callbacks[cb_num];
@@ -85,81 +87,59 @@ exports.connectToServer = function(engine, cb) {
     var first_load = engine.notifyUpdate(tick_count);
     
     //Handle updates
-    if(updates.length > 0) {
-      if(first_load) {
-       for(var i=0; i<updates.length; i+=2) {
-          instance.updateEntity(updates[i+1]);
-        }
+    if(first_load) {
+      //On first tick, immediately load all objects
+      for(var i=0; i<updates.length; i+=2) {
+        instance.updateEntity(updates[i+1]);
       }
-      else {
-        function addUpdate(i) {
-          var tc = updates[i],
-              patch = updates[i+1];
-
-          var entity = instance.lookupEntity(patch._id);
-          if(entity) {
-            tc += entity.net_delay;
-            if(patch.motion && patch.motion.start_tick) {
-              patch.motion.start_tick += entity.net_delay;
-            }
+    }
+    else {
+      for(var i=0; i<updates.length; i+=2) {
+        var tc = updates[i],
+            patch = updates[i+1],
+            entity = instance.lookupEntity(patch._id);
+        if(entity) {
+          tc += entity.net_delay;
+          if(patch.motion && patch.motion.start_tick) {
+            patch.motion.start_tick += entity.net_delay;
           }
+        }
 
-          if(patch.motion && patch.motion.start_tick && patch.motion.start_tick < tc) {
-            tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);
-          }
-          
-          
-          //Add network delay
-          instance.addFuture(tc, function() {
-            instance.updateEntity(patch);
-          });
+        if(patch.motion && patch.motion.start_tick && patch.motion.start_tick < tc) {
+          tc = Math.max(instance.region.tick_count+1, patch.motion.start_tick);
         }
-        for(var i=0; i<updates.length; i+=2) {
-          addUpdate(i);
-        }
+        
+        //Schedule update
+        instance.addFuture(tc, instance.updateEntity.bind(instance, patch));
       }
     }
     
-    //Handles removals
-    if(removals.length > 0) {
-    
-      function handleRemoval(i) {
-        instance.addFuture(removals[i], function() {
-          instance.destroyEntity(removals[i+1]);
-        });
-      };
-      
-      for(var i=0; i<removals.length; i+=2) {
-        handleRemoval(i);
-      }
+    //Schedule removals
+    for(var i=0; i<removals.length; i+=2) {
+      instance.addFuture(removals[i], instance.prototype.destroyEntity.bind(instance, removals[i+1]));
     }
     
     //Handles voxel updates (these are processed separately from normal messages, due to large volume)
-    if(voxels.length > 0) {
-      function handleVoxel(i) {
-        instance.addFuture(voxels[i+2], function() {
-          var k = parseInt(voxels[i]),
-              x = Voxels.unhash(k),
-              y = Voxels.unhash(k>>1),
-              z = Voxels.unhash(k>>2);    
-          engine.voxels.setVoxelAuthoritative(x, y, z, voxels[i+1]);
-        });
-      };
-      
-      for(var i=0; i<voxels.length; i+=3) {
-        handleVoxel(i);
-      }
+    
+    for(var i=0; i<voxels.length; i+=3) {
+      var k = parseInt(voxels[i]);
+      instance.addFuture(voxels[i+2], 
+          engine.voxels.setVoxelAuthoritative.bind(engine.voxels,
+            Voxels.unhash(k),
+            Voxels.unhash(k>>1),
+            Voxels.unhash(k>>2),
+            voxels[i+1]));
     }
   });
 
   //Called when some chunks get updated
   socket.on('updateChunks', function(updates, cb_num) {
     for(var i=0; i<updates.length; i+=2) {
-       var k = parseInt(updates[i]),
-          x = Voxels.unhash(k),
-          y = Voxels.unhash(k>>1),
-          z = Voxels.unhash(k>>2);
-      engine.voxels.updateChunk(x, y, z, updates[i+1]);
+      var k = parseInt(updates[i]);
+      engine.voxels.updateChunk(
+        Voxels.unhash(k), 
+        Voxels.unhash(k>>1),
+        Voxels.unhash(k>>2), updates[i+1]);
     }
     
     var cb = evalCallback(cb_num);
@@ -193,3 +173,4 @@ exports.connectToServer = function(engine, cb) {
   });
 }
 
+Object.seal(exports);

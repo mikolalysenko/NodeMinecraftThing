@@ -1,3 +1,5 @@
+"use strict";
+
 var patcher = require('patcher'),
     EventEmitter = require('events').EventEmitter;
 
@@ -222,6 +224,8 @@ Instance.prototype.createEntity = function(state) {
   
   entity.init();
   this.emitter.emit('spawn', entity);
+  
+  Object.seal(entity);
   
   return entity;
 }

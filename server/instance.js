@@ -34,6 +34,9 @@ function Entity(instance, state) {
   this.instance   = instance;    //A reference to the region instance this entity is in
 
 
+  //Only set if entity has a player object
+  this.player = null;
+
   //Server-side only variables
   this.persistent = true;        //If set, entity gets stored to db.  This is done using copy-on-write semantics.
   this.net_replicated = true;    //If set, then the entity gets sent across the network
@@ -107,6 +110,8 @@ function Player(instance, client, player_rec, entity_rec) {
   
   //Chunk replication
   this.pending_writes = {};
+  
+  Object.seal(this);
 }
 
 //Pushes a message out to the client
@@ -267,19 +272,27 @@ Player.prototype.updateEntity = function(entity, tick) {
 // It keeps a local copy of all entities within the region.
 //----------------------------------------------------------------
 function Instance(region, db, region_set) {
+  this.region     = region;
+  this.emitter    = new EventEmitter();
+
   this.entities   = {};
   this.players    = {};
-  this.region     = region;
-  this.game_module = region_set.game_module
-  this.db         = db;
-  this.running    = false;
-  this.region_set = region_set;
-  this.emitter    = new EventEmitter();
   this.chunk_set  = new voxels.ChunkSet();
+  
+  this.dirty_entities = [];
+  this.deleted_entities = [];
   this.dirty_chunks = {};
-  this.message_log  = "";
+  
+  this.running    = false;
+  this.db         = db;
+  this.region_set = region_set;  
+  this.game_module = region_set.game_module
+  
   this.server       = true;
   this.client       = false;
+  
+  this.tick_interval = null;
+  this.sync_interval = null;
 }
 
 //Called remotely on server from client
@@ -369,14 +382,6 @@ Instance.prototype.voxelForeach = function(lo, hi, n, cb) {
 //Start the instance server
 Instance.prototype.start = function(cb) {  
 
-  //Clear out local object cache
-  this.entities = {};
-  this.players = {};
-  
-  //Reset message queues
-  this.dirty_entities = [];
-  this.deleted_entities = [];
-  
   //Save ref to db
   var db    = this.db,
       inst  = this;
@@ -455,7 +460,6 @@ Instance.prototype.start = function(cb) {
       });
     });
   };
-  
   
   //Start the server
   loadChunks();
@@ -664,6 +668,8 @@ Instance.prototype.createEntity = function(state) {
     this.emitter.emit('spawn', entity);
     this.updateEntity(entity);
   }
+  
+  Object.seal(entity);
   
   return entity;
 }

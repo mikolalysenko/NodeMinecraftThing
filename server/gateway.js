@@ -1,4 +1,6 @@
-var util  = require('util')
+"use strict";
+
+var util  = require('util'),
     AccountManager = require('./accounts.js').AccountManager,
     RegionSet = require('./regions.js').RegionSet;
 
@@ -11,10 +13,13 @@ function Client(account, socket) {
   this.state        = 'login';
   this.account      = account;
   this.socket       = socket;
+  this.player       = null;
   this.player_id    = null;
   this.instance     = null;
   this.callback_id  = -1;
   this.callbacks    = {};
+  
+  Object.seal(this);
 }
 
 Client.prototype.makeCallback = function(cb) {
@@ -89,15 +94,13 @@ function Gateway(settings, db, server, sessions, game_module) {
         account_id        = null,
         throttle_counter  = game_module.client_throttle,
         throttle_interval = null;
-        
+    
     //Converts callback into callback num
     function callback(cb_num) {
-      return function() {
-        socket.emit.apply(socket, ['callback', cb_num].concat(Array.prototype.slice.call(arguments)));
-      }
+      return socket.emit.bind(socket, 'callback', cb_num);
     }
     
-    
+    //Called upon receiving a callback counter
     socket.on('callback', function(cb_num) {
       if(!client) {
         return;
@@ -154,7 +157,7 @@ function Gateway(settings, db, server, sessions, game_module) {
       }
       var cb = callback(cb_num);
       
-      user_id = sessions.getToken(session_id);
+      var user_id = sessions.getToken(session_id);
       if(!user_id) {
         cb("Invalid session token");
         if(client) {
@@ -254,17 +257,23 @@ function Gateway(settings, db, server, sessions, game_module) {
       }
       var cb = callback(cb_num);
       
+      util.log("Join request: " + player_name + ", acct: " + account_id);
+      
       gateway.accounts.getPlayer(account_id, player_name, function(err, player_rec) {
         if(err || !player_rec) {
+          util.log("Error retrieving player:" + account_id + "," + player_name + ":" + err);
           cb(err, null);
           return;
         }
         
         gateway.region_set.addClient(client, player_rec, function(err) {
           if(err) {
+            util.log("Error adding client:" + account_id + "," + player_name + ":" + err);
             cb(err, null);
             return;
           }
+        
+          util.log("Client entering game");
         
           //Set client state to game
           client.state = 'game';
@@ -292,6 +301,8 @@ function Gateway(settings, db, server, sessions, game_module) {
     });
   });
 
+  Object.seal(this);
+
   util.log("Gateway listening");
 }
 
@@ -309,3 +320,4 @@ exports.createGateway = function(settings, db, server, sessions, game_module, cb
   });
 }
 
+Object.freeze(exports);

@@ -1,3 +1,5 @@
+"use strict";
+
 //Event emitter module
 var EventEmitter = require('events').EventEmitter,
     Instance     = require('./instance.js').Instance;
@@ -7,6 +9,7 @@ var DefaultState = {
 	init   : function(engine) { engine.setActive(false); },
 	deinit : function(engine) { },
 }
+Object.freeze(DefaultState);
 
 //Default error handler (in case game plugin does not specify one)
 var DefaultErrorState = {
@@ -14,6 +17,7 @@ var DefaultErrorState = {
   deinit    : function(engine)  { },
   postError : function(msg)     { alert("ERROR: " + msg); },
 }
+Object.freeze(DefaultErrorState);
 
 //The application module, loads and dispatches all the other modules
 function Engine(game_module, session_id) {
@@ -48,6 +52,8 @@ function Engine(game_module, session_id) {
   this.tick_interval  = null;
   this.preload_complete  = false;
   this.input_handlers = [];
+  
+  Object.seal(this);
 }
 
 
@@ -121,8 +127,30 @@ Engine.prototype.init = function() {
   });
 }
 
+
+Engine.prototype.ticker = function() {
+  if(!this.tick_interval) {
+    return;
+  }
+  var dt;
+  while(true) {
+    this.tick();
+    this.last_tick += this.game_module.tick_rate;
+    dt = this.last_tick - Date.now();
+    if(dt > 0) {
+      break;
+    }
+  }
+  this.tick_interval = setTimeout(Engine.prototype.ticker.bind(this), dt);
+}
+
 //Pauses/unpauses the engine
 Engine.prototype.setActive = function(active) {
+
+
+  //Can't trust web browser setInterval, not a realtime timer like node.js
+  var engine = this;
+
   if(this.input) {
     this.input.setActive(active);
   }
@@ -143,32 +171,10 @@ Engine.prototype.setActive = function(active) {
     }
   }
   else {
-    var engine = this;
+    //Register tick interval
     if(!this.tick_interval) {
-      this.last_tick = Date.now();
-      
-      //Can't trust web browser setInterval, not a realtime timer like node.js
-      function ticker() {
-        if(!engine.tick_interval) {
-          return;
-        }
-        
-        var dt;
-        while(true) {
-          engine.tick();
-          
-          engine.last_tick += engine.game_module.tick_rate;
-          dt = engine.last_tick - Date.now();
-          if(dt >= 0) {
-            break;
-          }
-        }
-        
-        engine.tick_interval = setTimeout(ticker, dt);
-      }
-      
-      engine.last_tick = Date.now();
-      this.tick_interval = setTimeout(ticker, 0);
+      this.last_tick    = Date.now();
+      this.tick_interval = setTimeout(Engine.prototype.ticker.bind(this), 0);
     }
     
     //Register input handlers
@@ -365,3 +371,5 @@ exports.createEngine = function(game_module, session_id) {
   return engine;
 }
 
+
+Object.freeze(exports);

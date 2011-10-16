@@ -1,3 +1,5 @@
+"use strict";
+
 var EventEmitter = require('events').EventEmitter;
 
 var buttons     = [],
@@ -145,4 +147,7 @@ exports.setActive = function(active) {
 	  window.onblur       = null;
   }
 }
+
+Object.seal(this);
+Object.freeze(exports);
 
