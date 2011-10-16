@@ -572,7 +572,7 @@ exports.hashChunk      = hashCode;
 exports.flatten        = flattenIndex;
 exports.unhash         = unhash;
 
-
-
+Object.freeze(this);
+Object.freeze(exports);
 
 
