@@ -134,7 +134,6 @@ RegionSet.prototype.addClient = function(client, player_rec, cb) {
   
   
   db.entities.findOne({_id:player_rec.entity_id}, function(err, entity_rec) {
-    util.log("Here!");
     if(err) {
       util.log("Error adding player:" + JSON.stringify(player_rec) + " -- " + err);
       cb(err);
@@ -144,8 +143,6 @@ RegionSet.prototype.addClient = function(client, player_rec, cb) {
       cb("Player missing entity", null);
     }
     else {
-    
-      util.log("HERE I AM");
     
       var instance = region_set.instances[entity_rec.region_id];
       if(!instance) {
@@ -157,10 +154,7 @@ RegionSet.prototype.addClient = function(client, player_rec, cb) {
       client.player = player_rec;
       client.instance = instance;
       
-      util.log("Starting cb");
       cb(null, player_rec);
-      util.log("Now here");
-
       instance.activatePlayer(client, player_rec, entity_rec, function(err) {
         if(err) {
           util.log("Player activation failed");

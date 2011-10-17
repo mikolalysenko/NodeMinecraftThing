@@ -50,8 +50,6 @@ function hashCode(i,j,k) {
 };
 
 function Chunk(x, y, z, data) {
-  this.region_id = null;
-  this._id = null;
   this.x = x;
   this.y = y;
   this.z = z;
@@ -61,7 +59,7 @@ function Chunk(x, y, z, data) {
   else {
     this.data = [0,0];
   }
-  Object.seal(this);
+  Object.freeze(this);
 };
 
 Chunk.prototype.isEmpty = function() {
@@ -151,29 +149,27 @@ Chunk.prototype.set = function(i, j, k, v) {
 //Keeps track of voxel data
 function ChunkSet() {
   this.chunks       = {};
-  Object.seal(this);
+  Object.freeze(this);
+};
+
+//Delete all old chunks
+ChunkSet.prototype.clear = function() {
+  for(var c in this.chunks) {
+    delete this.chunks[c];
+  }
 };
 
 ChunkSet.prototype.insertChunk = function(chunk) {
-
   var nc = chunk;
   if(nc.constructor !== Chunk) {
     nc = new Chunk(chunk.x, chunk.y, chunk.z, chunk.data);
-    for(var id in chunk) {
-      if(!(id in nc) && chunk.hasOwnProperty(id)) {
-        nc[id] = chunk[id];
-      }
-    }
   }
-
   this.chunks[hashCode(chunk.x, chunk.y, chunk.z)] = nc;
-  
 }
 
 ChunkSet.prototype.setChunk = function(cx,cy,cz,data) {
   var key = hashCode(cx,cy,cz),
       chunk = this.chunks[key];
-      
   if(chunk) {
     chunk.data = data;
   }

@@ -293,6 +293,8 @@ function Instance(region, db, region_set) {
   
   this.tick_interval = null;
   this.sync_interval = null;
+  
+  this.chunk_ids = {};          //List of chunk ids from the database
 }
 
 //Called remotely on server from client
@@ -343,21 +345,15 @@ Instance.prototype.setVoxel = function(x, y, z, v) {
   var cx = x >> voxels.CHUNK_SHIFT_X,
       cy = y >> voxels.CHUNK_SHIFT_Y,
       cz = z >> voxels.CHUNK_SHIFT_Z,
-      key = voxels.hashChunk(cx,cy,cz),
-      id = null;
+      key = voxels.hashChunk(cx,cy,cz);
       
-  //Retrieve _id value for database update
-  var chunk = this.chunk_set.chunks[key];
-  if(chunk) {
-    id = chunk._id;
-  }
 
   var p = this.chunk_set.set(x,y,z,v);
   if(p !== v) {
   
     //Mark chunk as dirty
     if(!this.dirty_chunks[key]) {
-      this.dirty_chunks[key] = id;
+      this.dirty_chunks[key] = true;
     }
     
     //Send command to all clients
@@ -450,10 +446,8 @@ Instance.prototype.start = function(cb) {
         if(err !== null) {
           cb(err);
         } else if(chunk !== null) {
-          var c = new voxels.Chunk(chunk.x, chunk.y, chunk.z, chunk.data);
-          c.region_id = inst.region._id;
-          c._id = chunk._id;
-          inst.chunk_set.insertChunk(c);
+          inst.chunk_ids[voxels.hashChunk(chunk.x, chunk.y, chunk.z)] = chunk._id;
+          inst.chunk_set.insertChunk(chunk);
         } else {
           thawEntities();
         }
@@ -509,7 +503,7 @@ Instance.prototype.sync = function() {
   for(var i=0; i<this.dirty_entities.length; ++i) {
     e = this.dirty_entities[i];
     if(!e.deleted) {
-      this.db.entities.save(e.state, sink);
+      this.db.entities.update(e.state._id, e.state);
       e.dirty = false;
     }
   }
@@ -517,7 +511,7 @@ Instance.prototype.sync = function() {
 
   //Apply entity deletes
   for(var i=0; i<this.deleted_entities.length; ++i) {
-    this.db.entities.remove({'_id': this.deleted_entities[i]}, sink);
+    this.db.entities.remove({'_id': this.deleted_entities[i]});
   }
   this.deleted_entities.length = 0;
   
@@ -527,19 +521,32 @@ Instance.prototype.sync = function() {
   }
   
   //Synchronize region
-  this.db.regions.update(this.region, sink);
+  this.db.regions.update({_id:this.region._id}, this.region);
   
   //Synchronize all chunks
+  var inst = this;
   for(var k in this.dirty_chunks) {
     var chunk = this.chunk_set.chunks[k];
-    if(chunk) {
-      chunk.region_id = this.region._id;
-      this.db.chunks.save(chunk, sink);
+    if(chunk) {    
+      if(k in this.chunk_ids) {
+        this.db.chunks.update({'_id': this.chunk_ids[k]}, {$set: {data: chunk.data}});
+      }
+      else {
+        var rec = {'x':chunk.x, 'y':chunk.y, 'z':chunk.z, 'data':chunk.data, 'region_id':this.region._id};
+        this.db.chunks.insert(rec, {safe:true}, function(err, rec) {
+          if(err) {
+            util.log("Error inserting chunk: " + err);
+            return;
+          }
+          inst.chunk_ids[voxels.hashChunk(rec.x, rec.y, rec.z)] = rec._id;
+        });
+      }
     }
     else {
-      var id = this.dirty_chunks[k];
+      var id = this.chunk_ids[k];
       if(id) {
-        this.db.chunks.remove({'_id':id}, sink);
+        this.db.chunks.remove({_id:id});
+        delete this.chunk_ids[k];
       }
     }
   }

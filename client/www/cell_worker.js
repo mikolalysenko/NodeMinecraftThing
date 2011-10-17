@@ -9,8 +9,8 @@ var Voxels = require('./voxels.js'),
 
 //Set up stuff
 var emitter = new EventEmitter(),
-    voxel_set = null,
-    worker_interval = null,
+    voxel_set = new Voxels.ChunkSet(),
+    worker_interval = setInterval(makeCells, 16),
     dirty_cells = {},
     
     CHUNK_X = Voxels.CHUNK_X,
@@ -220,8 +220,11 @@ function makeCells() {
         post('updateCell', cell, vertices);
       }
     }
+    
+    //Delete old ids when we are done with them
+    delete dirty_cells[id];
   }
-  dirty_cells = {};
+  
 };
 
 
@@ -238,9 +241,6 @@ emitter.on('stop', function() {
 });
 
 emitter.on('start', function() {
-  voxel_set = new Voxels.ChunkSet();
-  worker_interval = setInterval(makeCells, 16);
-  dirty_cells = {};
   post('started');
 });
 
@@ -268,8 +268,12 @@ emitter.on('removeChunk', function(cx,cy,cz) {
 
 
 emitter.on('reset', function() {
-  voxel_set.chunks = {};
-  dirty_cells = {};
+  voxel_set.clear();
+  for(var id in dirty_cells) {
+    delete dirty_cells[id];
+  }
 });
+
+Object.freeze(this);
 
 

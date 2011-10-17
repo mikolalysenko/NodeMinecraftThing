@@ -128,6 +128,8 @@ Instance.prototype.init = function() {
     components[id].registerInstance(this);
   }
   this.emitter.emit('init');
+  
+  Object.seal(this);
 }
 
 //Shutdown instance

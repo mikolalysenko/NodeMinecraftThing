@@ -1,3 +1,5 @@
+"use strict";
+
 var Voxels = require('./voxels.js'),
     CELL_DIM = Voxels.CELL_DIM;
 
@@ -55,6 +57,8 @@ function VoxelPass(engine, texture) {
     if(!voxels.texture) {
       throw Error("Missing voxel tile texture: " + texture);
     }
+    
+    Object.freeze(voxels);
   });
 }
 
@@ -91,6 +95,9 @@ function VoxelCell(render, cx, cy, cz) {
   this.cz = cz;
   this.ranges = new Array(7);
   this.vbuffer = render.gl.createBuffer();
+  
+  //Object.seal(this);
+  Object.freeze(this);
 };
 
 //Updates vertices
@@ -183,4 +190,6 @@ VoxelCell.prototype.release = function() {
 
 exports.VoxelPass = VoxelPass;
 exports.VoxelCell = VoxelCell;
+
+Object.freeze(exports);
 

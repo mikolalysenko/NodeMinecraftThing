@@ -31,11 +31,11 @@ function addCollections(db, next) {
   }
   
   addCollection('accounts', function() {
-    db.accounts.ensureIndex([['user_id', 1]], true, function() {
+    db.accounts.ensureIndex([['user_id', 1]], {unique:true}, function() {
       addCollection('entities', function() {
         addCollection('players', function() { 
           db.players.ensureIndex([['user_id', 1]], false, function() {
-            db.players.ensureIndex([['player_name',1]], true, function() {
+            db.players.ensureIndex([['player_name',1]], {unique:true}, function() {
               addCollection('regions', function() {
                 addCollection('chunks', function() {
                   db.chunks.ensureIndex([['region_id',1]], false, function() {
