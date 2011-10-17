@@ -9,7 +9,7 @@ function RegionSet(db, game_module) {
   this.game_module  = game_module;
   this.instances    = {};
   this.region_index = {};   //Index of instances keyed by region name
-  Object.seal(this);
+  Object.freeze(this);
 }
 
 //Looks up a region name

@@ -510,7 +510,7 @@ ChunkIterator.prototype.move = function(dx, dy, dz) {
   else if(this.index >= pindex) {
   
     //Optimization: For moving at most 1 run forward/backward, don't do a full binary search
-    // Makes rangeForeach amortized constant cost.
+    // This saves a log factor when executing rangeForeach
     var p0  = this.data_pos + 2,
         N   = this.chunk.data.length;
     if(p0 >= N) {
