@@ -26,7 +26,7 @@ var settings = {
   
   
   //If this flag is set, don't compress the client
-  debug       : true,
+  debug       : false,
 };
 
 //Parse out arguments from commandline
