@@ -275,5 +275,19 @@ Instance.prototype.updateEntity = function(patch) {
   }
 }
 
+//Returns point of intersection along ray
+Instance.prototype.traceRay = function(origin, direction, maxT) {
+
+  var x = [origin[0], origin[1], origin[2]];
+  for(var t=0.0; t<=maxT; t+= 0.5) {
+    var v = this.getVoxel(round(x[0]), round(x[1]), round(x[2]));
+    if(this.game_module.voxel_types[v].solid) {
+      return ['voxel', v, x];
+    }
+    
+  }
+  return ['none'];
+}
+
 //Export instance constructor
 exports.Instance = Instance;
