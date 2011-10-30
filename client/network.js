@@ -54,10 +54,10 @@ Connection.prototype.disconnect = function() {
 exports.connectToServer = function(engine, cb) {
 
   var tout    = engine.game_module.socket_timeout,
-      socket  = io.connect(null, 
-        { port:80,
-          transports: engine.game_module.socket_transports, 
-          rememberTransport:false});
+      socket  = io.connect(null, { 
+        transports: engine.game_module.socket_transports, 
+        rememberTransport:false 
+      });
       
   function evalCallback(cb_num) {
     return function() {

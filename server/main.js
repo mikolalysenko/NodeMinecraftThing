@@ -173,7 +173,7 @@ function attachOpenID(server, login) {
 function createServer() {
 
   var connect     = require('connect'),
-      server      = connect.createServer(),
+      server      = connect.createServer(connect.logger()),
       client_html = fs.readFileSync(game_module.client_html, 'utf-8');
       
   //Parse out client document
