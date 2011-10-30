@@ -6,9 +6,8 @@
 
   <script>
     if(window.MozWebSocket) {
-      window.WebSocket = window.MozWebSocket;
-      document.WebSocket = window.MozWebSocket;
-      this.WebSocket = window.MozWebSocket;
+      window.WebSocket    = window.MozWebSocket;
+      document.WebSocket  = window.MozWebSocket;
     }
   </script>
   <script src="/socket.io/socket.io.js"></script>
