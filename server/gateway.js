@@ -81,7 +81,7 @@ function Gateway(settings, db, server, sessions, game_module) {
   io.set('transports', game_module.socket_transports);
       
   //if(!settings.debug) {
-    io.set('log level', 2);
+  //  io.set('log level', 0);
   //}
       
   //Player login event
