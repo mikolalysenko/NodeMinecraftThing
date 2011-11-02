@@ -424,7 +424,7 @@ function ChunkIterator(chunk_set, x, y, z) {
  
   this.recompute(); 
   
-  Object.seal(this);
+  //Object.seal(this);
 };
 
 ChunkIterator.prototype.recompute = function() {

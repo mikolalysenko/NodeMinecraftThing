@@ -31,9 +31,25 @@ function player_anim() {
 }
 
 
+function enemy_anim() {
+  var idle = {
+      rect:     [120,1, 139, 20],
+      center:   [124,10],
+    };
+  
+  return {
+    'idle': {
+      loop: true,
+      seq: [0, idle],
+    },
+  };
+}
+
+
 //Export list of sprite classes
 exports.sprite_classes = {
   'player' : player_anim(),
+  'enemy'  : enemy_anim(),
 };
 
 

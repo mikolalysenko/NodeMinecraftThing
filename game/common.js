@@ -19,13 +19,18 @@ exports.sprite_classes = require('./sprites.js').sprite_classes;
 
 //Game components
 exports.components = {
-  'player' : require('./components/player_component.js'),
+  'player'  : require('./components/player_component.js'),
+  'enemy'   : require('./components/enemy_component.js'),
 };
 
 //Entity type data
 exports.entity_types = {
   'player': {
     components  : [ 'physics', 'player', 'sprite' ],
+  },
+  'enemy': {
+    components  : [ 'physics', 'sprite', 'enemy', ],
+    sprite_class : 'enemy',
   },
 };
 

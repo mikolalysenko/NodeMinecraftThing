@@ -12,6 +12,17 @@ emitter.on('construct', function() {
   for(var j=-30; j<=30; ++j) {
     instance.setVoxel(i, -5, j, 2);
   }
+  
+  
+  for(var i=0; i<40; ++i) { 
+    instance.createEntity({
+      type:'enemy',
+      motion:{
+        position:[Math.random() * 20 ,Math.random() * 20, Math.random() * 20],
+      },
+    });
+  }
+    
 });
 
 

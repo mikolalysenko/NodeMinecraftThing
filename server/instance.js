@@ -3,7 +3,8 @@
 var util = require('util'),
     EventEmitter = require('events').EventEmitter,
     patcher = require('patcher'),
-    voxels = require('../client/voxels.js');
+    voxels = require('../client/voxels.js'),
+    ObjectID = require('mongodb/lib/mongodb/bson/bson').ObjectID;
 
 // A function that just eats events (called when updating the database)
 function sink(err, result) {
